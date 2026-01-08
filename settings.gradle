@@ -1,0 +1,6 @@
+rootProject.name = 'nect-backend'
+
+include 'nect-core'
+include 'nect-client'
+include 'nect-api'
+include 'nect-scheduler'

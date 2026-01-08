@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: kkambbak-scheduler
+
+  profiles:
+    include:
+      - core
+      - client
+      - scheduler

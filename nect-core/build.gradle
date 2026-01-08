@@ -1,0 +1,14 @@
+dependencies {
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'com.h2database:h2'
+
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-62:3.7.3'
+}
+
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}

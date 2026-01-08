@@ -1,0 +1,74 @@
+plugins {
+	id 'org.asciidoctor.jvm.convert' version '4.0.1'
+	id 'com.epages.restdocs-api-spec' version '0.18.2'
+}
+
+dependencies {
+	// Internal modules
+	implementation project(':nect-core')
+	implementation project(':nect-client')
+
+	// Security
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation 'org.springframework.security:spring-security-test'
+
+	// Validation
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.11.2'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.2', 'io.jsonwebtoken:jjwt-jackson:0.11.2'
+
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Logbook
+	implementation 'org.zalando:logbook-spring-boot-starter:3.9.0'
+
+	// REST Docs
+	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+	testImplementation 'com.epages:restdocs-api-spec-mockmvc:0.18.2'
+
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+}
+
+ext {
+	snippetsDir = file('build/generated-snippets')
+}
+
+test {
+	useJUnitPlatform()
+	outputs.dir snippetsDir
+}
+
+asciidoctor {
+	inputs.dir snippetsDir
+	dependsOn test
+}
+
+openapi3 {
+	title = 'Nect API Document'
+	description = 'Nect Application API Document'
+	version = '0.0.1'
+	format = 'yaml'
+}
+
+tasks.register('copyOasToSwagger', Copy) {
+	delete 'src/main/resources/static/swagger-ui/openapi3.yaml'
+	from "${layout.buildDirectory.get()}/api-spec/openapi3.yaml"
+	into "${layout.buildDirectory.get()}/resources/main/static/swagger-ui/."
+	dependsOn 'openapi3'
+}
+
+tasks.resolveMainClassName {
+	dependsOn 'copyOasToSwagger'
+}
+
+bootJar {
+	enabled = true
+}
+
+jar {
+	enabled = false
+}

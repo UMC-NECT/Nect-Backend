@@ -1,0 +1,13 @@
+dependencies {
+	implementation project(':nect-core')
+	implementation project(':nect-client')
+	implementation project(':nect-api')
+}
+
+bootJar {
+	enabled = true
+}
+
+jar {
+	enabled = false
+}
