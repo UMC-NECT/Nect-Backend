@@ -1,4 +1,4 @@
-package com.nect.nect_api;
+package com.nect.api;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
