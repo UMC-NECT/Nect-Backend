@@ -1,7 +1,7 @@
 package com.nect.api.domain.team.process.controller;
 
-import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDTO;
-import com.nect.api.domain.team.process.dto.res.ProcessCreateResDTO;
+import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
+import com.nect.api.domain.team.process.dto.res.ProcessCreateResDto;
 import com.nect.api.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +15,14 @@ public class ProcessController {
 
     // 새 프로세스 생성
     @PostMapping
-    public ApiResponse<ProcessCreateResDTO> createProcess(
+    public ApiResponse<ProcessCreateResDto> createProcess(
             @PathVariable Long projectId,
-            @RequestBody ProcessCreateReqDTO request
+            @RequestBody ProcessCreateReqDto request
             ) {
         // TODO :  Long processId = processService.createProcess(projectId, request);
 
         Long processId = 1L; // 임시
-        return ApiResponse.ok(new ProcessCreateResDTO(processId));
+        return ApiResponse.ok(new ProcessCreateResDto(processId));
     }
 
 }

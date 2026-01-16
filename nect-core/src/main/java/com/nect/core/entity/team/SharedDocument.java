@@ -1,6 +1,7 @@
 package com.nect.core.entity.team;
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.team.enums.FileExt;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -35,8 +36,9 @@ public class SharedDocument extends BaseEntity {
     @Column(name = "file_name", length = 200, nullable = false)
     private String fileName;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "file_ext", length = 10, nullable = false)
-    private String fileExt; // jpg, png, pdf, zip
+    private FileExt fileExt;
 
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
@@ -51,7 +53,7 @@ public class SharedDocument extends BaseEntity {
                            String title,
                            String description,
                            String fileName,
-                           String fileExt,
+                           FileExt fileExt,
                            String fileUrl) {
 //        this.createdBy = createdBy;
         this.isPinned = isPinned;

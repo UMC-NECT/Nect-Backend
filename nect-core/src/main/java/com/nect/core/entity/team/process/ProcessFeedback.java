@@ -28,8 +28,7 @@ public class ProcessFeedback extends BaseEntity {
 //    @JoinColumn(name = "created_by", nullable = false)
 //    private User createdBy;
 
-    @Lob
-    @Column(name = "content", nullable = false)
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)
