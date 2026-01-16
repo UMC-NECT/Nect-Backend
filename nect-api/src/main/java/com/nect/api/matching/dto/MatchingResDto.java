@@ -5,9 +5,9 @@ import com.nect.core.entity.matching.enums.MatchingStatus;
 
 import java.time.LocalDateTime;
 
-public class MatchingResDTO {
+public class MatchingResDto {
 
-    public record matchingResDTO(
+    public record matchingResDto(
             Long id,
             Long requestUserId,
             Long targetUserId,

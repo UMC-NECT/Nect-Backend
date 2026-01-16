@@ -1,12 +1,11 @@
 package com.nect.api.matching.dto;
 
 import com.nect.core.entity.matching.enums.MatchingRequestType;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-public class MatchingReqDTO {
+public class MatchingReqDto {
 
-    public record matchingReqDTO(
+    public record matchingReqDto(
             Long targetUserId,
             @NotNull
             Long projectId,
