@@ -4,13 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public record ProcessWeekResDTO(
+public record ProcessWeekResDto(
         @JsonProperty("start_date")
         String startDate,
 
         @JsonProperty("project_purpose")
-        List<ProcessCardResDTO> projectPurpose,
+        List<ProcessCardResDto> projectPurpose,
 
         @JsonProperty("by_field")
-        List<FieldGroupResDTO> byField
+        List<FieldGroupResDto> byField
 ) {}

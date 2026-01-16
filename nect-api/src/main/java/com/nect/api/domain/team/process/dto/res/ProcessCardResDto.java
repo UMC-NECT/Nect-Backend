@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 import java.util.List;
 
-public record ProcessCardResDTO(
+public record ProcessCardResDto(
         @JsonProperty("process_id")
         Long processId,
 
@@ -33,5 +33,5 @@ public record ProcessCardResDTO(
         Integer leftDay,
 
         @JsonProperty("assignee")
-        List<AssigneeResDTO> assignee
+        List<AssigneeResDto> assignee
 ) {}

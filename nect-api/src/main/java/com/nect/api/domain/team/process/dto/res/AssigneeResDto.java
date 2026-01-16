@@ -2,7 +2,7 @@ package com.nect.api.domain.team.process.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record AssigneeResDTO(
+public record AssigneeResDto(
         @JsonProperty("user_id")
         Long userId,
 
