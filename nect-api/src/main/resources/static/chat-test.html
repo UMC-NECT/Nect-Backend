@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chat API & File Upload 테스트</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 30px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .connect-info { margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 5px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;}
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-connect { background: #4CAF50; }
+        .btn-disconnect { background: #f44336; }
+        .btn-load-more { background: #9E9E9E; width: 100%; margin-bottom: 10px; }
+        .btn-load-more:hover { background: #757575; }
+
+        #chat-container { border: 1px solid #ddd; height: 500px; overflow-y: auto; padding: 15px; background: #fafafa; border-radius: 5px; display: flex; flex-direction: column; }
+        .message { margin: 5px 0; padding: 10px; background: white; border-radius: 8px; max-width: 70%; border: 1px solid #eee; position: relative; }
+        .my-message { background: #dcf8c6; align-self: flex-end; border-color: #dcf8c6; }
+        .other-message { align-self: flex-start; }
+
+        .message-header { font-size: 0.8em; color: #666; margin-bottom: 5px; display: flex; gap: 10px; }
+        .input-container { display: flex; gap: 10px; margin-top: 15px; align-items: center; }
+        #message-input { flex: 1; }
+        #send-button { background: #2196F3; }
+
+        /* 파일 업로드 스타일 */
+        .file-upload-wrapper { display: flex; align-items: center; gap: 5px; margin-right: 5px; }
+        .btn-file-select { background: #FF9800; }
+        #file-input { display: none; } /* 진짜 input은 숨김 */
+
+        /* 파일 메시지 스타일 */
+        .file-attachment {
+            display: flex; align-items: center; gap: 10px;
+            background: #f1f1f1; padding: 8px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd;
+        }
+        .file-icon { font-size: 1.5em; }
+        .file-info { display: flex; flex-direction: column; font-size: 0.9em; }
+        .file-link { color: #2196F3; text-decoration: none; font-weight: bold; }
+
+        /* 상태 표시 */
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
+        .connected { background: #4CAF50; color: white; }
+        .disconnected { background: #ccc; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🗨️ 통합 API & 파일 전송 테스트</h1>
+
+    <div class="connect-info">
+        <input type="number" id="room_id_input" placeholder="Room ID" value="1">
+        <input type="number" id="user_id_input" placeholder="User ID" value="1">
+        <button class="btn-connect" onclick="connect()">연결 & 입장</button>
+        <button class="btn-disconnect" onclick="disconnect()">종료</button>
+        <span id="connection-status" class="status-badge disconnected">Disconnected</span>
+    </div>
+
+    <div id="chat-container">
+        <button id="btn-load-more" class="btn-load-more" onclick="loadOlderMessages()" style="display:none;">
+            ⬆️ 이전 메시지 더보기
+        </button>
+        <div id="message-area"></div>
+    </div>
+
+    <div class="input-container">
+        <div class="file-upload-wrapper">
+            <input type="file" id="file-input" onchange="uploadFile()">
+            <button class="btn-file-select" onclick="document.getElementById('file-input').click()" disabled id="btn-file">
+                📎 파일첨부
+            </button>
+        </div>
+
+        <input type="text" id="message-input" placeholder="메시지 입력..." disabled onkeypress="if(event.key==='Enter') sendTextMessage()">
+        <button id="send-button" onclick="sendTextMessage()" disabled>전송</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+<script>
+    let stompClient = null;
+    let room_id = 1;
+    let user_id = 1;
+    let oldestMessageId = null;
+
+    // ==========================================
+    // 1. WebSocket 연결 및 초기화
+    // ==========================================
+    function connect() {
+        room_id = document.getElementById('room_id_input').value;
+        user_id = document.getElementById('user_id_input').value;
+
+        const socket = new SockJS('http://localhost:8080/ws-chat');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null; // 로그 너무 많이 뜨면 null 처리
+
+        stompClient.connect({}, function() {
+            setConnected(true);
+            console.log('✅ WebSocket Connected');
+
+            // 구독: 메시지 수신 처리
+            stompClient.subscribe('/topic/chatroom/' + room_id, function(msg) {
+                const body = JSON.parse(msg.body);
+                // 실시간 메시지는 화면 맨 아래에 추가
+                displayMessage(body, 'append');
+                scrollToBottom();
+            });
+
+            // 초기 메시지 로딩
+            loadInitialMessages();
+
+        }, function(err) {
+            alert('연결 실패: ' + err);
+        });
+    }
+
+    // ==========================================
+    // 2. 메시지 로딩 (API)
+    // ==========================================
+    function loadInitialMessages() {
+        const url = `http://localhost:8080/chats/rooms/${room_id}/messages?user_id=${user_id}`;
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                const msgArea = document.getElementById('message-area');
+                msgArea.innerHTML = '';
+
+                if (data.length > 0) {
+                    oldestMessageId = data[0].message_id;
+                    data.forEach(msg => displayMessage(msg, 'append'));
+                    scrollToBottom();
+                }
+                document.getElementById('btn-load-more').style.display = 'block';
+            })
+            .catch(err => console.error('초기 로딩 실패:', err));
+    }
+
+    function loadOlderMessages() {
+        if (!oldestMessageId) return;
+        const url = `http://localhost:8080/chats/rooms/${room_id}/messages?user_id=${user_id}&lastMessage_id=${oldestMessageId}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length === 0) {
+                    alert("더 이상 메시지가 없습니다.");
+                    document.getElementById('btn-load-more').style.display = 'none';
+                    return;
+                }
+                oldestMessageId = data[0].message_id;
+                for (let i = data.length - 1; i >= 0; i--) {
+                    displayMessage(data[i], 'prepend');
+                }
+            });
+    }
+
+    // ==========================================
+    // 3. [텍스트] 전송 로직
+    // ==========================================
+    function sendTextMessage() {
+        const input = document.getElementById('message-input');
+        const content = input.value.trim();
+        if(content && stompClient) {
+            const payload = {
+                user_id: parseInt(user_id),
+                content: content
+            };
+            // 텍스트 전송 엔드포인트
+            stompClient.send("/app/chat.send/" + room_id, {}, JSON.stringify(payload));
+            input.value = '';
+        }
+    }
+
+    // ==========================================
+    // 4. [파일] 업로드 및 전송 로직
+    // ==========================================
+    function uploadFile() {
+        const fileInput = document.getElementById('file-input');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        console.log("📤 파일 업로드 시작:", file.name);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // 1. 파일 업로드 API 호출 (POST /chats/files)
+        fetch('http://localhost:8080/chats/files', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                if (!response.ok) throw new Error("파일 업로드 실패");
+                return response.json();
+            })
+            .then(data => {
+                // 서버 응답 구조가 data.body 안에 실제 데이터가 있으므로 이를 참조합니다.
+                const fileId = data.body ? data.body.file_id : null;
+
+                if (fileId) {
+                    console.log("✅ 업로드 완료. File ID:", fileId);
+                    sendFileSocketMessage(fileId);
+                } else {
+                    // 응답 구조가 바뀌었을 경우를 대비해 상세 로그 출력
+                    console.error("❌ 서버 응답 구조에서 file_id를 찾을 수 없습니다.");
+                    console.log("실제 받은 데이터:", data);
+                    alert("파일 아이디 추출 실패! 콘솔을 확인하세요.");
+                }
+
+                fileInput.value = '';
+            })
+            .catch(error => {
+                console.error("업로드 에러:", error);
+                alert("파일 업로드 중 오류가 발생했습니다.");
+            });
+    }
+
+    function sendFileSocketMessage(fileId) {
+        if(!stompClient) return;
+
+        // [주의] 서버의 ChatFileSendRequestDTO 필드명이
+        // camelCase(fileId)라면 아래를 { fileId: fileId }로 수정해야 할 수도 있습니다.
+        const payload = {
+            user_id: parseInt(user_id),
+            file_id: parseInt(fileId)
+        };
+
+        stompClient.send("/app/chat.file/" + room_id, {}, JSON.stringify(payload));
+        console.log("📨 파일 소켓 전송 완료 (ID: " + fileId + ")");
+    }
+    // ==========================================
+    // 5. 화면 렌더링 (텍스트 vs 파일 분기)
+    // ==========================================
+    function displayMessage(msg, mode) {
+        const area = document.getElementById('message-area');
+        const div = document.createElement('div');
+
+        const isMe = (msg.user_id == user_id);
+        div.className = `message ${isMe ? 'my-message' : 'other-message'}`;
+
+        const time = msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : '방금';
+        const sender = msg.user_name || 'User ' + msg.user_id;
+
+        // ★ 메시지 타입에 따른 내용 생성
+        let contentHtml = '';
+
+        if (msg.message_type === 'FILE' && msg.file_info) {
+            // [파일 메시지]
+            const file = msg.file_info;
+            // 로컬 서버 URL인 경우 localhost 붙여주기 (테스트용)
+            const downloadUrl = file.file_url.startsWith("http")
+                ? file.file_url
+                : `http://localhost:8080${file.file_url}`;
+
+            contentHtml = `
+                <div class="file-attachment">
+                    <span class="file-icon">📄</span>
+                    <div class="file-info">
+                        <a href="${downloadUrl}" target="_blank" class="file-link">${file.original_filename}</a>
+                        <span style="color:#888; font-size:0.8em;">${formatBytes(file.file_size)}</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            // [텍스트 메시지]
+            contentHtml = `<div>${msg.content}</div>`;
+        }
+
+        div.innerHTML = `
+            <div class="message-header">
+                <span>${sender}</span>
+                <span>${time}</span>
+            </div>
+            ${contentHtml}
+        `;
+
+        if (mode === 'prepend') {
+            area.insertBefore(div, area.firstChild);
+        } else {
+            area.appendChild(div);
+        }
+    }
+
+    // 파일 사이즈 포맷팅 헬퍼
+    function formatBytes(bytes, decimals = 2) {
+        if (!+bytes) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+    }
+
+    function disconnect() {
+        if(stompClient) stompClient.disconnect();
+        setConnected(false);
+    }
+
+    function setConnected(connected) {
+        const badge = document.getElementById('connection-status');
+        const inputs = [
+            document.getElementById('message-input'),
+            document.getElementById('send-button'),
+            document.getElementById('btn-file') // 파일 버튼도 제어
+        ];
+
+        if (connected) {
+            badge.innerText = "Connected";
+            badge.className = "status-badge connected";
+            inputs.forEach(el => el.disabled = false);
+        } else {
+            badge.innerText = "Disconnected";
+            badge.className = "status-badge disconnected";
+            inputs.forEach(el => el.disabled = true);
+        }
+    }
+
+    function scrollToBottom() {
+        const container = document.getElementById('chat-container');
+        container.scrollTop = container.scrollHeight;
+    }
+</script>
+
+</body>
+</html>

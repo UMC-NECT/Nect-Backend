@@ -3,7 +3,7 @@ package com.nect.api.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.nect.api.chat.service.RedisSubscriber;
+import com.nect.api.domain.team.chat.service.RedisSubscriber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -72,7 +72,7 @@ public class RedisConfig {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         // 모든 채팅방 구독
-        container.addMessageListener(listenerAdapter, new PatternTopic("chatroom.*"));
+        container.addMessageListener(listenerAdapter, new PatternTopic("chatroom:*"));
         return container;
     }
 

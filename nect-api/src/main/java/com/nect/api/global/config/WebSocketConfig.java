@@ -25,4 +25,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns("*").withSockJS(); //CORS 설정
     }
 
+
+
 }

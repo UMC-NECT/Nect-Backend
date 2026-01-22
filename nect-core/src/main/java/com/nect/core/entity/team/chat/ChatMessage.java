@@ -2,11 +2,9 @@ package com.nect.core.entity.team.chat;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.chat.enums.MessageType;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 //MongoDB 고려중
 @Entity
@@ -15,15 +13,13 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ChatMessage extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 발신자 ID
-    @Column(nullable = false)
-    private Long senderId;
 
     // 메시지 내용
     @Column(columnDefinition = "TEXT")
@@ -37,6 +33,15 @@ public class ChatMessage extends BaseEntity {
     // 공지사항 여부
     @Column(nullable = false)
     private Boolean isPinned = false;
+
+    // TODO 발신자 (User 외래키)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chat_room_id")
+    private ChatRoom chatRoom;
 
 
 }

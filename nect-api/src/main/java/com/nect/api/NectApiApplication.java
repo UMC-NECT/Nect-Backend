@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -11,9 +12,13 @@ import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableJpaAuditing
+@ComponentScan(basePackages = {
+		"com.nect.api",      // API 패키지
+		"com.nect.core",     // Core 패키지
+})
 // 엔티티 , 리포지토리 스캔
 @EntityScan(basePackages = {"com.nect.core.entity"})
-@EnableJpaRepositories(basePackages = {"com.nect.core"})
+@EnableJpaRepositories(basePackages = {"com.nect.core.repository"})
 public class NectApiApplication {
 
 	@PostConstruct

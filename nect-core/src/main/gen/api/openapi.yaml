@@ -1,0 +1,11 @@
+openapi: 3.0.1
+info:
+  description: Nect Application API Document
+  title: Nect API Document
+  version: 0.0.1
+servers:
+- url: http://localhost
+paths: {}
+components:
+  schemas: {}
+
