@@ -97,7 +97,7 @@ public class ChatFileService {
         ChatFile chatFile = chatFileRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("파일이 존재하지 않습니다. ID: " + fileId));
 
-        //메시지 엔티티 생성
+        //메시지 엔티티
         ChatMessage message = FileConverter.toFileMessage(
                 chatRoomUser.getChatRoom(),
                 chatRoomUser.getUser()
