@@ -24,3 +24,6 @@ jobs:
 
       - name: Run tests
         run: ./gradlew test --no-daemon --parallel
+
+      - name: Build bootJar
+        run: ./gradlew :nect-api:bootJar --no-daemon --parallel
