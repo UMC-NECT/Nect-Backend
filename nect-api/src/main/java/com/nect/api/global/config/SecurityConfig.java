@@ -4,6 +4,8 @@ import com.nect.api.global.jwt.JwtAuthenticationFilter;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
+import com.nect.api.domain.user.oauth2.service.OAuth2UserService;
+import com.nect.api.domain.user.oauth2.handler.OAuth2EventHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,6 +30,8 @@ public class SecurityConfig {
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final OAuth2UserService oAuth2UserService;
+    private final OAuth2EventHandler oAuth2EventHandler;
 
     private static final List<String> EXCLUDE_PATHS = Arrays.asList(
             "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**",
@@ -48,7 +52,12 @@ public class SecurityConfig {
                         .requestMatchers(EXCLUDE_PATHS.toArray(new String[0])).permitAll()
                         .anyRequest().authenticated()
                 )
-                // TODO: OAuth2 설정 추가 필요
+                .oauth2Login(oauth2Login -> oauth2Login
+                        .successHandler(oAuth2EventHandler)
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService())
+                        )
+                )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(customAuthenticationEntryPoint())
                 )
@@ -63,6 +72,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public OAuth2UserService customOAuth2UserService() {
+        return new OAuth2UserService();
+    }
+
+    @Bean
     public AuthenticationEntryPoint customAuthenticationEntryPoint() {
         return (HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -72,4 +86,5 @@ public class SecurityConfig {
             );
         };
     }
+
 }
