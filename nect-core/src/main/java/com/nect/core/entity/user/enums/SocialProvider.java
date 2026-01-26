@@ -1,4 +1,4 @@
-package com.nect.core.entity.enums;
+package com.nect.core.entity.user.enums;
 
 public enum SocialProvider {
 	GOOGLE("구글"),

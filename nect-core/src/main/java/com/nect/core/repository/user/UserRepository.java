@@ -1,6 +1,6 @@
-package com.nect.core.repository;
+package com.nect.core.repository.user;
 
-import com.nect.core.entity.User;
+import com.nect.core.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,6 +1,6 @@
-package com.nect.core.entity.enums;
+package com.nect.core.entity.user.enums;
 
-public enum Occupation {
+public enum Job {
 	EMPLOYEE("직장인"),
 	STUDENT("학생"),
 	JOB_SEEKER("구직자"),
@@ -10,7 +10,7 @@ public enum Occupation {
 
 	private final String description;
 
-	Occupation(String description) {
+	Job(String description) {
 		this.description = description;
 	}
 
