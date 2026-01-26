@@ -1,4 +1,4 @@
-package com.nect.core.entity.enums;
+package com.nect.core.entity.user.enums;
 
 public enum UserType {
 	MEMBER("일반 멤버"),
