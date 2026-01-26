@@ -14,6 +14,8 @@ import com.nect.core.repository.team.chat.ChatRoomRepository;
 import com.nect.core.repository.team.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,54 +60,26 @@ public class ChatService {
         return messageDto;
     }
 
-    //채팅방 입장 시 메시지 조회
-    public List<ChatMessageDTO>getInitialMessage(Long roomId, Long userId){
-        //채팅방 조회
-        ChatRoom chatRoom=chatRoomRepository.findById(roomId)
-                .orElseThrow(()->new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
-        // 최신 메시지 조회
-        List<ChatMessage>messages=chatMessageRepository.findTop20ByChatRoomOrderByIdDesc(chatRoom);
-
-        return messages.stream()
-                .map(ChatConverter::toMessageDto)
-                .collect(Collectors.toList());
-    }
-
-    // 스크롤 올릴 때 조회
-    public List<ChatMessageDTO> getOlderMessages(Long roomId, Long userId, Long lastMessageId) {
-        // 채팅방 조회
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
 
-        // lastMessageId보다 이전 메시지 20개 조회
-        List<ChatMessage> messages = chatMessageRepository
-                .findTop20ByChatRoomAndIdLessThanOrderByIdDesc(chatRoom, lastMessageId);
 
-        // 오래된 순으로 정렬
-        Collections.reverse(messages);
-
-
-        return messages.stream()
-                .map(ChatConverter::toMessageDto)
-                .collect(Collectors.toList());
-    }
-
-
-    public List<ChatMessageDTO> getChatMessages(Long roomId, Long userId, Long lastMessageId) {
+    @Transactional(readOnly = true)
+    public List<ChatMessageDTO> getChatMessages(Long roomId, Long lastMessageId, int size) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        //  페이징 설정 (0페이지부터 원하는 size만큼)
+        Pageable pageable = PageRequest.of(0, size);
 
         List<ChatMessage> messages;
 
         if (lastMessageId == null) {
-            messages = chatMessageRepository.findTop20ByChatRoomOrderByIdDesc(chatRoom);
+            messages = chatMessageRepository.findByChatRoomOrderByIdDesc(chatRoom, pageable);
         } else {
-            messages = chatMessageRepository.findTop20ByChatRoomAndIdLessThanOrderByIdDesc(chatRoom, lastMessageId);
+            messages = chatMessageRepository.findByChatRoomAndIdLessThanOrderByIdDesc(chatRoom, lastMessageId, pageable);
         }
 
-        //  순서 뒤집기
         Collections.reverse(messages);
 
         return messages.stream()
@@ -114,11 +88,12 @@ public class ChatService {
     }
 
     @Transactional
-    public ChatNoticeResponseDTO createNotice(@PathVariable("message_id") Long messageId,Boolean isPinned) {
-        ChatMessage message=chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+    public ChatNoticeResponseDTO createNotice(Long messageId, Boolean isPinned) {
 
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
         message.setIsPinned(isPinned);
+
         return ChatConverter.toNoticeResponseDTO(message);
     }
 

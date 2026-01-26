@@ -28,14 +28,14 @@ public class ChatMessageController {
     @GetMapping("/rooms/{room_id}/messages")
     public ApiResponse<List<ChatMessageDTO>> getChatMessages(
             @PathVariable Long room_id,
-            @RequestParam(required = false) Long lastMessage_id
+            @RequestParam(required = false) Long lastMessage_id,
+            @RequestParam(defaultValue = "20") int size
             //TODO @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        Long user_id = 1L; //TODO [현재] 임시 하드코딩
+        //Long user_id = 1L; //TODO [현재] 임시 하드코딩
         //TODO Long userId = userDetails.getUser().getId();
-        List<ChatMessageDTO> messages = chatService.getChatMessages(room_id, user_id, lastMessage_id);
-
+        List<ChatMessageDTO> messages = chatService.getChatMessages(room_id, lastMessage_id, size);
         return ApiResponse.ok(messages);
     }
 

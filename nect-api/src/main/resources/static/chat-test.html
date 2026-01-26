@@ -169,7 +169,7 @@
                 content: content
             };
             // 텍스트 전송 엔드포인트
-            stompClient.send("/app/chat.send/" + room_id, {}, JSON.stringify(payload));
+            stompClient.send("/app/chat-send/" + room_id, {}, JSON.stringify(payload));
             input.value = '';
         }
     }
@@ -228,7 +228,7 @@
             file_id: parseInt(fileId)
         };
 
-        stompClient.send("/app/chat.file/" + room_id, {}, JSON.stringify(payload));
+        stompClient.send("/app/chat-file/" + room_id, {}, JSON.stringify(payload));
         console.log("📨 파일 소켓 전송 완료 (ID: " + fileId + ")");
     }
     // ==========================================

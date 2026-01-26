@@ -36,7 +36,7 @@ public class ChatFileService {
     private final RedisPublisher redisPublisher;
 
     //application.yml에 설정 x  ./uploads/'에 저장 (상대 경로)
-    @Value("${file.upload-dir:C:/nect-uploads/}")
+    @Value("${file.upload-dir:${user.home}/nect-uploads/}")
     private String uploadDir;
 
     @Transactional

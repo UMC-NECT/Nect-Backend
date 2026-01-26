@@ -19,7 +19,7 @@ public class ChatWebSocketController {
     private final ChatService chatService;
     private final ChatFileService chatFileService;
 
-    @MessageMapping("/chat.send/{room_id}")
+    @MessageMapping("/chat-send/{room_id}")
     public void sendMessage(
             @DestinationVariable("room_id") Long room_id,
             ChatMessageSendRequestDTO request
@@ -44,7 +44,7 @@ public class ChatWebSocketController {
         }
     }
 
-    @MessageMapping("/chat.file/{room_id}")
+    @MessageMapping("/chat-file/{room_id}")
     public void sendFileMessage(
             @DestinationVariable("room_id") Long roomId,
             ChatFileSendRequestDTO request

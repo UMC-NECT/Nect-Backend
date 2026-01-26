@@ -14,14 +14,10 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage,Long> {
 
-    // 특정 메시지 이전의 메시지 조회 (스크롤 올릴 때)
-    List<ChatMessage> findTop20ByChatRoomAndIdLessThanOrderByIdDesc(
-            ChatRoom chatRoom,
-            Long lastMessageId
-    );
+    List<ChatMessage> findByChatRoomOrderByIdDesc(ChatRoom chatRoom, Pageable pageable);
 
-    // 최신 메시지 조회
-    List<ChatMessage> findTop20ByChatRoomOrderByIdDesc(ChatRoom chatRoom);
+    List<ChatMessage> findByChatRoomAndIdLessThanOrderByIdDesc(ChatRoom chatRoom, Long id, Pageable pageable);
+
 
     //TODO 새 메시지 확인
     List<ChatMessage> findByChatRoomAndIdGreaterThanOrderByIdAsc(

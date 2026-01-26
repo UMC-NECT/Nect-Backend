@@ -72,12 +72,11 @@ class ChatMessageControllerTest {
                         .build()
         );
 
-        given(chatService.getChatMessages(anyLong(), anyLong(), any()))
-                .willReturn(messages);
+
 
         mockMvc.perform(get("/chats/rooms/{room_id}/messages", 1L)
-                        .param("user_id", "1")
-                        .param("lastMessage_id", "100"))
+                        .param("lastMessage_id", "100")
+                        .param("size", "20"))
                 .andExpect(status().isOk())
                 .andDo(document("chat-messages-get",
                         preprocessRequest(prettyPrint()),
@@ -90,7 +89,7 @@ class ChatMessageControllerTest {
                                         parameterWithName("room_id").description("채팅방 ID")
                                 )
                                 .queryParameters(
-                                        parameterWithName("user_id").description("사용자 ID"),
+                                        parameterWithName("size").description("조회할 메시지 개수").optional(),
                                         parameterWithName("lastMessage_id").description("마지막 메시지 ID").optional()
                                 )
                                 .build()
