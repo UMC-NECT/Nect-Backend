@@ -86,31 +86,35 @@ public enum NotificationType {
     private final String contentMessageFormat;
 
     // 문자열 포맷팅
-    public String formatMainMessage(Object... args) {
+    public String formatMainMessage(int maxLength, Object... args) {
         try {
-            return String.format(mainMessageFormat, args);
+            String message = String.format(mainMessageFormat, args);
+            return truncate(message, maxLength);
         } catch (IllegalFormatException e) {
-            throw new IllegalArgumentException(
-                    "Invalid main message args for NotificationType: " + name(),
-                    e
-            );
+            throw new IllegalArgumentException("알림 메시지 형식이 올바르지 않습니다", e);
         }
     }
 
-    public String formatContentMessage(Object... args) {
+    public String formatContentMessage(int maxLength, Object... args) {
         if (!hasContent()) {
-            throw new IllegalStateException(name() + " does not support content message");
+            throw new IllegalStateException("해당 알림은 상세 메시지를 지원하지 않습니다");
         }
 
         try {
-            return String.format(contentMessageFormat, args);
+            String message = String.format(contentMessageFormat, args);
+            return truncate(message, maxLength);
         } catch (IllegalFormatException e) {
-            throw new IllegalArgumentException(
-                    "Invalid content message args for NotificationType: " + name(),
-                    e
-            );
+            throw new IllegalArgumentException("알림 메시지 형식이 올바르지 않습니다", e);
         }
     }
+
+    private String truncate(String message, int maxLength) {
+        if (message == null || message.length() <= maxLength) {
+            return message;
+        }
+        throw new IllegalArgumentException("알림 메시지 길이가 허용 범위를 초과했습니다");
+    }
+
 
     // contentMessageFormat이 있는지 반환.
     public boolean hasContent() {

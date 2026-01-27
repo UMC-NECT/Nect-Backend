@@ -38,14 +38,14 @@ public class Notification extends BaseEntity {
     @Column(nullable = false)
     private NotificationScope scope;
 
-    @Column(name = "is_read", nullable = false)
+    @Column(nullable = false)
     @ColumnDefault("false")
     private Boolean isRead;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = MAX_MAIN_LENGTH, nullable = false)
     private String mainMessage;
 
-    @Column(length = 100, nullable = true)
+    @Column(length = MAX_CONTENT_LENGTH, nullable = true)
     private String contentMessage; // null일 수 있음
 
     // ====== 연관관계 ======
@@ -58,6 +58,9 @@ public class Notification extends BaseEntity {
      private Project project;
 
      // ====== 객체 생성 ======
+
+    private static final int MAX_MAIN_LENGTH = 100;
+    private static final int MAX_CONTENT_LENGTH = 100;
 
     // create() 내에서 유연하게 수정할 수 있도록 작성
     @Builder(access = AccessLevel.PRIVATE)
@@ -105,11 +108,11 @@ public class Notification extends BaseEntity {
                 .scope(scope)
                 .targetId(targetId)
                 .receiver(receiver)
-                .mainMessage(type.formatMainMessage(mainArgs))
+                .mainMessage(type.formatMainMessage(MAX_MAIN_LENGTH, mainArgs))
                 .project(project);
 
         if (type.hasContent() && contentArgs.length > 0) {
-            builder.contentMessage(type.formatContentMessage(contentArgs));
+            builder.contentMessage(type.formatContentMessage(MAX_CONTENT_LENGTH, contentArgs));
         }
 
         return builder.build();
