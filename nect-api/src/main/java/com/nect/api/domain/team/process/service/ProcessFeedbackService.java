@@ -102,7 +102,7 @@ public class ProcessFeedbackService {
             saved.getId(),
             saved.getContent(),
             saved.getStatus(),
-            new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByFields),
+//            new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByFields),
             saved.getCreatedAt()
         );
     }
@@ -196,8 +196,6 @@ public class ProcessFeedbackService {
         // - 저장은 ProjectHistoryEventHandler(AFTER_COMMIT)
 
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
-
-        processFeedbackRepository.delete(feedback);
 
         return new ProcessFeedbackDeleteResDto(feedbackId);
     }

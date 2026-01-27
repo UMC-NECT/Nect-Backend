@@ -14,8 +14,8 @@ public record ProcessFeedbackCreateResDto(
         ProcessFeedbackStatus status,
 
         // TODO : 피드백 생성 관련 dto 생성할 때 만들 예정
-        @JsonProperty("created_by")
-        FeedbackCreatedByResDto createdBy,
+//        @JsonProperty("created_by")
+//        FeedbackCreatedByResDto createdBy,
 
         @JsonProperty("created_at")
         LocalDateTime createdAt

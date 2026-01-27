@@ -5,6 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record ProcessTaskItemReorderReqDto(
-        @JsonProperty("orderd_task_item_ids")
+        @JsonProperty("ordered_task_item_ids")
         List<Long> orderedTaskItemIds
 ) {}
