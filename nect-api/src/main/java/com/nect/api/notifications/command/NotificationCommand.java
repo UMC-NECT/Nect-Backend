@@ -3,6 +3,7 @@ package com.nect.api.notifications.command;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.Project;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,5 +22,6 @@ public class NotificationCommand {
     private final Long targetId;
     private final Object[] mainArgs;
     private final Object[] contentArgs;
+    private final Project project;
 
 }

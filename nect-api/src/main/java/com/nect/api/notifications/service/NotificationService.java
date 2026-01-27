@@ -1,10 +1,13 @@
 package com.nect.api.notifications.service;
 
 import com.nect.api.notifications.command.NotificationCommand;
+import com.nect.api.notifications.dto.NotificationListResponse;
 import com.nect.core.entity.notifications.Notification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.notifications.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,7 @@ public class NotificationService {
                                 command.getScope(),
                                 command.getTargetId(),
                                 receiver,
+                                command.getProject(),
                                 command.getMainArgs(),
                                 command.getContentArgs()
                         )
@@ -52,6 +56,28 @@ public class NotificationService {
         return notificationRepository.saveAll(notifications);
     }
 
-    //TODO: 알림 조회
+    // 알림 목록 조회
+    @Transactional(readOnly = true)
+    public NotificationListResponse getNotifications(
+            User user,
+            NotificationScope scope,
+            Long cursor,
+            int size
+    ) {
+
+        // 페이징 정보
+        PageRequest pageRequest = PageRequest.of(0, size);
+
+        // 알림 목록 조회 -> List<Notification> 반환
+        List<Notification> notifications = notificationRepository.findByScopeWithCursor(user, scope, cursor, pageRequest);
+
+        // cursor 정보 생성
+        Long nextCursor = notifications.isEmpty() ? null : notifications.getLast().getId();
+
+        // API 응답 객체 생성 후 반환
+        return NotificationListResponse.from(notifications, nextCursor);
+    }
+
+
 
 }

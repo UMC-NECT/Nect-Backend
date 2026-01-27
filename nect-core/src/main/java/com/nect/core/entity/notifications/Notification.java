@@ -4,6 +4,7 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -46,13 +47,17 @@ public class Notification extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String mainMessage;
 
-    @Column(length = 100)
+    @Column(length = 100, nullable = true)
     private String contentMessage; // null일 수 있음
 
     // ====== 연관관계 ======
      @ManyToOne(fetch = FetchType.LAZY)
-     @JoinColumn(name = "user_id")
+     @JoinColumn(name = "user_id", nullable = false)
      private User receiver;
+
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "project_id", nullable = true)
+     private Project project;
 
      // ====== 객체 생성 ======
 
@@ -67,8 +72,7 @@ public class Notification extends BaseEntity {
             Boolean isRead,
             Long targetId,
             User receiver,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            Project project
     ) {
         this.type = type;
         this.classification = classification;
@@ -78,6 +82,7 @@ public class Notification extends BaseEntity {
         this.isRead = isRead != null ? isRead : false;
         this.targetId = targetId;
         this.receiver = receiver;
+        this.project = project;
     }
 
     /**
@@ -92,6 +97,7 @@ public class Notification extends BaseEntity {
             NotificationScope scope,
             Long targetId,
             User receiver,
+            Project project,
             Object[] mainArgs,
             Object... contentArgs
     ) {
@@ -101,7 +107,8 @@ public class Notification extends BaseEntity {
                 .scope(scope)
                 .targetId(targetId)
                 .receiver(receiver)
-                .mainMessage(type.formatMainMessage(mainArgs));
+                .mainMessage(type.formatMainMessage(mainArgs))
+                .project(project);
 
         if (type.hasContent() && contentArgs.length > 0) {
             builder.contentMessage(type.formatContentMessage(contentArgs));
