@@ -47,6 +47,10 @@ public class ProcessFeedback extends BaseEntity {
         this.status = ProcessFeedbackStatus.OPEN;
     }
 
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
     void setProcess(Process process) {
         this.process = process;
     }
