@@ -30,8 +30,8 @@ public record ProcessCreateReqDto(
         @JsonProperty("dead_line")
         LocalDate deadLine,
 
-        @JsonProperty("mentions")
-        List<Long> mentions,
+        @JsonProperty("mention_user_ids")
+        List<Long> mentionUserIds,
 
         @JsonProperty("file_ids")
         List<Long> fileIds,
@@ -42,7 +42,14 @@ public record ProcessCreateReqDto(
         @JsonProperty("task_items")
         List<ProcessTaskItemReqDto> taskItems
 
-
-//        TODO : 일단은 null -> 프로세스 생성할 때 초기 피드백도 같이 등록할 수 있으면 사용
 //        List<ProcessFeedbackCreateReqDTO> feedbacks
-) {}
+) {
+    public ProcessCreateReqDto {
+        assigneeIds = (assigneeIds == null) ? List.of() : assigneeIds;
+        fieldIds = (fieldIds == null) ? List.of() : fieldIds;
+        mentionUserIds = (mentionUserIds == null) ? List.of() : mentionUserIds;
+        fileIds = (fileIds == null) ? List.of() : fileIds;
+        links = (links == null) ? List.of() : links;
+        taskItems = (taskItems == null) ? List.of() : taskItems;
+    }
+}
