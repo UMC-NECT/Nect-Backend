@@ -33,6 +33,12 @@ public class PostCommentLike extends BaseEntity {
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "user_id", nullable = false)
 //    private User user;
+// 엔티티 내부 적절한 위치에 추가
+
+// FIXME: 유니크 제약 조건(uk_post_comment_like_comment_member) 에러 해결을 위해 임시 컬럼 추가
+    @Column(name = "member_id")
+    private Long memberId;
+
 
     void setComment(PostComment comment) { this.comment = comment; }
 //    void setMember(User user) { this.user = user; }
