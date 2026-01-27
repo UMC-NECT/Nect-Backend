@@ -43,6 +43,20 @@ public class ProcessTaskItem extends BaseEntity {
         this.doneAt = isDone ? LocalDate.now() : null;
     }
 
+    public void updateContent(String content) {
+        if (content != null && !content.isBlank()) {
+            this.content = content;
+        }
+    }
+
+    public void updateDone(boolean done) {
+        this.isDone = done;
+        this.doneAt = done ? LocalDate.now() : null;
+    }
+
+    public void updateSortOrder(Integer sortOrder) {
+        if (sortOrder != null) this.sortOrder = sortOrder;
+    }
 
     void setProcess(Process process) {
         this.process = process;
