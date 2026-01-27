@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_process_user_process_member",
-                        columnNames = {"process_id", "member_id"}
+                        columnNames = {"process_id", "user_id"}
                 )
         }
 )
@@ -34,6 +34,9 @@ public class ProcessUser extends BaseEntity {
     private Process process;
 
     // TODO
+    // 연관 관계는 주석으로 유지하되, DB 컬럼만 미리 만들어둠
+    @Column(name = "member_id")
+    private Long memberId;
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "user_id", nullable = false)
 //    private User user;

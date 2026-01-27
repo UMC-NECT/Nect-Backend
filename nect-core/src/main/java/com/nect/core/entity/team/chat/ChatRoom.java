@@ -19,11 +19,9 @@ public class ChatRoom extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // TODO: Project 엔티티 생성 후 @ManyToOne으로 변경 필요
     @Column(nullable = false)
     private long projectId;
-
-    @Column(nullable = false)
-    private long userId;
 
     // 1:1 채팅방일경우 팀원의 이름
     @Column(length=100)

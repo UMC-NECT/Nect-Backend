@@ -50,6 +50,12 @@ spring:
       s3:
         bucket: ${BUCKET_NAME:test-bucket}
 
+  logging:
+    level:
+      org.hibernate.SQL: DEBUG
+      org.hibernate.orm.jdbc.bind: TRACE
+      org.hibernate.tool.schema: DEBUG # DDL 생성 로그 확인용
+
 jwt:
   secret: ${JWT_SECRET:test-jwt-secret-key-for-testing-minimum-256-bits-required-for-hs256-algorithm-security}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}

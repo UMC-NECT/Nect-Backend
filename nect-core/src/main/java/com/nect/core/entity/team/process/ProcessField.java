@@ -31,9 +31,14 @@ public class ProcessField extends BaseEntity {
     private Process process;
 
     // TODO
+    // FIXME: 유니크 제약 조건(uk_process_field_process_field) 에러 해결을 위해 임시 컬럼 추가
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "field_id", nullable = false)
 //    private Field field;
+    @Column(name = "field_id")
+    private Long fieldId;
+
+
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

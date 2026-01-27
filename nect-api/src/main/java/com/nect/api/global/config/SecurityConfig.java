@@ -43,6 +43,8 @@ public class SecurityConfig {
 
             "/notifications/subscribe", "/notifications"
     );
+            "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html",
+    "/");
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

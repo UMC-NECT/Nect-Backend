@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+
 	// Internal modules
 	implementation project(':nect-core')
 	implementation project(':nect-client')
@@ -25,12 +26,17 @@ dependencies {
 
 	// Logbook
 	implementation 'org.zalando:logbook-spring-boot-starter:3.9.0'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 
 	// REST Docs
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
 	testImplementation 'com.epages:restdocs-api-spec-mockmvc:0.18.2'
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// WebSocket
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
 
 	// S3
 	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
@@ -54,6 +60,8 @@ asciidoctor {
 }
 
 openapi3 {
+	// QUESTION : 500번대 포트연결 에러가 뜨길래 넣어서 해결했는데 넣어야 하는지 궁금합니다.
+	servers = [{ url = 'http://localhost:8080' }]
 	title = 'Nect API Document'
 	description = 'Nect Application API Document'
 	version = '0.0.1'

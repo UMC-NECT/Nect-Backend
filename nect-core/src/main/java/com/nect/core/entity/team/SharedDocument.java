@@ -24,6 +24,10 @@ public class SharedDocument extends BaseEntity {
 //    @JoinColumn(name = "created_by", nullable = false)
 //    private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
     @Column(name = "is_pinned", nullable = false)
     private boolean isPinned;
 
@@ -43,18 +47,22 @@ public class SharedDocument extends BaseEntity {
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
 
+    @Column(name = "file_size", nullable = false)
+    private Long fileSize;
+
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
     // TODO : 매개변수 User createdBy 추가
     @Builder
     private SharedDocument(
-                           boolean isPinned,
-                           String title,
-                           String description,
-                           String fileName,
-                           FileExt fileExt,
-                           String fileUrl) {
+            boolean isPinned,
+            String title,
+            String description,
+            String fileName,
+            FileExt fileExt,
+            String fileUrl,
+            Long fileSize) {
 //        this.createdBy = createdBy;
         this.isPinned = isPinned;
         this.title = title;
@@ -62,6 +70,7 @@ public class SharedDocument extends BaseEntity {
         this.fileName = fileName;
         this.fileExt = fileExt;
         this.fileUrl = fileUrl;
+        this.fileSize = fileSize;
     }
 
     public void pin() {
@@ -72,7 +81,4 @@ public class SharedDocument extends BaseEntity {
         this.isPinned = false;
     }
 
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
-    }
 }
