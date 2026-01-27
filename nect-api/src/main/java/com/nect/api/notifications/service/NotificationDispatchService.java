@@ -87,7 +87,7 @@ public class NotificationDispatchService {
     public void send(Notification notification) {
 
         // user에 대한 모든 emitters 조회
-        Long receiverId = notification.getReceiver().getId();
+        Long receiverId = notification.getReceiver().getUserId();
         Set<SseEmitter> emitters = emitterRepository.getAll(receiverId);
 
         // 유저에 대한 emitter 없을 시 return
