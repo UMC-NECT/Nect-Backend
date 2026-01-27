@@ -22,8 +22,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             "JOIN ChatRoomUser m2 ON r.id = m2.chatRoom.id " +
             "WHERE r.projectId = :projectId " +
             "AND r.type = 'DIRECT' " +
-            "AND m1.user.id = :user1Id " +
-            "AND m2.user.id = :user2Id")
+            "AND m1.user.userId = :user1Id " +
+            "AND m2.user.userId = :user2Id")
     Optional<Long> findExistingOneOnOneRoomId(
             @Param("projectId") Long projectId,
             @Param("user1Id") Long user1Id,

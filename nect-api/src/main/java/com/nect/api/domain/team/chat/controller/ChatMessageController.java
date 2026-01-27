@@ -9,8 +9,10 @@ import com.nect.api.domain.team.chat.dto.res.ChatRoomListDTO;
 import com.nect.api.domain.team.chat.facade.ChatFacade;
 import com.nect.api.domain.team.chat.service.ChatRoomService;
 import com.nect.api.domain.team.chat.service.ChatService;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,20 +31,21 @@ public class ChatMessageController {
     public ApiResponse<List<ChatMessageDTO>> getChatMessages(
             @PathVariable Long room_id,
             @RequestParam(required = false) Long lastMessage_id,
-            @RequestParam(defaultValue = "20") int size
-            //TODO @AuthenticationPrincipal UserDetailsImpl userDetails
+            @RequestParam(defaultValue = "20") int size,
+           @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        //Long user_id = 1L; //TODO [현재] 임시 하드코딩
-        //TODO Long userId = userDetails.getUser().getId();
+
         List<ChatMessageDTO> messages = chatService.getChatMessages(room_id, lastMessage_id, size);
         return ApiResponse.ok(messages);
     }
 
 
     @GetMapping("/rooms")
-    public ApiResponse<List<ChatRoomListDTO>> getChatRoom(@RequestParam Long user_id) {
-        List<ChatRoomListDTO> myRooms = chatRoomService.getMyChatRooms(user_id);
+    public ApiResponse<List<ChatRoomListDTO>> getChatRoom(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
+
+        List<ChatRoomListDTO> myRooms = chatRoomService.getMyChatRooms(currentUserId);
         return ApiResponse.ok(myRooms);
     }
 
@@ -50,10 +53,9 @@ public class ChatMessageController {
     @DeleteMapping("/{room_id}/leave")
     public ApiResponse<ChatRoomLeaveResponseDTO> leaveChatRoom(
             @PathVariable("room_id") Long roomId,
-            @RequestParam(required = false) Long userId // TODO: 추후 Security로 대체
-    ) {
-       //TODO 임시 테스트용 하드코딩
-        Long currentUserId = (userId != null) ? userId : 1L;
+            @AuthenticationPrincipal UserDetailsImpl userDetails){
+        // TODO 임시 방어 코드
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
 
         ChatRoomLeaveResponseDTO response = chatRoomService.leaveChatRoom(roomId, currentUserId);
 
@@ -61,7 +63,8 @@ public class ChatMessageController {
     }
 
     @PatchMapping("/message/{message_id}/notice")
-    public ApiResponse<ChatNoticeResponseDTO>updateNotice(@PathVariable("message_id") Long messageId, @RequestBody ChatNoticeUpdateRequestDTO request){
+    public ApiResponse<ChatNoticeResponseDTO>updateNotice(@PathVariable("message_id") Long messageId, @RequestBody ChatNoticeUpdateRequestDTO request
+    ,@AuthenticationPrincipal UserDetailsImpl userDetails){
 
         ChatNoticeResponseDTO response=chatService.createNotice(messageId,request.getIsPinned());
         return ApiResponse.ok(response);

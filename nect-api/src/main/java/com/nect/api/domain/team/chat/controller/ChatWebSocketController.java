@@ -12,6 +12,8 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
+
 @Controller
 @RequiredArgsConstructor
 @Slf4j
@@ -22,22 +24,23 @@ public class ChatWebSocketController {
     @MessageMapping("/chat-send/{room_id}")
     public void sendMessage(
             @DestinationVariable("room_id") Long room_id,
-            ChatMessageSendRequestDTO request
+            ChatMessageSendRequestDTO request,
+            Principal principal
     ) {
-        Long user_id = (request.getUserId() != null) ? request.getUserId() : 1L; //TODO 실시간 채팅 테스트용 user_id 1또는 2
+        // TODO 임시 방어 코드
+        Long currentUserId;
+        if (principal != null) {
+            currentUserId = Long.valueOf(principal.getName());
+        } else {
+            currentUserId = (request.getUserId() != null) ? request.getUserId() : 1L;
+        }
 
         log.info(" WebSocket 메시지 수신 - roomId: {}, user_id: {}, content: {}",
                 room_id, request.getUserId(), request.getContent());
 
         try {
 
-            ChatMessageDTO message = chatService.sendMessage(
-                    room_id,
-                    user_id, //TODO 실시간 채팅 테스트용 user_id 1또는 2
-                    request.getContent()
-            );
-
-            log.info("메시지 처리 완료 - messageId: {}", message.getMessageId());
+            chatService.sendMessage(room_id, currentUserId, request.getContent());
 
         } catch (Exception e) {
             log.error(" 메시지 전송 실패 - roomId: {}, error: {}", room_id, e.getMessage(), e);
@@ -47,14 +50,21 @@ public class ChatWebSocketController {
     @MessageMapping("/chat-file/{room_id}")
     public void sendFileMessage(
             @DestinationVariable("room_id") Long roomId,
-            ChatFileSendRequestDTO request
+            ChatFileSendRequestDTO request,
+            Principal principal
     ) {
-        Long userId = (request.getUserId() != null) ? request.getUserId() : 1L;
+        // TODO 임시 방어 코드
+        Long currentUserId;
+        if (principal != null) {
+            currentUserId = Long.valueOf(principal.getName());
+        } else {
+            currentUserId = (request.getUserId() != null) ? request.getUserId() : 1L;
+        }
 
         log.info("파일 전송 요청 - room: {}, fileId: {}", roomId, request.getFileId());
 
         try {
-            chatFileService.sendFileMessage(roomId, userId, request.getFileId());
+            chatFileService.sendFileMessage(roomId, currentUserId, request.getFileId());
         } catch (Exception e) {
             log.error("파일 전송 실패", e);
         }

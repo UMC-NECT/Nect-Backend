@@ -11,7 +11,7 @@ import com.nect.core.repository.team.chat.ChatFileRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
 import com.nect.core.repository.team.chat.ChatRoomUserRepository;
-import com.nect.core.repository.team.user.UserRepository;
+import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

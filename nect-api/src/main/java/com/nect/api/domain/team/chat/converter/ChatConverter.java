@@ -27,7 +27,7 @@ public class ChatConverter {
         dto.setMessageId(message.getId());
         dto.setRoomId(message.getChatRoom().getId());
 
-        dto.setUserName("사용자" + message.getUser().getId());  // TODO: User 조회
+        dto.setUserName("사용자" + message.getUser().getUserId());  // TODO: User 조회
         dto.setContent(message.getContent());
         dto.setMessageType(message.getMessageType());
         dto.setIsPinned(message.getIsPinned());
@@ -74,7 +74,7 @@ public class ChatConverter {
 
         // ChatRoomMember에서 userId 추출
         List<Long> userIds = members.stream()
-                .map(member -> member.getUser().getId())
+                .map(member -> member.getUser().getUserId())
                 .collect(Collectors.toList());
 
         dto.setUserIds(userIds);
@@ -107,7 +107,7 @@ public class ChatConverter {
 
 
         if (chatRoom.getType() == ChatRoomType.DIRECT && targetUser != null) {
-            roomName = targetUser.getUsername();
+            roomName = targetUser.getNickname();
             // profileImage = targetUser.getProfileImage(); // TODO: 나중에 프로필 이미지 생기면 추가
         }
 
@@ -123,8 +123,8 @@ public class ChatConverter {
 
     public static ProjectMemberResponseDTO toProjectMemberResponseDTO(User user) {
         return ProjectMemberResponseDTO.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
+                .userId(user.getUserId())
+                .username(user.getNickname())
                 .build();
     }
 
@@ -143,7 +143,7 @@ public class ChatConverter {
                 .content(message.getContent())
                 .messageType(message.getMessageType())
                 // User가 null일 경우 대비 (시스템 메시지 등)
-                .senderName(message.getUser() != null ? message.getUser().getUsername() : "알 수 없음")
+                .senderName(message.getUser() != null ? message.getUser().getNickname() : "알 수 없음")
                 .isPinned(message.getIsPinned())
                 .registeredAt(LocalDateTime.now())
                 .build();

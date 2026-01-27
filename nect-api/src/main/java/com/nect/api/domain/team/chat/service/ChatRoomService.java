@@ -8,10 +8,11 @@ import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.user.User;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
 import com.nect.core.repository.team.chat.ChatRoomUserRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
-import com.nect.core.repository.team.user.UserRepository;
+import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final UserRepository userRepository;
     private final ChatService chatService;
 
@@ -37,7 +39,7 @@ public class ChatRoomService {
     public List<ChatRoomListDTO> getMyChatRooms(Long user_id) {
 
         //  내가 소속된 방 멤버 정보 다 가져오기
-        List<ChatRoomUser> myMemberships = chatRoomUserRepository.findAllByUserId(user_id);
+        List<ChatRoomUser> myMemberships = chatRoomUserRepository.findAllByUserUserId(user_id);
 
         return myMemberships.stream().map(member -> {
 
@@ -74,24 +76,24 @@ public class ChatRoomService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
 
-        User user = userRepository.findById(userId) //TODO User엔티티 생성 후 수정필요
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND));
 
         // 멤버인지 확인하고 삭제
-        ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomIdAndUserId(roomId, userId)
+        ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomIdAndUserUserId(roomId, userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED));
 
         chatRoomUserRepository.delete(chatRoomUser); // 방에서 내보내기
 
         // 나갔습니다 메시지 전송
-        chatService.sendMessage(roomId, userId,user.getUsername() + "님이 채팅방을 나갔습니다.");
+        chatService.sendMessage(roomId, userId,user.getNickname() + "님이 채팅방을 나갔습니다.");
 
 
         //TODO 추후에 리팩토링 할 때 컨버터로 넣겠습니다.
         return ChatRoomLeaveResponseDTO.builder()
                 .roomId(roomId)
                 .userId(userId)
-                .userName(user.getUsername())
+                .userName(user.getNickname())
                 .message("채팅방을 나갔습니다.")
                 .leftAt(LocalDateTime.now())
                 .build();

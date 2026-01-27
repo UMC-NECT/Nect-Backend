@@ -32,7 +32,7 @@ public class ChatRoomUser extends BaseEntity {
     private ChatRoom chatRoom;
 
 
-    //TODO User 엔티티 생성 시 수정
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
