@@ -26,7 +26,8 @@ public record NotificationResponse(
         Long projectId,
         String createdDate,
         String classification,
-        String type
+        String type,
+        Boolean idRead
 
 ) {
 
@@ -39,7 +40,8 @@ public record NotificationResponse(
                 notification.getProject().getId(),
                 notification.getCreatedAt().format(FORMATTER),
                 notification.getClassification().getClassifyKr(),
-                notification.getType().name()
+                notification.getType().name(),
+                notification.getIsRead()
         );
     }
 
