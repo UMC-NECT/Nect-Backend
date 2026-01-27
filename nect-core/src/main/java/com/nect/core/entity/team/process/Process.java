@@ -41,8 +41,7 @@ public class Process extends BaseEntity {
     @Column(name = "title", length = 50, nullable = false)
     private String title;
 
-    @Lob
-    @Column(name = "content")
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
     @Enumerated(EnumType.STRING)
@@ -76,6 +75,9 @@ public class Process extends BaseEntity {
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<ProcessField> processFields = new ArrayList<>();
 
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final List<ProcessMention> mentions = new ArrayList<>();
+
 
     // TODO : User createdBy, Field field 매개변수 추가하기
     @Builder
@@ -90,11 +92,27 @@ public class Process extends BaseEntity {
     }
 
     public void attachDocument(SharedDocument doc) {
+        if (doc == null || doc.getId() == null) {
+            throw new IllegalArgumentException("문서 객체 또는 문서 ID는 null일 수 없습니다.");
+        }
+
+        boolean exists = sharedDocuments.stream()
+                .anyMatch(psd ->
+                        psd.getDocument() != null
+                                && psd.getDocument().getId() != null
+                                && psd.getDocument().getId().equals(doc.getId())
+                );
+
+        if (exists) {
+            throw new IllegalStateException("해당 문서는 이미 첨부되었습니다. documentId = " + doc.getId());
+        }
+
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(this)
                 .document(doc)
                 .build();
-        this.sharedDocuments.add(psd);
+
+        sharedDocuments.add(psd);
     }
 
     public void addTaskItem(ProcessTaskItem item) {
@@ -111,6 +129,7 @@ public class Process extends BaseEntity {
         pu.setProcess(this);
         this.processUsers.add(pu);
     }
+
 
     // TODO : Field 엔티티 생성되면 주석 풀기
 //    public void addField(Field field) {
@@ -134,8 +153,41 @@ public class Process extends BaseEntity {
         this.content = content;
     }
 
+    public void updateTitle(String title) {
+        this.title = title;
+    }
+
+    public void replaceMentions(List<Long> mentionedUserIds) {
+        this.mentions.clear();
+        if (mentionedUserIds == null) return;
+
+        for (Long userId : mentionedUserIds) {
+            if (userId == null) continue;
+
+            ProcessMention mention = ProcessMention.builder()
+                    .process(this)
+                    .mentionedUserId(userId)
+                    .build();
+            this.mentions.add(mention);
+        }
+    }
+
+
+    public void updateStatusOrder(Integer statusOrder) {
+        if (statusOrder != null) this.statusOrder = statusOrder;
+    }
+
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }
 

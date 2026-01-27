@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_process_user_process_member",
-                        columnNames = {"process_id", "member_id"}
+                        columnNames = {"process_id", "user_id"}
                 )
         }
 )
