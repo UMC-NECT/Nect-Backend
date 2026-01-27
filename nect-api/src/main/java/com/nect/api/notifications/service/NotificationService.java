@@ -52,14 +52,14 @@ public class NotificationService {
         List<Notification> notifications = receivers.stream()
                 .map(receiver ->
                         Notification.create(
-                                command.getType(),
-                                command.getClassification(),
-                                command.getScope(),
-                                command.getTargetId(),
+                                command.type(),
+                                command.classification(),
+                                command.scope(),
+                                command.targetId(),
                                 receiver,
-                                command.getProject(),
-                                command.getMainArgs(),
-                                command.getContentArgs()
+                                command.project(),
+                                command.mainArgs(),
+                                command.contentArgs()
                         )
                 ).toList();
 
