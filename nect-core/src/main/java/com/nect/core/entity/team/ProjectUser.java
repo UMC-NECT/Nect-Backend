@@ -37,6 +37,9 @@ public class ProjectUser {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
+    @Column(name = "field_id")
+    private Long fieldId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "member_type", nullable = false)
     private ProjectMemberType memberType;
@@ -46,11 +49,12 @@ public class ProjectUser {
     private ProjectMemberStatus memberStatus;
 
     @Builder
-    private ProjectUser(Project project, Long userId, ProjectMemberType memberType, ProjectMemberStatus memberStatus) {
+    private ProjectUser(Project project, Long userId, Long fieldId, ProjectMemberType memberType, ProjectMemberStatus memberStatus) {
         this.project = project;
         this.userId = userId;
+        this.fieldId = fieldId;
         this.memberType = (memberType != null) ? memberType : ProjectMemberType.MEMBER;
-        this.memberStatus = (memberStatus != null) ? memberStatus : ProjectMemberStatus.PENDING;
+        this.memberStatus = (memberStatus != null) ? memberStatus : ProjectMemberStatus.ACTIVE;
     }
 
     void setProject(Project project) {
