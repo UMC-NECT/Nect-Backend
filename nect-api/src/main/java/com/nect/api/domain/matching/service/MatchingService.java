@@ -49,11 +49,12 @@ public class MatchingService {
     ) {
         // TODO: Project project = projectRepository.findById(projectId).orElseThrow();
 
-        if (matchingRepository.countByRequestTypeAndProjectIdAndMatchingStatus(
+        if (matchingRepository.countByRequestTypeAndProjectIdAndFieldIdAndMatchingStatus(
                 MatchingRequestType.PROJECT_TO_USER,
                 projectId,
+                fieldId,
                 MatchingStatus.PENDING
-        ) >= 5) {
+        ) > 3) {
             throw new MatchingException(MatchingErrorCode.MATCHING_INVITE_COUNT_EXCEEDED);
         }
 

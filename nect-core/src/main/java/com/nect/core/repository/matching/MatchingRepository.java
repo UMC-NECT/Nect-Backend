@@ -17,9 +17,10 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
             MatchingStatus status
     );
 
-    int countByRequestTypeAndProjectIdAndMatchingStatus(
+    int countByRequestTypeAndProjectIdAndFieldIdAndMatchingStatus(
             MatchingRequestType requestType,
             Long projectId,
+            Long fieldId,
             MatchingStatus status
     );
 

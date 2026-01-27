@@ -9,7 +9,7 @@ import lombok.Getter;
 public enum MatchingErrorCode implements ResponseCode {
 
     MATCHING_APPLY_COUNT_EXCEEDED("M400_1", "이미 매칭 대기 중인 프로젝트가 있습니다."),
-    MATCHING_INVITE_COUNT_EXCEEDED("M400_2", "해당 프로젝트의 매칭 신청 가능 수를 초과하였습니다."),
+    MATCHING_INVITE_COUNT_EXCEEDED("M400_2", "해당 프로젝트의 해당 분야의 매칭 신청 가능 수를 초과하였습니다."),
     MATCHING_STATUS_NOT_CANCELABLE("400_3", "해당 매칭은 취소 불가능한 상태입니다."),
     MATCHING_STATUS_NOT_ACCEPTABLE("400_4", "해당 매칭은 수락 불가능한 상태입니다."),
     MATCHING_STATUS_NOT_REJECTABLE("400_5", "해당 매칭은 거절 불가능한 상태입니다"),
