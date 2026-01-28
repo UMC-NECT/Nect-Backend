@@ -27,7 +27,7 @@ public record NotificationResponse(
         String createdDate,
         String classification,
         String type,
-        Boolean idRead
+        Boolean isRead
 
 ) {
 
