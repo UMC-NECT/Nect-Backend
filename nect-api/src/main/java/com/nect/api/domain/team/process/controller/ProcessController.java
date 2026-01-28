@@ -74,26 +74,6 @@ public class ProcessController {
         return ApiResponse.ok(processService.getWeekProcesses(projectId, startDate));
     }
 
-    // 월 단위 조회
-    @GetMapping("/month")
-    public ApiResponse<ProcessMonthResDto> getMonthProcesses(
-            @PathVariable Long projectId,
-            @RequestParam("month")
-            @DateTimeFormat(pattern = "yyyy-MM")
-            YearMonth month
-    ) {
-        return ApiResponse.ok(processService.getMonthProcesses(projectId, month));
-    }
-
-    // 년 단위 조회 (월별 요약)
-    @GetMapping("/year")
-    public ApiResponse<ProcessYearResDto> getYearProcesses(
-            @PathVariable Long projectId,
-            @RequestParam("year") Integer year
-    ) {
-        return ApiResponse.ok(processService.getYearProcesses(projectId, year));
-    }
-
     // 파트별 작업 현황 조회
     @GetMapping("/part")
     public ApiResponse<ProcessPartResDto> getPartProcesses(

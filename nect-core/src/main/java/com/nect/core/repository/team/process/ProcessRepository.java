@@ -52,24 +52,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("ids") List<Long> ids
     );
 
-    @Query("""
-        select p.status as status, count(p.id) as cnt
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and (
-              (p.startAt is null and p.endAt is null)
-              or (p.startAt is null and p.endAt >= :start)
-              or (p.endAt is null and p.startAt <= :end)
-              or (p.startAt <= :end and p.endAt >= :start)
-          )
-        group by p.status
-    """)
-    List<StatusCountRow> countByStatusInRange(
-            @Param("projectId") Long projectId,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end
-    );
 
     /**
      *  Team 보드(공통) 조회

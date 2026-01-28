@@ -18,7 +18,6 @@ import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
-import com.nect.core.repository.team.process.StatusCountRow;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
@@ -437,43 +435,6 @@ public class ProcessService {
         return new ProcessWeekResDto(weekStart, commonLane, byField);
     }
 
-    // 특정 기간(rangeStart~rangeEnd)에서 "해당 프로세스가 걸치는 주차"들에 카드 배치
-    // -> Month에서 '스팬된 일정'이 여러 주에 걸쳐 보이도록
-    private void placeCardIntoWeekBuckets(
-            Map<LocalDate, List<ProcessCardResDto>> buckets,
-            ProcessCardResDto card,
-            LocalDate rangeStart,
-            LocalDate rangeEnd
-    ) {
-        LocalDate startDate = card.startDate();
-        LocalDate endDate = card.deadLine();
-
-        // 날짜 정책:
-        // - 둘 다 null이면 rangeStart 주에만 넣기
-        // - 하나만 있으면 그걸 start/end 둘 다로 취급
-        if (startDate == null && endDate == null) {
-            LocalDate ws = normalizeWeekStart(rangeStart);
-            buckets.computeIfAbsent(ws, k -> new ArrayList<>()).add(card);
-            return;
-        }
-        if (startDate == null) startDate = endDate;
-        if (endDate == null) endDate = startDate;
-
-        // range로 클램프(월 캘린더 범위 밖은 제외)
-        LocalDate clampedStart = (startDate.isBefore(rangeStart) ? rangeStart : startDate);
-        LocalDate clampedEnd = (endDate.isAfter(rangeEnd) ? rangeEnd : endDate);
-
-        if (clampedStart.isAfter(clampedEnd)) return;
-
-        // 시작~끝이 걸치는 모든 주차에 배치
-        LocalDate cursorWeekStart = normalizeWeekStart(clampedStart);
-        LocalDate endWeekStart = normalizeWeekStart(clampedEnd);
-
-        for (LocalDate ws = cursorWeekStart; !ws.isAfter(endWeekStart); ws = ws.plusDays(7)) {
-            buckets.computeIfAbsent(ws, k -> new ArrayList<>()).add(card);
-        }
-    }
-
     // 주차별 프로세스 조회 서비스
     @Transactional(readOnly = true)
     public ProcessWeekResDto getWeekProcesses(Long projectId, LocalDate startDate) {
@@ -505,93 +466,6 @@ public class ProcessService {
 
     }
 
-    // 월별 조회 서비스
-    @Transactional(readOnly = true)
-    public ProcessMonthResDto getMonthProcesses(Long projectId, YearMonth month) {
-        // TODO(인증/인가)
-
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROJECT_NOT_FOUND,
-                        "projectId = " + projectId
-                ));
-
-
-        LocalDate monthStart = month.atDay(1);
-        LocalDate monthEnd = month.atEndOfMonth();
-
-        // 달력이 "주 단위 행"이면, 월이 포함된 주의 월요일~일요일까지 커버
-        LocalDate firstWeekStart = monthStart.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate lastWeekEnd = monthEnd.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-
-        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, firstWeekStart, lastWeekEnd);
-
-        List<ProcessCardResDto> cards = processes.stream()
-                .map(this::toProcessCardResDTO)
-                .toList();
-
-        // 주차별 버킷
-        Map<LocalDate, List<ProcessCardResDto>> weekBuckets = new HashMap<>();
-        for (ProcessCardResDto card : cards) {
-            placeCardIntoWeekBuckets(weekBuckets, card, firstWeekStart, lastWeekEnd);
-        }
-
-        // 주차 리스트 생성(비어도 주는 유지)
-        List<ProcessWeekResDto> weeks = new ArrayList<>();
-        for (LocalDate ws = firstWeekStart; !ws.isAfter(lastWeekEnd); ws = ws.plusDays(7)) {
-            List<ProcessCardResDto> weekCards = weekBuckets.getOrDefault(ws, List.of());
-            weeks.add(buildWeekDto(ws, weekCards));
-        }
-
-
-        return new ProcessMonthResDto(monthStart, monthEnd, weeks);
-    }
-
-    // 연도별 조회 서비스 (월별 요약) - 기존 유지 + project 검증 추가
-    @Transactional(readOnly = true)
-    public ProcessYearResDto getYearProcesses(Long projectId, Integer year) {
-        // TODO(인증/인가)
-
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROJECT_NOT_FOUND,
-                        "projectId = " + projectId
-                ));
-
-
-        List<ProcessYearResDto.ProcessYearMonthSummaryResDto> months = new ArrayList<>();
-
-        for (int m = 1; m <= 12; m++) {
-            YearMonth ym = YearMonth.of(year, m);
-            LocalDate start = ym.atDay(1);
-            LocalDate end = ym.atEndOfMonth();
-
-            Map<ProcessStatus, Integer> statusCounts = getStatusCounts(projectId, start, end);
-            int total = statusCounts.values().stream().mapToInt(Integer::intValue).sum();
-
-            months.add(new ProcessYearResDto.ProcessYearMonthSummaryResDto(
-                    ym.toString(),
-                    total,
-                    statusCounts
-            ));
-        }
-
-        return new ProcessYearResDto(year, months);
-    }
-
-    private Map<ProcessStatus, Integer> getStatusCounts(Long projectId, LocalDate start, LocalDate end) {
-        List<StatusCountRow> rows = processRepository.countByStatusInRange(projectId, start, end);
-
-        Map<ProcessStatus, Integer> map = new EnumMap<>(ProcessStatus.class);
-        for (StatusCountRow r : rows) {
-            map.put(r.getStatus(), (int) r.getCnt());
-        }
-
-        for (ProcessStatus s : ProcessStatus.values()) {
-            map.putIfAbsent(s, 0);
-        }
-        return map;
-    }
 
 
     private ProcessStatusGroupResDto toGroup(ProcessStatus status, List<ProcessCardResDto> cards) {
