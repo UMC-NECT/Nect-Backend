@@ -1,11 +1,17 @@
 package com.nect.api.notifications.controller;
 
-import com.nect.api.notifications.facade.NotificationFacade;
+import com.nect.api.global.response.ApiResponse;
+import com.nect.api.notifications.dto.NotificationListResponse;
 import com.nect.api.notifications.service.NotificationDispatchService;
+import com.nect.api.notifications.service.NotificationService;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -23,7 +29,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class NotificationController {
 
     private final NotificationDispatchService dispatchService;
-    private final NotificationFacade notificationFacade;
+    private final NotificationService notificationService;
 
     /**
      * 실시간 알림 구독
@@ -36,9 +42,24 @@ public class NotificationController {
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter subscribe() {
 
-        Long userId = 1L;
+        Long userId = 1L; // TODO: user 바꾸기
 
         return dispatchService.subscribe(userId);
+    }
+
+    /**
+     * 개인 알림 조회
+     * NotificationScope으로 범위를 결정합니다.
+     */
+    @GetMapping
+    public ApiResponse<NotificationListResponse> notifications(
+            @AuthenticationPrincipal User user,
+            @RequestParam("scope") NotificationScope scope,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        NotificationListResponse response = notificationService.getNotifications(user, scope, cursor, size);
+        return ApiResponse.ok(response);
     }
 
 }

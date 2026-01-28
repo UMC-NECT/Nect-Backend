@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  *
- * 실시간 알림 응답에 사용되는 응답 모델입니다.
+ * 실시간 알림 응답과 알림 API 호출에서 공통으로 사용하는 응답 모델입니다.
  *
  * @param mainMessage 알림에 대한 주 내용입니다.
  * @param contentMessage 알림에 대해 부가적인 내용( 댓글내용, 파일명 등 )입니다.
@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
  * @param createdDate 생성일
  * @param classification 분류명
  * @param type 알림 유형 - 알림 메시지 포맷을 담습니다.
+ *
  */
 public record NotificationResponse(
 
@@ -22,9 +23,11 @@ public record NotificationResponse(
         String contentMessage,
         Long noticeId,
         Long targetId,
+        Long projectId,
         String createdDate,
         String classification,
-        String type
+        String type,
+        Boolean idRead
 
 ) {
 
@@ -34,9 +37,11 @@ public record NotificationResponse(
                 notification.getContentMessage(),
                 notification.getId(),
                 notification.getTargetId(),
+                notification.getProject().getId(),
                 notification.getCreatedAt().format(FORMATTER),
                 notification.getClassification().getClassifyKr(),
-                notification.getType().name()
+                notification.getType().name(),
+                notification.getIsRead()
         );
     }
 

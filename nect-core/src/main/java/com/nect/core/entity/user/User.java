@@ -15,6 +15,7 @@ import java.time.LocalDate;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Setter
 @AllArgsConstructor
 @Builder
 public class User extends BaseEntity {

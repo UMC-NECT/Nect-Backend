@@ -39,6 +39,10 @@ public class SecurityConfig {
             "/login/oauth2/**", "/oauth2/**",
             "/actuator/**", "/health", "/error", "/favicon.ico",
             "/api/members/search-name", "/api/members/test-login", "/api/members/refresh",
+            "/api/upload/image/**",
+
+            "/notifications/subscribe", "/notifications"
+    );
             "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html",
     "/");
 

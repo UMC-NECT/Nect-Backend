@@ -4,6 +4,7 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,8 +12,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -39,22 +38,29 @@ public class Notification extends BaseEntity {
     @Column(nullable = false)
     private NotificationScope scope;
 
-    @Column(name = "is_read", nullable = false)
+    @Column(nullable = false)
     @ColumnDefault("false")
     private Boolean isRead;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = MAX_MAIN_LENGTH, nullable = false)
     private String mainMessage;
 
-    @Column(length = 100)
+    @Column(length = MAX_CONTENT_LENGTH, nullable = true)
     private String contentMessage; // null일 수 있음
 
     // ====== 연관관계 ======
      @ManyToOne(fetch = FetchType.LAZY)
-     @JoinColumn(name = "user_id")
+     @JoinColumn(name = "user_id", nullable = false)
      private User receiver;
 
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "project_id", nullable = true)
+     private Project project;
+
      // ====== 객체 생성 ======
+
+    private static final int MAX_MAIN_LENGTH = 100;
+    private static final int MAX_CONTENT_LENGTH = 100;
 
     // create() 내에서 유연하게 수정할 수 있도록 작성
     @Builder(access = AccessLevel.PRIVATE)
@@ -67,8 +73,7 @@ public class Notification extends BaseEntity {
             Boolean isRead,
             Long targetId,
             User receiver,
-            LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            Project project
     ) {
         this.type = type;
         this.classification = classification;
@@ -78,6 +83,7 @@ public class Notification extends BaseEntity {
         this.isRead = isRead != null ? isRead : false;
         this.targetId = targetId;
         this.receiver = receiver;
+        this.project = project;
     }
 
     /**
@@ -92,6 +98,7 @@ public class Notification extends BaseEntity {
             NotificationScope scope,
             Long targetId,
             User receiver,
+            Project project,
             Object[] mainArgs,
             Object... contentArgs
     ) {
@@ -101,10 +108,11 @@ public class Notification extends BaseEntity {
                 .scope(scope)
                 .targetId(targetId)
                 .receiver(receiver)
-                .mainMessage(type.formatMainMessage(mainArgs));
+                .mainMessage(type.formatMainMessage(MAX_MAIN_LENGTH, mainArgs))
+                .project(project);
 
         if (type.hasContent() && contentArgs.length > 0) {
-            builder.contentMessage(type.formatContentMessage(contentArgs));
+            builder.contentMessage(type.formatContentMessage(MAX_CONTENT_LENGTH, contentArgs));
         }
 
         return builder.build();
