@@ -49,10 +49,6 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private Job job;
 
-    @Builder.Default
-    @Column(name = "is_Agreed", nullable = false)
-    private Boolean isAgreed = false;
-
     @Column(name = "socialProvider")
     private String socialProvider;
 
