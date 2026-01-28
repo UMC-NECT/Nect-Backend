@@ -1,10 +1,16 @@
 package com.nect.api.notifications.service;
 
+import com.nect.api.global.code.CommonResponseCode;
 import com.nect.api.notifications.command.NotificationCommand;
+import com.nect.api.notifications.dto.NotificationListResponse;
+import com.nect.api.notifications.enums.code.NotificationErrorCode;
+import com.nect.api.notifications.exception.NotificationException;
 import com.nect.core.entity.notifications.Notification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.notifications.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,17 +40,26 @@ public class NotificationService {
     @Transactional(readOnly = false)
     public List<Notification> createForUsers(List<User> receivers, NotificationCommand command) {
 
+        if (command == null) {
+            throw new NotificationException(CommonResponseCode.NULL_POINT_ERROR);
+        }
+
+        if (receivers == null || receivers.isEmpty()) {
+            throw new NotificationException(CommonResponseCode.BAD_REQUEST_ERROR);
+        }
+
         // 알림 command에서 Notification 리스트 생성
         List<Notification> notifications = receivers.stream()
                 .map(receiver ->
                         Notification.create(
-                                command.getType(),
-                                command.getClassification(),
-                                command.getScope(),
-                                command.getTargetId(),
+                                command.type(),
+                                command.classification(),
+                                command.scope(),
+                                command.targetId(),
                                 receiver,
-                                command.getMainArgs(),
-                                command.getContentArgs()
+                                command.project(),
+                                command.mainArgs(),
+                                command.contentArgs()
                         )
                 ).toList();
 
@@ -52,6 +67,37 @@ public class NotificationService {
         return notificationRepository.saveAll(notifications);
     }
 
-    //TODO: 알림 조회
+    // 알림 목록 조회
+    @Transactional(readOnly = true)
+    public NotificationListResponse getNotifications(
+            User user,
+            NotificationScope scope,
+            Long cursor,
+            int size
+    ) {
+
+        // 예외처리
+        if (user == null) { // user 없을 경우
+            throw new NotificationException(CommonResponseCode.FORBIDDEN_ERROR);
+        }
+
+        if (scope == null) { // scope 없으면 안됨.
+            throw new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_SCOPE);
+        }
+
+        // 페이징 정보
+        PageRequest pageRequest = PageRequest.of(0, size);
+
+        // 알림 목록 조회 -> List<Notification> 반환
+        List<Notification> notifications = notificationRepository.findByScopeWithCursor(user, scope, cursor, pageRequest);
+
+        // cursor 정보 생성
+        Long nextCursor = notifications.isEmpty() ? null : notifications.getLast().getId();
+
+        // API 응답 객체 생성 후 반환
+        return NotificationListResponse.from(notifications, nextCursor);
+    }
+
+
 
 }

@@ -1,11 +1,14 @@
 package com.nect.api.notifications.service;
 
 import com.nect.api.notifications.dto.NotificationResponse;
+import com.nect.api.notifications.enums.code.NotificationErrorCode;
+import com.nect.api.notifications.exception.NotificationException;
 import com.nect.core.entity.notifications.Notification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.repository.notifications.EmitterRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -28,6 +31,7 @@ import java.util.Set;
  * 하나의 유저는 여러 개의 SSE 연결(여러 탭, 여러 디바이스)을 가질 수 있으며,
  * 모든 연결에 동일한 알림을 브로드캐스트 방식으로 전송합니다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationDispatchService {
@@ -49,6 +53,11 @@ public class NotificationDispatchService {
      */
     public SseEmitter subscribe(Long userId) {
 
+        // 유저 없을 경우 예외처리
+        if (userId == null) {
+            throw new NotificationException(NotificationErrorCode.NOTIFICATION_SUBSCRIBE_FAILED, "userId가 존재하지 않습니다");
+        }
+
         // 현재 클라이언트에 대한 emitter 생성
         SseEmitter sseEmitter = new SseEmitter(DEFAULT_TIMEOUT);
 
@@ -60,7 +69,11 @@ public class NotificationDispatchService {
                         .name("connect")
             );
         } catch (IOException e) {
-            return sseEmitter; // 이미 연결이 끊김 시점에서는 emitter 저장하지 않음
+            throw new NotificationException(
+                    NotificationErrorCode.NOTIFICATION_SUBSCRIBE_FAILED,
+                    "SSE 초기 연결 이벤트 전송 실패",
+                    e
+            );
         }
 
         // userId 기준으로 emitter 저장 (다중 탭 / 다중 디바이스 대응)
@@ -113,12 +126,26 @@ public class NotificationDispatchService {
 
                 emitterRepository.remove(receiverId, emitter);
 
-                try { // emitter 닫기
+                log.info(
+                        "SSE disconnected - receiverId={}, emitterCode={}, event={}, notificationId={}",
+                        receiverId,
+                        emitterCode,
+                        scope.getEventName(),
+                        notification.getId()
+                );
+
+                try {
                     emitter.complete();
                 } catch (Exception closeEx) {
-                    // TODO: 예외로그
+                    log.debug(
+                            "SSE emitter close failed - receiverId={}, emitterCode={}",
+                            receiverId,
+                            emitterCode,
+                            closeEx
+                    );
                 }
             }
+
         }
     }
 

@@ -40,7 +40,7 @@ public class SecurityConfig {
             "/actuator/**", "/health", "/error", "/favicon.ico",
             "/api/members/search-name", "/api/members/test-login", "/api/members/refresh",
             "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html",
-    "/");
+    "/", "/notifications/subscribe", "/notifications","/api/upload/image/**","/chats/**","/ws-chat/**","/*.html");
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
