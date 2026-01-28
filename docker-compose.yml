@@ -17,7 +17,7 @@ services:
       retries: 3
 
   api:
-    image: ${DOCKERHUB_USERNAME}/nect-api:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USERNAME}/nect-api:${IMAGE_TAG:-develop}
     container_name: nect-api
     restart: unless-stopped
     env_file:
