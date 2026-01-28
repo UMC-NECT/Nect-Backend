@@ -39,7 +39,7 @@ public class ProcessFeedbackService {
     }
 
     private ProcessFeedback getFeedback(Long processId, Long feedbackId) {
-        return processFeedbackRepository.findByIdAndProcessId(feedbackId, processId)
+        return processFeedbackRepository.findByIdAndProcessIdAndDeletedAtIsNull(feedbackId, processId)
                 .orElseThrow(() -> new ProcessException(
                         ProcessErrorCode.FEEDBACK_NOT_FOUND,
                         "feedbackId=" + feedbackId + ", processId=" + processId
@@ -176,7 +176,7 @@ public class ProcessFeedbackService {
         // - beforeCreatedBy = feedback.getCreatedByUserId() (필드 확정 후)
         // - beforeCreatedAt = feedback.getCreatedAt()
 
-        processFeedbackRepository.delete(feedback);
+        feedback.softDelete();
 
         Long actorUserId = 1L; // TODO(인증)
 

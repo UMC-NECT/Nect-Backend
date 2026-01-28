@@ -39,7 +39,7 @@ public class ProcessTaskItemService {
     }
 
     private ProcessTaskItem getTaskItem(Long processId, Long taskItemId) {
-        return taskItemRepository.findByIdAndProcessId(taskItemId, processId)
+        return taskItemRepository.findByIdAndProcessIdAndDeletedAtIsNull(taskItemId, processId)
                 .orElseThrow(() -> new ProcessException(
                         ProcessErrorCode.TASK_ITEM_NOT_FOUND,
                         "taskItemId=" + taskItemId + ", processId=" + processId
@@ -47,7 +47,9 @@ public class ProcessTaskItemService {
     }
 
     private void normalizeSortOrder(Long processId) {
-        List<ProcessTaskItem> items = taskItemRepository.findAllByProcessIdOrderBySortOrderAsc(processId);
+        List<ProcessTaskItem> items =
+                taskItemRepository.findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId);
+
         items = items.stream()
                 .sorted(Comparator.comparing(t -> t.getSortOrder() == null ? Integer.MAX_VALUE : t.getSortOrder()))
                 .toList();
@@ -64,24 +66,13 @@ public class ProcessTaskItemService {
         // TODO(인증): 현재 로그인 유저 userId 추출
         // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 task item 생성 가능)
 
-        Process process = processRepository.findById(processId)
-                .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
-                        "processId=" + processId
-                ));
-
-        if (!process.getProject().getId().equals(projectId)) {
-            throw new ProcessException(
-                    ProcessErrorCode.PROCESS_NOT_IN_PROJECT,
-                    "projectId=" + projectId + ", processId=" + processId
-            );
-        }
+        Process process = getActiveProcess(projectId, processId);
 
         if (req.content() == null || req.content().isBlank()) {
             throw new ProcessException(ProcessErrorCode.INVALID_TASK_ITEM_CONTENT);
         }
 
-        List<ProcessTaskItem> items = taskItemRepository.findAllByProcessIdOrderBySortOrderAsc(processId);
+        List<ProcessTaskItem> items = taskItemRepository.findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId);
 
         int size = items.size();
         int insertOrder;
@@ -169,7 +160,7 @@ public class ProcessTaskItemService {
             // 항상 현재 상태를 먼저 정규화해서 null/중복 order 제거
             normalizeSortOrder(processId);
 
-            List<ProcessTaskItem> items = taskItemRepository.findAllByProcessIdOrderBySortOrderAsc(processId);
+            List<ProcessTaskItem> items = taskItemRepository.findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId);
 
             // 현재 인덱스/목표 인덱스 계산
             int currentIndex = item.getSortOrder();
@@ -240,7 +231,7 @@ public class ProcessTaskItemService {
 
         // TODO(HISTORY/NOTI): 삭제 전 스냅샷(내용/완료여부/정렬순서) 확보
 
-        taskItemRepository.delete(item);
+        item.softDelete();
 
         normalizeSortOrder(processId);
 
@@ -284,7 +275,7 @@ public class ProcessTaskItemService {
 
 
         // 현재 전체 항목
-        List<ProcessTaskItem> all = taskItemRepository.findAllByProcessIdOrderBySortOrderAsc(processId);
+        List<ProcessTaskItem> all = taskItemRepository.findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId);
 
         // 전체 포함 정책
         if(all.size() != orderedIds.size()) {
@@ -296,7 +287,7 @@ public class ProcessTaskItemService {
 
         // 요청 id들이 모두 이 프로세스의 항목인지 검증
         List<ProcessTaskItem> targets =
-                taskItemRepository.findAllByProcessIdAndIdIn(processId, orderedIds);
+                taskItemRepository.findAllByProcessIdAndDeletedAtIsNullAndIdIn(processId, orderedIds);
         if(targets.size() != orderedIds.size()) {
             throw new ProcessException(
                     ProcessErrorCode.INVALID_REQUEST,

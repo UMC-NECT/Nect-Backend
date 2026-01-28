@@ -17,6 +17,7 @@ import com.nect.core.entity.team.process.ProcessTaskItem;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
+import com.nect.core.repository.team.process.ProcessMentionRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,11 +33,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class ProcessService {
     private final ProjectRepository projectRepository;
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
+    private final ProcessMentionRepository processMentionRepository;
 
     private final NotificationFacade notificationFacade;
 
@@ -153,15 +154,17 @@ public class ProcessService {
 
         // TODO: Field/Assignee 구조 확정되면 구현
 
-        List<Long> mentionIds = req.mentionUserIds().stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        process.replaceMentions(mentionIds);
+        Process saved = processRepository.save(process);
+
+        List<Long> mentionIds = Optional.ofNullable(req.mentionUserIds())
+                .orElse(List.of())
+                .stream().filter(Objects::nonNull).distinct().toList();
+
+        syncMentions(saved, mentionIds);
 
         // TODO(HISTORY): 생성 성공 후(Project 저장 후) PROCESS_CREATED 이벤트 발행 (AFTER_COMMIT로 history 저장)
 
-        return processRepository.save(process).getId();
+        return saved.getId();
     }
 
 
@@ -224,16 +227,53 @@ public class ProcessService {
         );
     }
 
+    private List<Long> syncMentions(Process process, List<Long> requestedUserIds) {
+        // null이면 언급 변경 안 함
+        if (requestedUserIds == null) return null;
+
+        // 빈 리스트면 언급 전부 제거 의미로 해석
+        List<Long> req = requestedUserIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        // 삭제 포함 전체 조회
+        List<ProcessMention> all = processMentionRepository.findAllByProcessId(process.getId());
+
+        Map<Long, ProcessMention> byUserId = new HashMap<>();
+        for (ProcessMention m : all) {
+            byUserId.put(m.getMentionedUserId(), m);
+        }
+
+        // 요청에 없는 기존 mention -> soft delete
+        for (ProcessMention m : all) {
+            if (!req.contains(m.getMentionedUserId())) {
+                m.softDelete();
+            }
+        }
+
+        // 요청에 있는 mention -> restore or create
+        for (Long uid : req) {
+            ProcessMention existing = byUserId.get(uid);
+            if (existing != null) {
+                if (existing.isDeleted()) existing.restore();
+            } else {
+                ProcessMention created = ProcessMention.builder()
+                        .process(process)
+                        .mentionedUserId(uid)
+                        .build();
+                processMentionRepository.save(created);
+            }
+        }
+
+        return req;
+    }
+
     // 프로세스 기본 정보 수정
     @Transactional
     public ProcessBasicUpdateResDto updateProcessBasic(Long projectId, Long processId, ProcessBasicUpdateReqDto req) {
         // TODO(인증): 현재 로그인 유저 userId 추출
         // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 수정 가능)
-
-        log.info("PATCH req title={}, content={}, status={}, start={}, end={}, fields={}, assignees={}, mentions={}",
-                req.processTitle(), req.processContent(), req.processStatus(),
-                req.startDate(), req.deadLine(),
-                req.fieldIds(), req.assigneeIds(), req.mentionUserIds());
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new ProcessException(
@@ -277,15 +317,7 @@ public class ProcessService {
 
 
         // 멘션 교체
-        List<Long> mentionIdsForRes = null;
-
-        if (req.mentionUserIds() != null) {
-            mentionIdsForRes = req.mentionUserIds().stream()
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .toList();
-            process.replaceMentions(mentionIdsForRes);
-        }
+        List<Long> mentionIdsForRes = syncMentions(process, req.mentionUserIds());
 
         // 7) TODO: field_ids 교체
         if (req.fieldIds() != null) {
@@ -327,7 +359,6 @@ public class ProcessService {
      * @param projectId 프로젝트 ID
      * @param processId 프로세스 ID
      */
-    // TODO : softDelete를 진행해서 해당 프로세스와 연관된 업무(task), 피드백, 파일 등 프로세스 하위 자식 엔티티도 deletedAt 찍어 줄 예정
     @Transactional
     public void deleteProcess(Long projectId, Long processId) {
         // TODO(인증): 현재 로그인 유저 userId 추출
@@ -339,8 +370,10 @@ public class ProcessService {
                         "processId=" + processId + ", projectId=" + projectId
                 ));
 
-        process.softDelete();
+        process.softDeleteCascade();
 
+        processMentionRepository.findAllByProcessId(process.getId())
+                .forEach(ProcessMention::softDelete);
         // TODO(HISTORY): softDelete()로 deletedAt 세팅 후 PROCESS_DELETED 이벤트 발행
     }
 

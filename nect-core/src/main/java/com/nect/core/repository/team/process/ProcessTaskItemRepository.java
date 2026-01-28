@@ -8,9 +8,9 @@ import java.util.Optional;
 
 public interface ProcessTaskItemRepository extends JpaRepository<ProcessTaskItem, Long> {
 
-    Optional<ProcessTaskItem> findByIdAndProcessId(Long id, Long processId);
+    Optional<ProcessTaskItem> findByIdAndProcessIdAndDeletedAtIsNull(Long id, Long processId);
 
-    List<ProcessTaskItem> findAllByProcessIdOrderBySortOrderAsc(Long processId);
+    List<ProcessTaskItem> findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(Long processId);
 
-    List<ProcessTaskItem> findAllByProcessIdAndIdIn(Long processId, List<Long> ids);
+    List<ProcessTaskItem> findAllByProcessIdAndDeletedAtIsNullAndIdIn(Long processId, List<Long> ids);
 }

@@ -38,6 +38,9 @@ public class ProcessFeedback extends BaseEntity {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // TODO : User createdBy 추가하기
     @Builder
     private ProcessFeedback(Process process, String content) {
@@ -63,5 +66,15 @@ public class ProcessFeedback extends BaseEntity {
     public void reopen() {
         this.status = ProcessFeedbackStatus.OPEN;
         this.resolvedAt = null;
+    }
+
+
+    public void softDelete() {
+        if (this.deletedAt != null) return;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

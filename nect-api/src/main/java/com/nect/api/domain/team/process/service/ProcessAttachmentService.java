@@ -72,7 +72,7 @@ public class ProcessAttachmentService {
 
         SharedDocument doc = getActiveDocument(req.fileId());
 
-        if (processSharedDocumentRepository.existsByProcessIdAndDocumentId(process.getId(), doc.getId())) {
+        if (processSharedDocumentRepository.existsByProcessIdAndDocumentIdAndDeletedAtIsNull(process.getId(), doc.getId())) {
             throw new AttachmentException(
                     AttachmentErrorCode.FILE_ALREADY_ATTACHED,
                     "processId=" + processId + ", fileId=" + doc.getId()
@@ -102,13 +102,13 @@ public class ProcessAttachmentService {
         Process process = getActiveProcess(projectId, processId);
 
         ProcessSharedDocument psd = processSharedDocumentRepository
-                .findByProcessIdAndDocumentId(process.getId(), fileId)
+                .findByProcessIdAndDocumentIdAndDeletedAtIsNull(process.getId(), fileId)
                 .orElseThrow(() -> new AttachmentException(
                         AttachmentErrorCode.FILE_NOT_ATTACHED,
                         "processId=" + processId + ", fileId=" + fileId
                 ));
 
-        processSharedDocumentRepository.delete(psd);
+        psd.softDelete();
 
         // TODO(Notification): 파일 첨부해제 알림 트리거(AFER_COMMIT 권장)
         // TODO(HISTORY): FILE_DETACHED 이벤트 발행(metaJson: {processId, fileId})
@@ -147,14 +147,14 @@ public class ProcessAttachmentService {
 
         Process process = getActiveProcess(projectId, processId);
 
-        Link link = linkRepository.findByIdAndProcessId(linkId, process.getId())
+        Link link = linkRepository.findByIdAndProcessIdAndDeletedAtIsNull(linkId, process.getId())
                 .orElseThrow(() -> new AttachmentException(
                         AttachmentErrorCode.LINK_NOT_FOUND,
                         "linkId=" + linkId + ", processId=" + processId
                 ));
 
         // TODO(HISTORY/NOTI): 삭제 전 스냅샷 필요하면 여기서 url 저장(삭제 후엔 link 엔티티 없음)
-        linkRepository.delete(link);
+        link.softDelete();
 
         // TODO(Notification): 링크 삭제 알림 트리거(AFER_COMMIT 권장)
         // TODO(HISTORY): LINK_DELETED 이벤트 발행(metaJson: {processId, linkId, url(optional)})

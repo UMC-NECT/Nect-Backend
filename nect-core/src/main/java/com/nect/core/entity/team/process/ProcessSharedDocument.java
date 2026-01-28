@@ -35,6 +35,9 @@ public class ProcessSharedDocument extends BaseEntity {
     @Column(name = "attached_at", nullable = false)
     private LocalDateTime attachedAt;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public ProcessSharedDocument(Process process, SharedDocument document, LocalDateTime attachedAt) {
         this.process = process;
@@ -48,5 +51,15 @@ public class ProcessSharedDocument extends BaseEntity {
 
     void setDocument(SharedDocument document) {
         this.document = document;
+    }
+
+
+    public void softDelete() {
+        if (this.deletedAt != null) return;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }
