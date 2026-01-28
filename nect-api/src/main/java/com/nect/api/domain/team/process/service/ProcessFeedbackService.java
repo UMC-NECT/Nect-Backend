@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessFeedbackCreateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessFeedbackUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.FeedbackCreatedByResDto;
@@ -8,6 +9,8 @@ import com.nect.api.domain.team.process.dto.res.ProcessFeedbackDeleteResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFeedbackUpdateResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
+import com.nect.core.entity.team.history.enums.HistoryAction;
+import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessFeedback;
 import com.nect.core.repository.team.process.ProcessFeedbackRepository;
@@ -16,7 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,8 @@ public class ProcessFeedbackService {
     // private final Auth
     // private final UserRepository userRepository;
     // private final ProjectUserRepository projectUserRepository;
+
+    private final ProjectHistoryPublisher historyPublisher;
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -78,24 +85,22 @@ public class ProcessFeedbackService {
 
         Long actorUserId = createdByUserId; // TODO(인증) 붙으면 currentUserId 사용
 
-        // TODO(Notification):
-        // - "피드백 생성" 알림 트리거 지점
-        // - 수신자: 프로젝트 멤버 전체 OR 해당 프로세스 관련자(assignee/mention) 우선 (유저/멤버십 연동 후 결정)
-        // - NotificationType 예: PROCESS_FEEDBACK_CREATED
-        // - targetId: saved.getId() (feedbackId) 또는 processId
-        // - mainArgs/contentArgs 예: [processTitle], [작성자명, content 요약(짧게)]
-        // - 현재 NotificationFacade는 즉시 SSE 전송까지 하므로, 정합성 위해 AFTER_COMMIT 이벤트 리스너로 전환 권장
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("feedbackId", saved.getId());
+        meta.put("content", saved.getContent());
 
-        // TODO(HISTORY):
-        // - ProjectHistoryEvent 발행 지점 (저장은 ProjectHistoryEventHandler가 AFTER_COMMIT에 처리)
-        // - action 예: FEEDBACK_CREATED (or PROCESS_FEEDBACK_CREATED)
-        // - targetType 예: PROCESS_FEEDBACK (또는 PROCESS)
-        // - targetId: saved.getId()
-        // - metaJson 예: { "processId": processId, "feedbackId": saved.getId(), "content": saved.getContent() }
-        // - createdBy 정보 확정되면 metaJson에 actor/createdBy도 포함 가능
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.FEEDBACK_CREATED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
+
 
         // TODO(TEAM EVENT FACADE):
-        // - 추후 Notification + History를 ActivityFacade(가칭)로 통합하여 activityFacade.recordAndNotify 호출로 변경 예정
+        // - 추후 Notification ActivityFacade(가칭)로 통합하여 activityFacade.recordAndNotify 호출로 변경 예정
 
 
         return new ProcessFeedbackCreateResDto(
@@ -124,9 +129,12 @@ public class ProcessFeedbackService {
 
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
+        String beforeContent = feedback.getContent();
+
         feedback.updateContent(req.content());
 
         Long actorUserId = 1L; // TODO(인증)
+
         // TODO(Notification):
         // - "피드백 수정" 알림 트리거 지점
         // - 수신자: 프로젝트 멤버 전체 OR 해당 프로세스 관련자(assignee/mention) (유저/멤버십 연동 후)
@@ -134,14 +142,23 @@ public class ProcessFeedbackService {
         // - meta: before/after 또는 "수정됨" 정도만
         // - 권장: AFTER_COMMIT 이후 알림 전송(이벤트 리스너)
 
-        // TODO(HISTORY):
-        // - action 예: FEEDBACK_UPDATED
-        // - targetType 예: PROCESS_FEEDBACK
-        // - targetId: feedbackId
-        // - metaJson 예:
-        //   { "processId": processId, "feedbackId": feedbackId, "before": {"content": beforeContent}, "after": {"content": feedback.getContent()} }
-        // - beforeContent 스냅샷은 validate 직후, updateContent 전에 떠두는 방식 권장
-        // - 저장은 ProjectHistoryEventHandler(AFTER_COMMIT)
+        String afterContent = feedback.getContent();
+
+        if (!beforeContent.equals(afterContent)) {
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("processId", processId);
+            meta.put("feedbackId", feedbackId);
+            meta.put("before", Map.of("content", beforeContent));
+            meta.put("after", Map.of("content", afterContent));
+
+            historyPublisher.publish(
+                    projectId,
+                    HistoryAction.FEEDBACK_UPDATED,
+                    HistoryTargetType.PROCESS,
+                    processId,
+                    meta
+            );
+        }
 
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 
@@ -176,6 +193,7 @@ public class ProcessFeedbackService {
         // - beforeCreatedBy = feedback.getCreatedByUserId() (필드 확정 후)
         // - beforeCreatedAt = feedback.getCreatedAt()
 
+        String beforeContent = feedback.getContent();
         feedback.softDelete();
 
         Long actorUserId = 1L; // TODO(인증)
@@ -188,12 +206,18 @@ public class ProcessFeedbackService {
         // - 권장: AFTER_COMMIT 이후 알림 전송
 
 
-        // TODO(HISTORY):
-        // - action 예: FEEDBACK_DELETED
-        // - targetType 예: PROCESS_FEEDBACK
-        // - targetId: feedbackId
-        // - metaJson 예: { "processId": processId, "feedbackId": feedbackId, "content": beforeContent }
-        // - 저장은 ProjectHistoryEventHandler(AFTER_COMMIT)
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("feedbackId", feedbackId);
+        meta.put("content", beforeContent);
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.FEEDBACK_DELETED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 

@@ -1,0 +1,25 @@
+package com.nect.api.domain.team.history.controller;
+
+import com.nect.api.domain.team.history.dto.res.ProjectHistoryListResDto;
+import com.nect.api.domain.team.history.service.ProjectHistoryService;
+import com.nect.api.global.response.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/projects/{projectId}/histories")
+public class ProjectHistoryController {
+
+    private final ProjectHistoryService historyService;
+
+    // 히스토리 조회, 커서 사용
+    @GetMapping
+    public ApiResponse<ProjectHistoryListResDto> getHistories(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) Integer size
+    ) {
+        return ApiResponse.ok(historyService.getHistories(projectId, cursor, size));
+    }
+}

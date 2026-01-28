@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessBasicUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessOrderUpdateReqDto;
@@ -8,6 +9,8 @@ import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.notifications.facade.NotificationFacade;
+import com.nect.core.entity.team.history.enums.HistoryAction;
+import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.process.Link;
@@ -20,7 +23,6 @@ import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.ProcessMentionRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,8 @@ public class ProcessService {
     // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
 
     // TODO : 알림 기능 추가 예정
+
+    private final ProjectHistoryPublisher historyPublisher;
 
     /**
      * [HISTORY EVENT 발행 정책 - TODO]
@@ -162,7 +166,26 @@ public class ProcessService {
 
         syncMentions(saved, mentionIds);
 
-        // TODO(HISTORY): 생성 성공 후(Project 저장 후) PROCESS_CREATED 이벤트 발행 (AFTER_COMMIT로 history 저장)
+        // TODO(NOTIFICATION)
+
+        /*
+        * HISTORY: Process 생성 완료 후 이벤트 발행
+        * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
+        * - metaJson에는 생성 시점 핵심 스냅샷(title/status/period)만 담는다.
+        * */
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("title", saved.getTitle());
+        meta.put("status", saved.getStatus());
+        meta.put("startAt", saved.getStartAt());
+        meta.put("endAt", saved.getEndAt());
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.PROCESS_CREATED,
+                HistoryTargetType.PROCESS,
+                saved.getId(),
+                meta
+        );
 
         return saved.getId();
     }
@@ -281,6 +304,21 @@ public class ProcessService {
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
+        // before 스냅샷
+        final String beforeTitle = process.getTitle();
+        final String beforeContent = process.getContent();
+        final ProcessStatus beforeStatus = process.getStatus();
+        final LocalDate beforeStart = process.getStartAt();
+        final LocalDate beforeEnd = process.getEndAt();
+
+        final List<Long> beforeMentionIds = processMentionRepository.findAllByProcessId(process.getId()).stream()
+                .filter(m -> !m.isDeleted())
+                .map(ProcessMention::getMentionedUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
         if(req.processTitle() != null && !req.processTitle().isBlank()) {
             process.updateTitle(req.processTitle());
         }
@@ -331,9 +369,77 @@ public class ProcessService {
             // TODO: for each userId -> add ProcessUser(role=ASSIGNEE)
         }
 
-        // TODO(HISTORY): before/after 비교로 실제 변경이 있을 때만 PROCESS_UPDATED 이벤트 발행
+        // after 스냅샷
+        final String afterTitle = process.getTitle();
+        final String afterContent = process.getContent();
+        final ProcessStatus afterStatus = process.getStatus();
+        final LocalDate afterStart = process.getStartAt();
+        final LocalDate afterEnd = process.getEndAt();
 
+        final List<Long> afterMentionIds = (mentionIdsForRes == null)
+                ? null   // 요청이 null이면 멘션 변경 안함
+                : mentionIdsForRes.stream().filter(Objects::nonNull).distinct().sorted().toList();
 
+        // Map 값 변경
+        Map<String, Object> changed = new LinkedHashMap<>();
+
+        if (!Objects.equals(beforeTitle, afterTitle))
+            changed.put("title", Map.of("before", beforeTitle, "after", afterTitle));
+
+        if (!Objects.equals(beforeContent, afterContent))
+            changed.put("content", Map.of("before", beforeContent, "after", afterContent));
+
+        if (beforeStatus != afterStatus)
+            changed.put("status", Map.of("before", beforeStatus, "after", afterStatus));
+
+        if (!Objects.equals(beforeStart, afterStart) || !Objects.equals(beforeEnd, afterEnd)) {
+            changed.put("period", Map.of(
+                    "before", Map.of("startAt", beforeStart, "endAt", beforeEnd),
+                    "after", Map.of("startAt", afterStart, "endAt", afterEnd)
+            ));
+        }
+
+        // 멘션 요청이 들어온 경우에만 변경 여부 판단
+        if (afterMentionIds != null && !Objects.equals(beforeMentionIds, afterMentionIds)) {
+            changed.put("mentions", Map.of("before", beforeMentionIds, "after", afterMentionIds));
+        }
+
+        // fieldIds / assigneeIds는 아직 TODO지만, 요청이 들어오면 메타에 남길 수는 있음(나중에 실제 연동되면 before/after 비교로 교체)
+
+        /*
+        * HISTORY: 실제 변경이 있는 경우에만 PROCESS_UPDATED 이벤트 발행
+        * - 발행 조건: changed(변경된 필드 목록)가 비어있지 않을 때
+        * - metaJson: changed 요약 + before/after 스냅샷(디버깅/감사 추적용)
+        * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
+        * */
+        if (!changed.isEmpty()) {
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("changed", changed);
+            meta.put("before", Map.of(
+                    "title", beforeTitle,
+                    "content", beforeContent,
+                    "status", beforeStatus,
+                    "startAt", beforeStart,
+                    "endAt", beforeEnd,
+                    "mentionUserIds", beforeMentionIds
+            ));
+            meta.put("after", Map.of(
+                    "title", afterTitle,
+                    "content", afterContent,
+                    "status", afterStatus,
+                    "startAt", afterStart,
+                    "endAt", afterEnd,
+                    "mentionUserIds", (afterMentionIds != null ? afterMentionIds : beforeMentionIds)
+            ));
+
+            historyPublisher.publish(
+                    projectId,
+                    HistoryAction.PROCESS_UPDATED,
+                    HistoryTargetType.PROCESS,
+                    process.getId(),
+                    meta
+            );
+        }
 
         return new ProcessBasicUpdateResDto(
                 process.getId(),
@@ -370,11 +476,26 @@ public class ProcessService {
                         "processId=" + processId + ", projectId=" + projectId
                 ));
 
+        final String beforeTitle = process.getTitle();
+        final ProcessStatus beforeStatus = process.getStatus();
+
         process.softDeleteCascade();
 
         processMentionRepository.findAllByProcessId(process.getId())
                 .forEach(ProcessMention::softDelete);
-        // TODO(HISTORY): softDelete()로 deletedAt 세팅 후 PROCESS_DELETED 이벤트 발행
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("title", beforeTitle);
+        meta.put("status", beforeStatus);
+        meta.put("deletedAt", process.getDeletedAt());
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.PROCESS_DELETED,
+                HistoryTargetType.PROCESS,
+                process.getId(),
+                meta
+        );
     }
 
 
@@ -673,9 +794,30 @@ public class ProcessService {
                         !Objects.equals(beforeStart, afterStart) ||
                         !Objects.equals(beforeEnd, afterEnd);
 
-        // TODO(HISTORY): before/after 비교로 실제 변경이 있을 때만 PROCESS_REORDERED 이벤트 발행
-        // - actorUserId(로그인 유저) 필요
-        // - meta 예시: before/after + orderedIds
+        if (changed) {
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("before", Map.of(
+                    "status", beforeStatus,
+                    "statusOrder", beforeOrder,
+                    "startAt", beforeStart,
+                    "endAt", beforeEnd
+            ));
+            meta.put("after", Map.of(
+                    "status", afterStatus,
+                    "statusOrder", afterOrder,
+                    "startAt", afterStart,
+                    "endAt", afterEnd
+            ));
+            meta.put("orderedProcessIds", orderedIds);
+
+            historyPublisher.publish(
+                    projectId,
+                    HistoryAction.PROCESS_REORDERED,
+                    HistoryTargetType.PROCESS,
+                    process.getId(),
+                    meta
+            );
+        }
 
         return new ProcessOrderUpdateResDto(
                 process.getId(),
@@ -716,9 +858,17 @@ public class ProcessService {
 
         process.updateStatus(after);
 
-        // TODO(HISTORY): before/after 비교로 실제 변경이 있을 때만 PROCESS_STATUS_CHANGED 이벤트 발행
-        // - actorUserId(로그인 유저) 필요
-        // - meta 예시: beforeStatus / afterStatus
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("beforeStatus", before);
+        meta.put("afterStatus", after);
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.PROCESS_STATUS_CHANGED,
+                HistoryTargetType.PROCESS,
+                process.getId(),
+                meta
+        );
 
         return new ProcessStatusUpdateResDto(
                 process.getId(),

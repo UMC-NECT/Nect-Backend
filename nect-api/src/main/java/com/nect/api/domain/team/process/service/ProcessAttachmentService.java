@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessFileAttachReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFileAttachResDto;
@@ -7,6 +8,8 @@ import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
 import com.nect.api.domain.team.process.enums.AttachmentErrorCode;
 import com.nect.api.domain.team.process.exception.AttachmentException;
 import com.nect.core.entity.team.SharedDocument;
+import com.nect.core.entity.team.history.enums.HistoryAction;
+import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Link;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessSharedDocument;
@@ -14,10 +17,12 @@ import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.LinkRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.team.process.ProcessSharedDocumentRepository;
-import com.nimbusds.openid.connect.sdk.assurance.evidences.attachment.Attachment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,9 +33,12 @@ public class ProcessAttachmentService {
     private final ProcessSharedDocumentRepository processSharedDocumentRepository;
     private final LinkRepository linkRepository;
 
-    // TODO(TEAM EVENT FACADE): Attachment 변경 시(Notification + History) ActivityFacade로 통합 예정
+
+    // TODO(TEAM EVENT FACADE): Attachment 변경 시(Notification) ActivityFacade로 통합 예정
 
     // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
+
+    private final ProjectHistoryPublisher historyPublisher;
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -88,7 +96,19 @@ public class ProcessAttachmentService {
         processSharedDocumentRepository.save(psd);
 
         // TODO(Notification): 파일 첨부 알림 트리거(수신자=프로젝트 멤버/프로세스 관련자, AFTER_COMMIT 전환 권장)
-        // TODO(HISTORY): FILE_ATTACHED 이벤트 발행(ProjectHistoryEvent, targetType=PROCESS or PROCESS_ATTACHMENT, targetId=processId, metaJson에 fileId 포함)
+
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("fileId", doc.getId());
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.DOCUMENT_ATTACHED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
         return new ProcessFileAttachResDto(doc.getId());
     }
@@ -111,7 +131,17 @@ public class ProcessAttachmentService {
         psd.softDelete();
 
         // TODO(Notification): 파일 첨부해제 알림 트리거(AFER_COMMIT 권장)
-        // TODO(HISTORY): FILE_DETACHED 이벤트 발행(metaJson: {processId, fileId})
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("fileId", fileId);
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.DOCUMENT_DETACHED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
     }
 
@@ -134,7 +164,19 @@ public class ProcessAttachmentService {
         Link saved = linkRepository.save(link);
 
         // TODO(Notification): 링크 추가 알림 트리거(AFER_COMMIT 권장)
-        // TODO(HISTORY): LINK_CREATED 이벤트 발행(targetId=saved.getId() 또는 processId, metaJson에 url 포함)
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("linkId", saved.getId());
+        meta.put("url", saved.getUrl());
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.LINK_ATTACHED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
         return new ProcessLinkCreateResDto(saved.getId());
     }
@@ -153,11 +195,23 @@ public class ProcessAttachmentService {
                         "linkId=" + linkId + ", processId=" + processId
                 ));
 
-        // TODO(HISTORY/NOTI): 삭제 전 스냅샷 필요하면 여기서 url 저장(삭제 후엔 link 엔티티 없음)
+        String beforeUrl = link.getUrl();
         link.softDelete();
 
         // TODO(Notification): 링크 삭제 알림 트리거(AFER_COMMIT 권장)
-        // TODO(HISTORY): LINK_DELETED 이벤트 발행(metaJson: {processId, linkId, url(optional)})
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("linkId", linkId);
+        meta.put("url", beforeUrl);
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.LINK_DETACHED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
     }
 }

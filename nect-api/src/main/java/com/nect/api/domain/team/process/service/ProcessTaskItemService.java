@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessTaskItemReorderReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessTaskItemUpsertReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemReorderResDto;
@@ -7,6 +8,8 @@ import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.notifications.facade.NotificationFacade;
+import com.nect.core.entity.team.history.enums.HistoryAction;
+import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessTaskItem;
 import com.nect.core.repository.team.process.ProcessRepository;
@@ -29,6 +32,7 @@ public class ProcessTaskItemService {
 
     // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
 
+    private final ProjectHistoryPublisher historyPublisher;
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -105,13 +109,20 @@ public class ProcessTaskItemService {
         // notifyProjectMembersTodo(projectId, actorUserId, processId, "TASK_ITEM_CREATED");
         // notifyMentionsTodo(projectId, actorUserId, processId, /* process mention ids */);
 
-        // TODO(HISTORY):
-        // - ProjectHistoryEvent 발행 (AFTER_COMMIT에 ProjectHistoryEventHandler가 저장)
-        // - action: TASK_ITEM_CREATED (or PROCESS_TASK_ITEM_CREATED)
-        // - targetType: PROCESS_TASK_ITEM (또는 PROCESS)
-        // - targetId: saved.getId() (taskItemId) 또는 processId
-        // - metaJson 예시: { "processId": processId, "content": saved.getContent(), "sortOrder": saved.getSortOrder() }
-        // - 권장: “정렬 normalize 후 최종 sortOrder” 기준으로 metaJson 작성
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("taskItemId", saved.getId());
+        meta.put("content", saved.getContent());
+        meta.put("isDone", saved.isDone());
+        meta.put("sortOrder", saved.getSortOrder()); // normalize 이후 최종 값
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.TASK_ITEM_CREATED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
         return new ProcessTaskItemResDto(
                 saved.getId(),
@@ -193,19 +204,27 @@ public class ProcessTaskItemService {
             // - 권장: AFTER_COMMIT 이벤트 리스너로 전송
             // notifyTaskItemUpdatedTodo(projectId, actorUserId, processId, item.getId(), ...);
 
-            // TODO(HISTORY):
-            // - ProjectHistoryEvent 발행 (저장은 ProjectHistoryEventHandler가 AFTER_COMMIT에 수행)
-            // - action: TASK_ITEM_UPDATED (or PROCESS_TASK_ITEM_UPDATED)
-            // - targetType: PROCESS_TASK_ITEM (또는 PROCESS)
-            // - targetId: item.getId()
-            // - metaJson 예시:
-            //   {
-            //     "processId": processId,
-            //     "before": {"content": beforeContent, "isDone": beforeDone, "sortOrder": beforeOrder},
-            //     "after":  {"content": item.getContent(), "isDone": item.isDone(), "sortOrder": item.getSortOrder()}
-            //   }
-            // - 정렬 변경이 있으면 "fromIndex/toIndex" 형태로 delta만 남겨도 됨
-            // historyPublisher.publish(ProjectHistoryEvent.of(...));
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("processId", processId);
+            meta.put("taskItemId", item.getId());
+            meta.put("before", Map.of(
+                    "content", beforeContent,
+                    "isDone", beforeDone,
+                    "sortOrder", beforeOrder
+            ));
+            meta.put("after", Map.of(
+                    "content", item.getContent(),
+                    "isDone", item.isDone(),
+                    "sortOrder", item.getSortOrder()
+            ));
+
+            historyPublisher.publish(
+                    projectId,
+                    HistoryAction.TASK_ITEM_UPDATED,
+                    HistoryTargetType.PROCESS,
+                    processId,
+                    meta
+            );
         }
 
         return new ProcessTaskItemResDto(
@@ -231,11 +250,29 @@ public class ProcessTaskItemService {
 
         // TODO(HISTORY/NOTI): 삭제 전 스냅샷(내용/완료여부/정렬순서) 확보
 
+        String beforeContent = item.getContent();
+        boolean beforeDone = item.isDone();
+        Integer beforeOrder = item.getSortOrder();
+
         item.softDelete();
 
         normalizeSortOrder(processId);
 
         // TODO(Notification/ HISTORY):
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("taskItemId", taskItemId);
+        meta.put("content", beforeContent);
+        meta.put("isDone", beforeDone);
+        meta.put("sortOrder", beforeOrder);
+
+        historyPublisher.publish(
+                projectId,
+                HistoryAction.TASK_ITEM_DELETED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
 
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
     }
@@ -269,9 +306,11 @@ public class ProcessTaskItemService {
         // 혹시 기존 sortOrder가 꼬여있어도 안전하게 시작
         normalizeSortOrder(processId);
 
-        // TODO(HISTORY/NOTI): before orderedIds 스냅샷이 필요하면 여기서 조회
-        // - beforeIds = findAllByProcessIdOrderBySortOrderAsc(processId) -> ids 목록
-        // - beforeIds와 orderedIds가 동일하면 "변경 없음" 처리 가능(히스토리/알림 스킵)
+        // TODO(NOTI): before orderedIds 스냅샷이 필요하면 여기서 조회
+
+        List<Long> beforeIds = taskItemRepository
+                .findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId)
+                .stream().map(ProcessTaskItem::getId).toList();
 
 
         // 현재 전체 항목
@@ -305,7 +344,24 @@ public class ProcessTaskItemService {
             item.updateSortOrder(i++);
         }
 
-        // TODO(Notification/HISTORY)):
+        // TODO(Notification):
+
+        if (!beforeIds.equals(orderedIds)) {
+            Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("processId", processId);
+            meta.put("beforeOrderedTaskItemIds", beforeIds);
+            meta.put("afterOrderedTaskItemIds", orderedIds);
+
+            historyPublisher.publish(
+                    projectId,
+                    HistoryAction.TASK_ITEM_REORDERED,
+                    HistoryTargetType.PROCESS,
+                    processId,
+                    meta
+            );
+        }
+
+
 
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 
