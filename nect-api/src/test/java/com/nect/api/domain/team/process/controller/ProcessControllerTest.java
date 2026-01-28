@@ -3,9 +3,7 @@ package com.nect.api.domain.team.process.controller;
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.process.dto.req.ProcessBasicUpdateReqDto;
-import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
-import com.nect.api.domain.team.process.dto.req.ProcessTaskItemReqDto;
+import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.core.entity.team.enums.FileExt;
@@ -19,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,13 +27,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 
+import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
@@ -48,11 +47,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
+
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @AutoConfigureRestDocs
 @Transactional
 class ProcessControllerTest {
+
+    protected static final String AUTH_HEADER = "Authorization";
+    protected static final String TEST_ACCESS_TOKEN = "Bearer testAccessToken";
 
     @Autowired
     private MockMvc mockMvc;
@@ -89,6 +94,7 @@ class ProcessControllerTest {
 
         // when, then
         mockMvc.perform(post("/projects/{projectId}/processes", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -326,10 +332,10 @@ class ProcessControllerTest {
                                                 fieldWithPath("mention_user_ids").optional().type(ARRAY).description("멘션 유저 ID 목록 (미포함 시 변경 없음, []면 비우기)")
                                         )
                                         .responseFields(
-                                                fieldWithPath("status").description("응답 상태"),
-                                                fieldWithPath("status.statusCode").description("상태 코드"),
-                                                fieldWithPath("status.message").description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명(주로 에러 시)"),
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
 
                                                 fieldWithPath("body").description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
@@ -379,5 +385,400 @@ class ProcessControllerTest {
                         )
                 ));
     }
+
+    @Test
+    @DisplayName("주차별 프로세스 조회")
+    void getWeekProcesses() throws Exception {
+        // given
+        long projectId = 1L;
+
+        ProcessWeekResDto response = new ProcessWeekResDto(
+                LocalDate.of(2026, 1, 19),
+                List.of(), // common_lane 비워둠
+                List.of()  // by_field 비워둠
+        );
+
+        given(processService.getWeekProcesses(eq(projectId), any()))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(get("/projects/{projectId}/processes/week", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .param("start_date", "2026-01-19")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("process-week",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 목록 조회(주차별)")
+                                        .description("프로젝트의 프로세스를 주차 기준으로 조회합니다. start_date 미입력 시 현재 주차 기준.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("start_date").optional().description("주 시작일(yyyy-MM-dd)")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
+
+                                                // 중첩 DTO 내부 필드를 아직 모르니 subsection으로 처리
+                                                subsectionWithPath("body.common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
+                                                subsectionWithPath("body.by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
+                                        )
+                                        .build()
+                        )
+                ));
+
+    }
+
+
+    @Test
+    @DisplayName("월별 프로세스 조회")
+    void getMonthProcesses() throws Exception {
+        // given
+        long projectId = 1L;
+
+        ProcessWeekResDto week1 = new ProcessWeekResDto(
+                LocalDate.of(2025, 12, 29),
+                List.of(),
+                List.of()
+        );
+
+        ProcessWeekResDto week2 = new ProcessWeekResDto(
+                LocalDate.of(2026, 1, 5),
+                List.of(),
+                List.of()
+        );
+
+        ProcessMonthResDto response = new ProcessMonthResDto(
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 1, 31),
+                List.of(week1, week2)
+        );
+
+        given(processService.getMonthProcesses(eq(projectId), any()))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(get("/projects/{projectId}/processes/month", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .param("month", "2026-01")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("process-month",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 목록 조회(월별)")
+                                        .description("프로젝트의 프로세스를 월 기준으로 조회합니다. 응답은 달력 렌더링을 위해 주 단위(weeks)로 묶어 내려줍니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("month").description("조회할 월(yyyy-MM)")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.month_start").type(STRING).description("월 시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.month_end").type(STRING).description("월 종료일(yyyy-MM-dd)"),
+
+                                                // weeks 하위는 ProcessWeekResDto 구조(중첩)라 subsection으로 안정 처리
+                                                subsectionWithPath("body.weeks").type(ARRAY).description("주 단위 프로세스 목록(달력 행 단위)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+
+    }
+
+    @Test
+    @DisplayName("연도별 프로세스 조회(월별 요약)")
+    void getYearProcesses() throws Exception {
+        // given
+        long projectId = 1L;
+        int year = 2026;
+
+        ProcessYearResDto.ProcessYearMonthSummaryResDto jan = new ProcessYearResDto.ProcessYearMonthSummaryResDto(
+                "2026-01",
+                12,
+                java.util.Map.of(
+                        ProcessStatus.PLANNING, 2,
+                        ProcessStatus.IN_PROGRESS, 7,
+                        ProcessStatus.DONE, 3
+                )
+        );
+
+        ProcessYearResDto.ProcessYearMonthSummaryResDto feb = new ProcessYearResDto.ProcessYearMonthSummaryResDto(
+                "2026-02",
+                5,
+                java.util.Map.of(
+                        ProcessStatus.PLANNING, 1,
+                        ProcessStatus.IN_PROGRESS, 3,
+                        ProcessStatus.DONE, 1
+                )
+        );
+
+        ProcessYearResDto response = new ProcessYearResDto(
+                year,
+                List.of(jan, feb)
+        );
+
+        given(processService.getYearProcesses(eq(projectId), eq(year)))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(get("/projects/{projectId}/processes/year", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .param("year", String.valueOf(year))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("process-year",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 목록 조회(연도별)")
+                                        .description("프로젝트의 프로세스를 연도 기준으로 조회합니다. 응답은 월별 요약(months)으로 제공되며, 월 상세는 month API로 drill-down 합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("year").description("조회할 연도(yyyy)")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.year").type(NUMBER).description("조회 연도"),
+
+                                                fieldWithPath("body.months").type(ARRAY).description("월별 요약 목록"),
+                                                fieldWithPath("body.months[].year_month").type(STRING).description("연-월(yyyy-MM)"),
+                                                fieldWithPath("body.months[].total_count").type(NUMBER).description("해당 월 전체 프로세스 수"),
+
+                                                // Map 형태(status_counts)는 subsection 처리(키가 enum이라 동적으로 바뀜)
+                                                subsectionWithPath("body.months[].status_counts").type(OBJECT).description("상태별 프로세스 수(Map<ProcessStatus, count>)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+    }
+
+    @Test
+    @DisplayName("파트별 작업 현황 조회")
+    void getPartProcesses() throws Exception {
+        // given
+        long projectId = 1L;
+
+        ProcessPartResDto response = new ProcessPartResDto(
+                1L,
+                List.of() // status_groups 비워둠
+        );
+
+        given(processService.getPartProcesses(eq(projectId), any()))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(get("/projects/{projectId}/processes/part", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .param("field_id", "1")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("process-part",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 목록 조회(파트별)")
+                                        .description("파트(분야)별 작업 현황을 조회합니다. field_id 미입력(null) 시 팀 탭.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("field_id").optional().description("분야 ID (미입력 시 팀 탭)")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.field_id").optional().type(NUMBER).description("분야 ID (팀 탭이면 null 가능)"),
+
+                                                // 중첩 DTO 내부는 subsection 처리
+                                                subsectionWithPath("body.status_groups").type(ARRAY).description("상태별 그룹 목록")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("프로세스 위치(정렬) 변경")
+    void updateProcessOrder() throws Exception {
+        // given
+        long projectId = 1L;
+        long processId = 10L;
+
+        ProcessOrderUpdateReqDto request = new ProcessOrderUpdateReqDto(
+                ProcessStatus.IN_PROGRESS,
+                List.of(10L, 11L, 12L),
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 25)
+        );
+
+        ProcessOrderUpdateResDto response = new ProcessOrderUpdateResDto(
+                processId,
+                ProcessStatus.IN_PROGRESS,
+                1,
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 25)
+        );
+
+        given(processService.updateProcessOrder(eq(projectId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/order", projectId, processId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andDo(document("process-order-update",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 위치(정렬) 변경")
+                                        .description("프로세스의 상태 컬럼 내 정렬/이동 정보를 저장합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
+                                                ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("status").type(STRING).description("변경할 프로세스 상태"),
+                                                fieldWithPath("ordered_process_ids").type(ARRAY).description("해당 상태 컬럼에서의 프로세스 정렬 ID 목록"),
+                                                fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.process_id").type(NUMBER).description("대상 프로세스 ID"),
+                                                fieldWithPath("body.status").type(STRING).description("변경된 상태"),
+                                                fieldWithPath("body.status_order").type(NUMBER).description("상태 내 정렬 순서"),
+                                                fieldWithPath("body.start_at").type(STRING).description("시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.dead_line").type(STRING).description("마감일(yyyy-MM-dd)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+    }
+
+    @Test
+    @DisplayName("프로세스 상태 변경")
+    void updateProcessStatus() throws Exception {
+        // given
+        long projectId = 1L;
+        long processId = 10L;
+
+        ProcessStatusUpdateReqDto request = new ProcessStatusUpdateReqDto(ProcessStatus.DONE);
+
+        ProcessStatusUpdateResDto response = new ProcessStatusUpdateResDto(
+                processId,
+                ProcessStatus.DONE,
+                LocalDateTime.of(2026, 1, 24, 0, 0, 0)
+        );
+
+        given(processService.updateProcessStatus(eq(projectId), eq(processId), any(ProcessStatusUpdateReqDto.class)))
+                .willReturn(response);
+
+        // when, then
+        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/status", projectId, processId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andDo(document("process-status-update",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 상태 변경")
+                                        .description("프로세스의 작업 상태(ProcessStatus)를 변경합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
+                                                ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("status").type(STRING).description("변경할 프로세스 상태")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명"),
+
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.status").type(STRING).description("변경된 프로세스 상태"),
+                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시")
+                                        )
+                                        .build()
+                        )
+                ));
+
+    }
+
 
 }

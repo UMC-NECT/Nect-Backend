@@ -2,9 +2,12 @@ package com.nect.api.domain.team.process.service;
 
 import com.nect.api.domain.team.process.dto.req.ProcessBasicUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
+import com.nect.api.domain.team.process.dto.req.ProcessOrderUpdateReqDto;
+import com.nect.api.domain.team.process.dto.req.ProcessStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
+import com.nect.api.notifications.facade.NotificationFacade;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.process.Link;
@@ -20,10 +23,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +38,8 @@ public class ProcessService {
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
 
+    private final NotificationFacade notificationFacade;
+
     // TODO: Field 연동 시 주입
     // private final FieldRepository fieldRepository;
 
@@ -41,6 +48,7 @@ public class ProcessService {
 
     // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
 
+    // TODO : 알림 기능 추가 예정
 
     /**
      * [HISTORY EVENT 발행 정책 - TODO]
@@ -334,6 +342,356 @@ public class ProcessService {
         process.softDelete();
 
         // TODO(HISTORY): softDelete()로 deletedAt 세팅 후 PROCESS_DELETED 이벤트 발행
+    }
+
+
+
+    private LocalDate normalizeWeekStart(LocalDate startDate) {
+        LocalDate base = (startDate == null) ? LocalDate.now() : startDate;
+        return base.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    }
+
+    private ProcessCardResDto toProcessCardResDTO(Process p) {
+        int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
+        int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
+                .filter(ProcessTaskItem::isDone)
+                .count();
+
+        Integer leftDay = calcLeftDay(p.getEndAt());
+
+        /**
+         * TODO(Field 연동):
+         * - ProcessField(조인 테이블) 연동 후 fieldIds를 채운다.
+         * - 조회 성능을 위해 week 조회 쿼리에 processFields/field를 fetch join 하거나
+         *   processIds IN 으로 field 매핑을 한번에 조회하여 Map으로 합친다.
+         * - fieldIds가 비어있으면 "Team(공통)" 레인으로 분류된다.
+         */
+        List<Long> fieldIds = List.of(); // 임시
+
+        /**
+         * TODO(Assignee/User 연동):
+         * - ProcessUser + User 연동 후 assignees(프로필/이름 등)를 채운다.
+         * - 필요 시 ProcessUserRole(ASSIGNEE 등) 기준으로 필터링한다.
+         */
+        List<AssigneeResDto> assignees = List.of(); // 임시
+
+        return new ProcessCardResDto(
+                p.getId(),
+                p.getStatus(),
+                p.getTitle(),
+                done,
+                whole,
+                p.getStartAt(),
+                p.getEndAt(),
+                leftDay,
+                fieldIds,
+                assignees
+        );
+    }
+
+    private Integer calcLeftDay(LocalDate deadLine) {
+        if (deadLine == null) return null;
+        long diff = ChronoUnit.DAYS.between(LocalDate.now(), deadLine);
+        return (int) Math.max(diff, 0);
+    }
+
+    // 주 DTO 만들기 레인 분리 포함
+    private ProcessWeekResDto buildWeekDto(LocalDate weekStart, List<ProcessCardResDto> weekCards) {
+
+        /**
+         * 레인 분리 정책:
+         * - fieldIds empty: Team(공통) 위크미션 Task 레인
+         * - fieldIds not empty: 파트별 레인(Design/Backend/Frontend 등)
+         *
+         * TODO(Field 연동):
+         * - fieldIds가 실제로 채워지면 아래 분리가 정상적으로 동작한다.
+         */
+
+        List<ProcessCardResDto> commonLane = weekCards.stream()
+                .filter(c -> c.fieldIds() == null || c.fieldIds().isEmpty())
+                .toList();
+
+        Map<Long, List<ProcessCardResDto>> byFieldMap = weekCards.stream()
+                .filter(c -> c.fieldIds() != null && !c.fieldIds().isEmpty())
+                .flatMap(c -> c.fieldIds().stream().map(fid -> new AbstractMap.SimpleEntry<>(fid, c)))
+                .collect(Collectors.groupingBy(
+                        Map.Entry::getKey,
+                        Collectors.mapping(Map.Entry::getValue, Collectors.toList())
+                ));
+
+        // TODO(FieldRepository 연동):
+        // - fieldName, fieldOrder를 실제 Field 데이터로 세팅
+
+        List<FieldGroupResDto> byField = byFieldMap.entrySet().stream()
+                .map(e -> new FieldGroupResDto(
+                        e.getKey(),
+                        null,
+                        Integer.MAX_VALUE,
+                        e.getValue()
+                ))
+                .sorted(Comparator.comparingInt(FieldGroupResDto::fieldOrder))
+                .toList();
+
+        return new ProcessWeekResDto(weekStart, commonLane, byField);
+    }
+
+    // 주차별 프로세스 조회 서비스
+    @Transactional(readOnly = true)
+    public ProcessWeekResDto getWeekProcesses(Long projectId, LocalDate startDate) {
+        // TODO(인증): 현재 로그인 유저 userId 추출
+        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 조회 가능)
+
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.PROJECT_NOT_FOUND,
+                        "projectId = " + projectId
+                ));
+
+
+        LocalDate weekStart = normalizeWeekStart(startDate);
+        LocalDate weekEnd = weekStart.plusDays(6);
+
+        // TODO(Field 연동 전): 현재는 기간 기반으로 프로세스만 조회
+        // Field 연동 후에는 카드 응답(fieldIds)에 따라 아래 레인 분리가 정상 동작함.
+        // TODO(성능/N+1):Field/User/TaskItem 연동 완료 후, week 조회 시 연관 컬렉션 접근으로 N+1이 발생할 수 있음. 최적화 시키기
+        // - ProcessRepository의 week 조회(findAllInRangeOrdered)를 fetch join 또는 @EntityGraph로 전환해서
+        //   필요한 연관(taskItems, processFields->field, processUsers->user 등)을 한번에 로딩하도록 최적화한다.
+        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd);
+
+        List<ProcessCardResDto> cards = processes.stream()
+                .map(this::toProcessCardResDTO)
+                .toList();
+
+        return buildWeekDto(weekStart, cards);
+
+    }
+
+
+
+    private ProcessStatusGroupResDto toGroup(ProcessStatus status, List<ProcessCardResDto> cards) {
+        List<ProcessCardResDto> filtered = cards.stream()
+                .filter(c -> c.processStatus() == status)
+                .toList();
+
+        return new ProcessStatusGroupResDto(
+                status,
+                filtered.size(),
+                filtered
+        );
+    }
+
+    // 파트별 프로세스 조회 서비스
+    @Transactional(readOnly = true)
+    public ProcessPartResDto getPartProcesses(Long projectId, Long fieldId) {
+        // TODO(인증): 현재 로그인 유저 userId 추출
+        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 조회 가능)
+
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.PROJECT_NOT_FOUND,
+                        "projectId = " + projectId
+                ));
+
+        /** TODO :
+         * - Team 탭(fieldId == null): 모든 프로세스(필드/파트 무관) 조회
+         * - Part 탭(fieldId != null): 해당 fieldId에 매핑된 프로세스만 조회
+         */
+        List<Process> processes = (fieldId == null)
+                ? processRepository.findAllForTeamBoard(projectId)     // 전체
+                : processRepository.findAllForPartBoard(projectId, fieldId); // field 필터
+
+
+        // TODO(성능/N+1):
+        // - Field/User/TaskItem 연동 완료 후, toProcessCardResDTO에서 연관 컬렉션 접근으로 N+1 발생 가능
+        // - 레포지토리 쿼리를 fetch join 또는 @EntityGraph로 전환하여 필요한 연관을 한번에 로딩하도록 개선
+        List<ProcessCardResDto> cards = processes.stream()
+                .map(this::toProcessCardResDTO)
+                .toList();
+
+        // 상태별 그룹핑 (UI 컬럼 순서 고정)
+        List<ProcessStatusGroupResDto> groups = List.of(
+                toGroup(ProcessStatus.PLANNING, cards),
+                toGroup(ProcessStatus.IN_PROGRESS, cards),
+                toGroup(ProcessStatus.DONE, cards),
+                toGroup(ProcessStatus.BACKLOG, cards)
+        );
+
+        return new ProcessPartResDto(fieldId, groups);
+    }
+
+
+    // 프로세스 위치 상태 정렬 변경 서비스
+    @Transactional
+    public ProcessOrderUpdateResDto updateProcessOrder(Long projectId, Long processId, ProcessOrderUpdateReqDto req) {
+        // TODO(인증): 현재 로그인 유저 userId 추출
+        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 순서/상태 변경 가능)
+        // TODO(인가-추가): fieldId가 붙으면 "같은 field 레인 권한" 규칙도 여기서 확정
+
+        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        "projectId=" + projectId + ", processId=" + processId
+                ));
+
+        // 변경 전 스냅샷
+        ProcessStatus beforeStatus = process.getStatus();
+        Integer beforeOrder = process.getStatusOrder();
+        LocalDate beforeStart = process.getStartAt();
+        LocalDate beforeEnd = process.getEndAt();
+
+        // 기간 변경
+        LocalDate newStart = req.startDate();
+        LocalDate newEnd = req.deadLine();
+
+        if (newStart != null || newEnd != null) {
+            LocalDate mergedStart = (newStart != null) ? newStart : process.getStartAt();
+            LocalDate mergedEnd = (newEnd != null) ? newEnd : process.getEndAt();
+
+            if (mergedStart != null && mergedEnd != null && mergedStart.isAfter(mergedEnd)) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "startDate = " + mergedStart + ", endDate = " + mergedEnd
+                );
+            }
+
+            process.updatePeriod(mergedStart, mergedEnd);
+        }
+
+        // 상태 변경(드롭다운/드래그로 상태가 바뀌는 경우)
+        if (req.status() != null) {
+            process.updateStatus(req.status());
+        }
+
+        ProcessStatus laneStatus = (req.status() != null) ? req.status() : beforeStatus;
+
+        // 레인 내 표시순서 재정렬
+        List<Long> orderedIds = req.orderedProcessIds();
+        if (orderedIds != null && !orderedIds.isEmpty()) {
+            if (!orderedIds.contains(processId)) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ordered_process_ids must contain processId=" + processId
+                );
+            }
+
+            // 중복 방지
+            if (new java.util.HashSet<>(orderedIds).size() != orderedIds.size()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ordered_process_ids contains duplicates"
+                );
+            }
+
+            // id들이 전부 같은 프로젝트 소속이며 soft delete 제외인지 검증
+            List<Process> targets = processRepository.findAllByIdsInProject(projectId, orderedIds);
+            if (targets.size() != orderedIds.size()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ordered_process_ids contains invalid processId(s)"
+                );
+            }
+
+            // 레인(status) 검증
+            boolean invalidLane = targets.stream().anyMatch(p -> p.getStatus() != laneStatus);
+            if (invalidLane) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ordered_process_ids must contain only processes in status=" + laneStatus
+                );
+            }
+
+            // TODO(Field 연동 후):
+            // - ProcessField 구조 확정 시 아래 검증 추가
+            //   Team 레인(공통) : field 매핑 없음
+            //   Part 레인 : fieldId 동일
+            // - req에 fieldId가 들어오면 targets가 전부 동일 fieldId인지 검증
+
+            // 전체 포함 정책: 해당 레인의 전체 개수와 orderedIds 개수가 같아야 함
+            // TODO(Field 연동 후): laneTotal은 (status + fieldId/Team) 기준으로 count 해야 함
+            int laneTotal = processRepository.countByProjectIdAndDeletedAtIsNullAndStatus(projectId, laneStatus);
+            if (laneTotal != orderedIds.size()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ordered_process_ids must include all processes in the lane(status=" + laneStatus + ")"
+                );
+            }
+
+            // 요청 순서대로 statusOrder 재부여
+            Map<Long, Process> map = targets.stream()
+                    .collect(Collectors.toMap(Process::getId, p -> p));
+
+            int order = 0;
+            for (Long id : orderedIds) {
+                map.get(id).updateStatusOrder(order++);
+            }
+
+            process = map.get(processId);
+        }
+
+        // 변경 후 스냅샷
+        ProcessStatus afterStatus = process.getStatus();
+        Integer afterOrder = process.getStatusOrder();
+        LocalDate afterStart = process.getStartAt();
+        LocalDate afterEnd = process.getEndAt();
+
+        boolean changed =
+                (beforeStatus != afterStatus) ||
+                        !Objects.equals(beforeOrder, afterOrder) ||
+                        !Objects.equals(beforeStart, afterStart) ||
+                        !Objects.equals(beforeEnd, afterEnd);
+
+        // TODO(HISTORY): before/after 비교로 실제 변경이 있을 때만 PROCESS_REORDERED 이벤트 발행
+        // - actorUserId(로그인 유저) 필요
+        // - meta 예시: before/after + orderedIds
+
+        return new ProcessOrderUpdateResDto(
+                process.getId(),
+                process.getStatus(),
+                process.getStatusOrder(),
+                process.getStartAt(),
+                process.getEndAt()
+        );
+    }
+
+    // 프로세스 작업 상태 변경
+    @Transactional
+    public ProcessStatusUpdateResDto updateProcessStatus(Long projectId, Long processId, ProcessStatusUpdateReqDto req) {
+        // TODO(인증): 현재 로그인 유저 userId 추출
+        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 상태 변경 가능)
+
+        if (req == null || req.status() == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "status is null");
+        }
+
+        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        "projectId=" + projectId + ", processId=" + processId
+                ));
+
+        ProcessStatus before = process.getStatus();
+        ProcessStatus after = req.status();
+
+        // 같은 상태면 그대로 반환
+        if (before == after) {
+            return new ProcessStatusUpdateResDto(
+                    process.getId(),
+                    process.getStatus(),
+                    process.getUpdatedAt()
+            );
+        }
+
+        process.updateStatus(after);
+
+        // TODO(HISTORY): before/after 비교로 실제 변경이 있을 때만 PROCESS_STATUS_CHANGED 이벤트 발행
+        // - actorUserId(로그인 유저) 필요
+        // - meta 예시: beforeStatus / afterStatus
+
+        return new ProcessStatusUpdateResDto(
+                process.getId(),
+                process.getStatus(),
+                process.getUpdatedAt()
+        );
     }
 
 }
