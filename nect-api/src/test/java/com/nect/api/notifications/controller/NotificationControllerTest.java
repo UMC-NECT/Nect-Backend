@@ -103,6 +103,8 @@ class NotificationControllerTest {
                                         fieldWithPath("body.notifications[].classification")
                                                 .optional()
                                                 .description("알림 분류 (한글)"),
+                                        fieldWithPath("body.notifications[].isRead")
+                                                .description("다음 페이지 조회용 커서"),
                                         fieldWithPath("body.notifications[].type")
                                                 .description("알림 타입"),
                                         fieldWithPath("body.nextCursor")
@@ -124,7 +126,8 @@ class NotificationControllerTest {
                                 1L,
                                 "25.01.20",
                                 NotificationClassification.MESSAGE.getClassifyKr(),
-                                NotificationType.CHAT_MESSAGE_RECEIVED.name()
+                                NotificationType.CHAT_MESSAGE_RECEIVED.name(),
+                                true
                         ),
                         new NotificationResponse(
                                 "새로운 팀원 김철수님이 합류했습니다.",
@@ -134,7 +137,8 @@ class NotificationControllerTest {
                                 1L,
                                 "25.01.19",
                                 NotificationClassification.WORK_SPACE.getClassifyKr(),
-                                NotificationType.WORKSPACE_MEMBER_JOINED.name()
+                                NotificationType.WORKSPACE_MEMBER_JOINED.name(),
+                                false
                         )
                 ))
                 .nextCursor(9L)
