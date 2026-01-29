@@ -1,8 +1,7 @@
-package com.nect.api.notifications.exception;
+package com.nect.api.domain.notifications.exception;
 
 import com.nect.api.global.code.ResponseCode;
 import com.nect.api.global.exception.CustomException;
-import com.nect.api.notifications.enums.code.NotificationErrorCode;
 import lombok.Getter;
 
 @Getter

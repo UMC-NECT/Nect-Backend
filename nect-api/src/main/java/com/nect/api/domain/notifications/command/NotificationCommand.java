@@ -1,4 +1,4 @@
-package com.nect.api.notifications.command;
+package com.nect.api.domain.notifications.command;
 
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;

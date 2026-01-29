@@ -1,9 +1,9 @@
 package com.nect.api.notifications.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.nect.api.notifications.dto.NotificationListResponse;
-import com.nect.api.notifications.dto.NotificationResponse;
-import com.nect.api.notifications.service.NotificationService;
+import com.nect.api.domain.notifications.dto.NotificationListResponse;
+import com.nect.api.domain.notifications.dto.NotificationResponse;
+import com.nect.api.domain.notifications.service.NotificationService;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
