@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -23,6 +25,9 @@ public class Link extends BaseEntity {
     @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public Link(Process process, String url) {
         this.process = process;
@@ -31,5 +36,15 @@ public class Link extends BaseEntity {
 
     void setProcess(Process process) {
         this.process = process;
+    }
+
+
+    public void softDelete() {
+        if (this.deletedAt != null) return;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

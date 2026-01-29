@@ -15,7 +15,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 
 @RestController
-@RequestMapping("/projects/{projectId}/processes")
+@RequestMapping("/api/v1/projects/{projectId}/processes")
 @RequiredArgsConstructor
 public class ProcessController {
 

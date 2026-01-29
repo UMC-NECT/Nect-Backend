@@ -42,8 +42,10 @@ public class SecurityConfig {
             "/api/upload/image/**",
 
             "/notifications/subscribe", "/notifications",
-            "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html",
-    "/");
+            "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html", "/",
+
+            "/api/v1/projects/**"
+    );
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
