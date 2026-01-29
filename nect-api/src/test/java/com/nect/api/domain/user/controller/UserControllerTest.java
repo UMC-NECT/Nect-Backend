@@ -121,7 +121,8 @@ class UserControllerTest extends NectDocumentApiTester {
                         .contentType("application/json")
                         .content(toJson(new LoginDto.LoginRequestDto(
                                 "test@example.com",
-                                "password123"
+                                "password123",
+                                false
                         ))))
                 .andExpect(status().isOk())
                 .andDo(document("user-login",
@@ -129,10 +130,11 @@ class UserControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
                                         .summary("로그인")
-                                        .description("이메일과 비밀번호로 로그인합니다. 성공 시 액세스 토큰과 리프레시 토큰을 발급합니다.")
+                                        .description("이메일과 비밀번호로 로그인합니다. 성공 시 액세스 토큰과 리프레시 토큰을 발급합니다. autoLoginEnabled가 true면 자동 로그인 활성화, false면 비활성화입니다.")
                                         .requestFields(
                                                 fieldWithPath("email").type(JsonFieldType.STRING).description("로그인 이메일"),
-                                                fieldWithPath("password").type(JsonFieldType.STRING).description("로그인 비밀번호")
+                                                fieldWithPath("password").type(JsonFieldType.STRING).description("로그인 비밀번호"),
+                                                fieldWithPath("autoLoginEnabled").type(JsonFieldType.BOOLEAN).description("자동 로그인 여부").optional()
                                         )
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),

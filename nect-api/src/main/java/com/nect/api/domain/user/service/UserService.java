@@ -145,7 +145,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginDto.LoginResponseDto login(LoginDto.LoginRequestDto request) {
         validateLoginRequest(request);
 
@@ -154,6 +154,11 @@ public class UserService {
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new InvalidCredentialsException();
+        }
+
+        if (Boolean.TRUE.equals(request.autoLoginEnabled())) {
+            user.updateAutoLoginEnabled(true);
+            userRepository.save(user);
         }
 
         TokenDataDto tokenData = jwtUtil.createTokenData(user.getUserId());

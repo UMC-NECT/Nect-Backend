@@ -4,7 +4,8 @@ public class LoginDto {
 
     public record LoginRequestDto(
             String email,
-            String password
+            String password,
+            Boolean autoLoginEnabled
     ) {}
 
     public record TestLoginRequestDto(

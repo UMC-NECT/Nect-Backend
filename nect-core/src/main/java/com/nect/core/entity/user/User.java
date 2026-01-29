@@ -72,4 +72,8 @@ public class User extends BaseEntity {
     @Builder.Default
     @Column(name = "isAutoLoginEnabled", nullable = false)
     private Boolean isAutoLoginEnabled = false;
+
+    public void updateAutoLoginEnabled(Boolean enabled) {
+        this.isAutoLoginEnabled = enabled;
+    }
 }
