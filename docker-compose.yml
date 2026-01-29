@@ -17,7 +17,7 @@ services:
       retries: 3
 
   api:
-    image: ${DOCKERHUB_USERNAME}/nect-api:${IMAGE_TAG:-latest}
+    image: ${DOCKERHUB_USERNAME}/nect-api:${IMAGE_TAG:-develop}
     container_name: nect-api
     restart: unless-stopped
     env_file:
@@ -39,10 +39,10 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      # - "443:443"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      # - ./cert:/etc/nginx/cert:ro
+      - ./cert:/etc/nginx/cert:ro
     depends_on:
       - api
     networks:

@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -32,6 +34,9 @@ public class ProcessMention extends BaseEntity {
     @Column(name="mentioned_user_id", nullable=false)
     private Long mentionedUserId;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
     public ProcessMention(Process process, Long mentionedUserId) {
         this.process = process;
@@ -40,5 +45,18 @@ public class ProcessMention extends BaseEntity {
 
     void setProcess(Process process) {
         this.process = process;
+    }
+
+    public void softDelete() {
+        if (this.deletedAt != null) return;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
+
+    public void restore() {
+        this.deletedAt = null;
     }
 }

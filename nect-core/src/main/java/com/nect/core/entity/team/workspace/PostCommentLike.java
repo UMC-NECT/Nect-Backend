@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
         name = "post_comment_like",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_post_comment_like_comment_member",
+                        name = "uk_post_comment_like_comment_user",
                         columnNames = {"post_comment_id", "user_id"}
                 )
         }
@@ -39,6 +39,9 @@ public class PostCommentLike extends BaseEntity {
     @Column(name = "member_id")
     private Long memberId;
 
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     void setComment(PostComment comment) { this.comment = comment; }
 //    void setMember(User user) { this.user = user; }

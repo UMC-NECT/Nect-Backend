@@ -45,6 +45,14 @@ public class SecurityConfig {
             "/api/v1/users/test-login", "/api/v1/users/refresh",
             "/api/v1/enums/**",
     "/");
+            "/api/members/search-name", "/api/members/test-login", "/api/members/refresh",
+            "/api/upload/image/**",
+
+            "/notifications/subscribe", "/notifications",
+            "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html", "/",
+
+            "/api/v1/projects/**"
+    );
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
