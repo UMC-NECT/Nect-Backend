@@ -24,7 +24,8 @@ public enum UserErrorCode implements ResponseCode {
     INVALID_GOAL("U014", "목표 타입이 올바르지 않습니다"),
     INVALID_INTEREST_FIELD("U016", "관심분야 타입이 올바르지 않습니다"),
     INVALID_SKILL_CATEGORY("U017", "스킬 카테고리가 올바르지 않습니다"),
-    INVALID_COLLABORATION_SCORE("U018", "협업 스타일 점수가 올바르지 않습니다");
+    INVALID_COLLABORATION_SCORE("U018", "협업 스타일 점수가 올바르지 않습니다"),
+    INVALID_NICKNAME_FORMAT("U019", "닉네임은 2글자 이상이어야 합니다");
 
     private final String statusCode;
     private final String message;

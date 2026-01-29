@@ -7,9 +7,6 @@ import com.nect.api.domain.user.dto.SignUpDto;
 import com.nect.api.domain.user.dto.ProfileDto;
 import com.nect.api.domain.user.enums.CheckType;
 import com.nect.api.domain.user.exception.*;
-import com.nect.api.domain.user.exception.InvalidInterestFieldException;
-import com.nect.api.domain.user.exception.InvalidSkillCategoryException;
-import com.nect.api.domain.user.exception.InvalidCollaborationScoreException;
 import com.nect.core.entity.user.enums.UserType;
 import com.nect.core.entity.user.enums.Job;
 import com.nect.core.entity.user.enums.Role;
@@ -380,6 +377,9 @@ public class UserService {
 
         if (request.nickname() == null || request.nickname().isBlank()) {
             throw new InvalidCredentialsException("닉네임은 필수입니다");
+        }
+        if (request.nickname().length() < 2) {
+            throw new InvalidNicknameFormatException("닉네임은 2글자 이상이어야 합니다");
         }
         if (request.job() == null || request.job().isBlank()) {
             throw new InvalidCredentialsException("직업은 필수입니다");
