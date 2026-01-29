@@ -1,0 +1,126 @@
+package com.nect.core.entity.notifications;
+
+import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.User;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
+
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Notification extends BaseEntity {
+
+    // ====== 필드 ======
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private Long targetId; // 클릭하면 호출할 api에 넣을 id
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationClassification classification;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationScope scope;
+
+    @Column(nullable = false)
+    @ColumnDefault("false")
+    private Boolean isRead;
+
+    @Column(length = MAX_MAIN_LENGTH, nullable = false)
+    private String mainMessage;
+
+    @Column(length = MAX_CONTENT_LENGTH, nullable = true)
+    private String contentMessage; // null일 수 있음
+
+    // ====== 연관관계 ======
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "user_id", nullable = false)
+     private User receiver;
+
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "project_id", nullable = true)
+     private Project project;
+
+     // ====== 객체 생성 ======
+
+    private static final int MAX_MAIN_LENGTH = 100;
+    private static final int MAX_CONTENT_LENGTH = 100;
+
+    // create() 내에서 유연하게 수정할 수 있도록 작성
+    @Builder(access = AccessLevel.PRIVATE)
+    private Notification(
+            NotificationType type,
+            NotificationClassification classification,
+            NotificationScope scope,
+            String mainMessage,
+            String contentMessage,
+            Boolean isRead,
+            Long targetId,
+            User receiver,
+            Project project
+    ) {
+        this.type = type;
+        this.classification = classification;
+        this.scope = scope;
+        this.mainMessage = mainMessage;
+        this.contentMessage = contentMessage;
+        this.isRead = isRead != null ? isRead : false;
+        this.targetId = targetId;
+        this.receiver = receiver;
+        this.project = project;
+    }
+
+    /**
+     *
+     *  Notification 객체 생성 메서드
+     *  - 타입, 분류, 알림위치, 메시지 문자열 인자를 포함하여 Notification 객체를 생성합니다.
+     *
+     */
+    public static Notification create(
+            NotificationType type,
+            NotificationClassification classification,
+            NotificationScope scope,
+            Long targetId,
+            User receiver,
+            Project project,
+            Object[] mainArgs,
+            Object... contentArgs
+    ) {
+        Notification.NotificationBuilder builder = Notification.builder()
+                .type(type)
+                .classification(classification)
+                .scope(scope)
+                .targetId(targetId)
+                .receiver(receiver)
+                .mainMessage(type.formatMainMessage(MAX_MAIN_LENGTH, mainArgs))
+                .project(project);
+
+        if (type.hasContent() && contentArgs.length > 0) {
+            builder.contentMessage(type.formatContentMessage(MAX_CONTENT_LENGTH, contentArgs));
+        }
+
+        return builder.build();
+    }
+
+    // ====== 도메인 로직 ======
+    public void markAsRead() {
+        this.isRead = true;
+    }
+
+}

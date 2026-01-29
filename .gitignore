@@ -50,3 +50,5 @@ certbot/www
 ### logs ###
 *.log
 logs/
+
+test_output.txt
