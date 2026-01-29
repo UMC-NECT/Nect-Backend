@@ -9,12 +9,10 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface ProjectHistoryRepository extends JpaRepository<ProjectHistory, Long> {
-    // 무한스크롤/더보기를 할 거면 둘 다 씀
-    // 최근 N개만 보여줄 거면 findLatest만 써도 됨
     @Query("""
         select h
         from ProjectHistory h
-        where h.project = :projectId
+        where h.project.id = :projectId
         order by h.id desc
     """)
     List<ProjectHistory> findLatest(@Param("projectId") Long projectId, Pageable pageable);
@@ -22,11 +20,13 @@ public interface ProjectHistoryRepository extends JpaRepository<ProjectHistory, 
     @Query("""
         select h
         from ProjectHistory h
-        where h.project = :projectId
+        where h.project.id = :projectId
           and h.id < :cursorId
         order by h.id desc
     """)
-    List<ProjectHistory> findLatestByCursor(@Param("projectId") Long projectId,
-                                            @Param("cursorId") Long cursorId,
-                                            Pageable pageable);
+    List<ProjectHistory> findLatestByCursor(
+            @Param("projectId") Long projectId,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable
+    );
 }

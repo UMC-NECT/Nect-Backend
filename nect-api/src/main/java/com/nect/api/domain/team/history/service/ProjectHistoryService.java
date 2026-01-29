@@ -19,10 +19,13 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProjectHistoryService {
+
+    private static final int PAGE_SIZE = 10;
+
     private final ProjectRepository projectRepository;
     private final ProjectHistoryRepository historyRepository;
 
-    public ProjectHistoryListResDto getHistories(Long projectId, Long cursor, Integer size) {
+    public ProjectHistoryListResDto getHistories(Long projectId, Long cursor) {
 
         // 프로젝트 존재 확인
         Project project = projectRepository.findById(projectId)
@@ -31,13 +34,13 @@ public class ProjectHistoryService {
                         "projectId=" + projectId
                 ));
 
-        // size 정규화 (기본 20, 최대 50)
-        int pageSize = normalizeSize(size);
+        // 항상 최근 10개 고정
+        PageRequest page = PageRequest.of(0, PAGE_SIZE);
 
         //  조회
         List<ProjectHistory> histories = (cursor == null)
-                ? historyRepository.findLatest(project.getId(), PageRequest.of(0, pageSize))
-                : historyRepository.findLatestByCursor(project.getId(), cursor, PageRequest.of(0, pageSize));
+                ? historyRepository.findLatest(project.getId(), page)
+                : historyRepository.findLatestByCursor(project.getId(), cursor, page);
 
         // DTO 변환
         List<ProjectHistoryResDto> items = histories.stream()
@@ -56,13 +59,5 @@ public class ProjectHistoryService {
         Long nextCursor = histories.isEmpty() ? null : histories.get(histories.size() - 1).getId();
 
         return new ProjectHistoryListResDto(nextCursor, items);
-    }
-
-    private int normalizeSize(Integer size) {
-        if (size == null) return 20;
-        if (size <= 0) {
-            throw new HistoryException(HistoryErrorCode.INVALID_REQUEST, "size must be positive");
-        }
-        return Math.min(size, 50);
     }
 }

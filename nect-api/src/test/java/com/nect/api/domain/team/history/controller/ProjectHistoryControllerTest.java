@@ -55,24 +55,23 @@ class ProjectHistoryControllerTest {
     private ProjectHistoryService historyService;
 
     @Test
-    @DisplayName("팀 히스토리 로그 조회(커서 기반)")
+    @DisplayName("팀 히스토리 로그 조회(커서 기반, 최근 10개 고정)")
     void getHistories() throws Exception {
         // given
         long projectId = 1L;
         Long cursor = 100L;
-        Integer size = 20;
 
         ProjectHistoryListResDto response = new ProjectHistoryListResDto(
-                80L, // next_cursor
+                99L, // next_cursor (예시)
                 List.of(
                         new ProjectHistoryResDto(
                                 100L,                       // history_id
                                 2L,                         // actor_user_id
-                                HistoryAction.PROCESS_CREATED,      // action (enum)
-                                HistoryTargetType.PROCESS,  // target_type (enum)
+                                HistoryAction.PROCESS_CREATED,
+                                HistoryTargetType.PROCESS,
                                 10L,                        // target_id
-                                "{\"foo\":\"bar\"}",        // meta_json
-                                LocalDateTime.of(2026, 1, 24, 12, 0, 0) // created_at
+                                "{\"foo\":\"bar\"}",
+                                LocalDateTime.of(2026, 1, 24, 12, 0, 0)
                         ),
                         new ProjectHistoryResDto(
                                 99L,
@@ -86,14 +85,13 @@ class ProjectHistoryControllerTest {
                 )
         );
 
-        given(historyService.getHistories(eq(projectId), eq(cursor), eq(size)))
+        given(historyService.getHistories(eq(projectId), eq(cursor)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(get("/projects/{projectId}/histories", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("cursor", String.valueOf(cursor))
-                        .param("size", String.valueOf(size))
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("project-history-list",
@@ -103,14 +101,13 @@ class ProjectHistoryControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("History")
                                         .summary("팀 히스토리 로그 조회")
-                                        .description("프로젝트 내 팀 히스토리 로그를 커서 기반으로 조회합니다. cursor 미입력 시 최신부터 조회합니다.")
+                                        .description("프로젝트 내 팀 히스토리 로그를 커서 기반으로 조회합니다. cursor 미입력 시 최신부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(
                                                 com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName("projectId")
                                                         .description("프로젝트 ID")
                                         )
                                         .queryParameters(
-                                                parameterWithName("cursor").optional().description("커서(이전 페이지 마지막 history_id 등)"),
-                                                parameterWithName("size").optional().description("페이지 사이즈(미입력 시 서버 기본값)")
+                                                parameterWithName("cursor").optional().description("커서(이전 페이지 마지막 history_id 등)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
@@ -125,7 +122,7 @@ class ProjectHistoryControllerTest {
                                                 fieldWithPath("body.next_cursor").optional().type(NUMBER)
                                                         .description("다음 페이지 조회를 위한 커서(null이면 다음 페이지 없음)"),
 
-                                                fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록"),
+                                                fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록(최대 10개)"),
 
                                                 fieldWithPath("body.items[].history_id").type(NUMBER).description("히스토리 ID"),
                                                 fieldWithPath("body.items[].actor_user_id").type(NUMBER).description("행위자(유저) ID"),
@@ -141,7 +138,7 @@ class ProjectHistoryControllerTest {
     }
 
     @Test
-    @DisplayName("팀 히스토리 로그 조회(기본: 파라미터 미입력)")
+    @DisplayName("팀 히스토리 로그 조회(기본: cursor 미입력, 최근 10개 고정)")
     void getHistories_withoutParams() throws Exception {
         // given
         long projectId = 1L;
@@ -151,7 +148,7 @@ class ProjectHistoryControllerTest {
                 List.of()
         );
 
-        given(historyService.getHistories(eq(projectId), eq(null), eq(null)))
+        given(historyService.getHistories(eq(projectId), eq(null)))
                 .willReturn(response);
 
         // when, then
@@ -166,7 +163,7 @@ class ProjectHistoryControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("History")
                                         .summary("팀 히스토리 로그 조회(기본)")
-                                        .description("cursor, size 미입력 시 서버 기본 정책으로 최신 로그부터 조회합니다.")
+                                        .description("cursor 미입력 시 서버 정책으로 최신 로그부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(
                                                 com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName("projectId")
                                                         .description("프로젝트 ID")
@@ -183,7 +180,7 @@ class ProjectHistoryControllerTest {
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.next_cursor").optional().type(NUMBER)
                                                         .description("다음 페이지 조회를 위한 커서(null이면 다음 페이지 없음)"),
-                                                fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록")
+                                                fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록(최대 10개)")
                                         )
                                         .build()
                         )

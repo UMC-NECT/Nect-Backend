@@ -13,13 +13,12 @@ public class ProjectHistoryController {
 
     private final ProjectHistoryService historyService;
 
-    // 히스토리 조회, 커서 사용
+    // 최근 10개 조회 + cursor 기반 다음 10개 조회
     @GetMapping
     public ApiResponse<ProjectHistoryListResDto> getHistories(
             @PathVariable Long projectId,
-            @RequestParam(required = false) Long cursor,
-            @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Long cursor
     ) {
-        return ApiResponse.ok(historyService.getHistories(projectId, cursor, size));
+        return ApiResponse.ok(historyService.getHistories(projectId, cursor));
     }
 }
