@@ -65,3 +65,19 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/nect-api:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+    steps:
+      - name: SSH to EC2 and deploy
+        uses: appleboy/ssh-action@v0.1.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/Nect-Backend
+            sudo docker-compose pull
+            sudo docker-compose up -d
+            docker system prune -f
