@@ -77,7 +77,7 @@ class ProcessTaskItemControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(post("/projects/{projectId}/processes/{processId}/task-items", projectId, processId)
+        mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/task-items", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -148,7 +148,7 @@ class ProcessTaskItemControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -203,7 +203,7 @@ class ProcessTaskItemControllerTest {
         long taskItemId = 100L;
 
         // when, then
-        mockMvc.perform(delete("/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -259,7 +259,7 @@ class ProcessTaskItemControllerTest {
         given(processTaskItemService.reorder(eq(projectId), eq(processId), any(ProcessTaskItemReorderReqDto.class)))
                 .willReturn(response);
 
-        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/task-items/reorder", projectId, processId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/task-items/reorder", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

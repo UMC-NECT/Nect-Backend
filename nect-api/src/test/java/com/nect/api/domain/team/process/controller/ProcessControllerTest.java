@@ -93,7 +93,7 @@ class ProcessControllerTest {
                 .willReturn(createdProcessId);
 
         // when, then
-        mockMvc.perform(post("/projects/{projectId}/processes", projectId)
+        mockMvc.perform(post("/api/v1/projects/{projectId}/processes", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -202,7 +202,7 @@ class ProcessControllerTest {
 
 
         // when, then
-        mockMvc.perform(get("/projects/{projectId}/processes/{processId}", projectId, processId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-detail",
@@ -305,7 +305,7 @@ class ProcessControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}", projectId, processId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -360,7 +360,7 @@ class ProcessControllerTest {
         long projectId = 1L;
         long processId = 10L;
 
-        mockMvc.perform(delete("/projects/{projectId}/processes/{processId}", projectId, processId)
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-delete",
@@ -403,7 +403,7 @@ class ProcessControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(get("/projects/{projectId}/processes/week", projectId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/processes/week", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("start_date", "2026-01-19")
                         .accept(MediaType.APPLICATION_JSON))
@@ -460,7 +460,7 @@ class ProcessControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(get("/projects/{projectId}/processes/part", projectId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/processes/part", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("field_id", "1")
                         .accept(MediaType.APPLICATION_JSON))
@@ -525,7 +525,7 @@ class ProcessControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/order", projectId, processId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/order", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -590,7 +590,7 @@ class ProcessControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(patch("/projects/{projectId}/processes/{processId}/status", projectId, processId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/status", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

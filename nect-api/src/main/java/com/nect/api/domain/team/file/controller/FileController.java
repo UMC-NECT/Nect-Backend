@@ -11,7 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/projects/{projectId}/files")
+@RequestMapping("/api/v1/projects/{projectId}/files")
 public class FileController {
     private final FileService fileService;
 

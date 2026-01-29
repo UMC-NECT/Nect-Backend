@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/projects/{projectId}/processes/{processId}/feedbacks")
+@RequestMapping("/api/v1/projects/{projectId}/processes/{processId}/feedbacks")
 public class ProcessFeedbackController {
 
     private final ProcessFeedbackService processFeedbackService;

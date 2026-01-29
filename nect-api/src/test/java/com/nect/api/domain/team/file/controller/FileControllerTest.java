@@ -72,7 +72,7 @@ class FileControllerTest {
                 .willReturn(res);
 
         mockMvc.perform(
-                        multipart("/projects/{projectId}/files/upload", projectId)
+                        multipart("/api/v1/projects/{projectId}/files/upload", projectId)
                                 .file(file)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.MULTIPART_FORM_DATA)

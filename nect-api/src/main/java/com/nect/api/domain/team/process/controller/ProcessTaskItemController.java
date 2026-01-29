@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/projects/{projectId}/processes/{processId}/task-items")
+@RequestMapping("/api/v1/projects/{projectId}/processes/{processId}/task-items")
 public class ProcessTaskItemController {
     private final ProcessTaskItemService taskItemService;
 

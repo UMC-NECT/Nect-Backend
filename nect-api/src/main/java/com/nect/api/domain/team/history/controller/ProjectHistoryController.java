@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/projects/{projectId}/histories")
+@RequestMapping("/api/v1/projects/{projectId}/histories")
 public class ProjectHistoryController {
 
     private final ProjectHistoryService historyService;

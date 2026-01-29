@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/projects/{projectId}/processes/{processId}/files")
+@RequestMapping("/api/v1/projects/{projectId}/processes/{processId}/files")
 public class ProcessFileUploadController {
 
     private final ProcessAttachmentFacade processAttachmentFacade;

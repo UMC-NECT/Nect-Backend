@@ -89,7 +89,7 @@ class ProjectHistoryControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(get("/projects/{projectId}/histories", projectId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("cursor", String.valueOf(cursor))
                         .accept(MediaType.APPLICATION_JSON))
@@ -152,7 +152,7 @@ class ProjectHistoryControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(get("/projects/{projectId}/histories", projectId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

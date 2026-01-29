@@ -63,7 +63,7 @@ class ProcessFileControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(post("/projects/{projectId}/processes/{processId}/files", projectId, processId)
+        mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/files", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -113,7 +113,7 @@ class ProcessFileControllerTest {
         willDoNothing().given(processAttachmentService).detachFile(eq(projectId), eq(processId), eq(fileId));
 
         // when, then
-        mockMvc.perform(delete("/projects/{projectId}/processes/{processId}/files/{fileId}", projectId, processId, fileId)
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/files/{fileId}", projectId, processId, fileId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())

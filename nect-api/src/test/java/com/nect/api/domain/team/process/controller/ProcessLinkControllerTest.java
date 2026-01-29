@@ -67,7 +67,7 @@ class ProcessLinkControllerTest {
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(post("/projects/{projectId}/processes/{processId}/links", projectId, processId)
+        mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/links", projectId, processId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -117,7 +117,7 @@ class ProcessLinkControllerTest {
         willDoNothing().given(processAttachmentService).deleteLink(eq(projectId), eq(processId), eq(linkId));
 
         // when, then
-        mockMvc.perform(delete("/projects/{projectId}/processes/{processId}/links/{linkId}", projectId, processId, linkId)
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/links/{linkId}", projectId, processId, linkId)
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
