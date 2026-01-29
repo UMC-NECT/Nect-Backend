@@ -60,6 +60,7 @@ public class FileService {
                 + "/files/" + System.currentTimeMillis() + "_" + originalName;
 
         SharedDocument doc = SharedDocument.builder()
+                .project(project)
                 .isPinned(false)
                 .title(originalName)
                 .description(null)
