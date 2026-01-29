@@ -15,7 +15,16 @@ public enum UserErrorCode implements ResponseCode {
     TERMS_NOT_AGREED("U006", "필수 약관에 동의하지 않았습니다"),
     INVALID_REQUEST_FORMAT("U007", "요청 형식이 올바르지 않습니다"),
     INVALID_JOB_TYPE("U008", "직업 타입이 올바르지 않습니다"),
-    INVALID_CHECK_TYPE("U009", "검사 타입이 올바르지 않습니다");
+    INVALID_CHECK_TYPE("U009", "검사 타입이 올바르지 않습니다"),
+    NICKNAME_DUPLICATE("U010", "이미 사용 중인 닉네임입니다"),
+    INVALID_BIRTHDATE_FORMAT("U011", "생년월일 형식이 올바르지 않습니다"),
+    INVALID_ROLE("U012", "역할 타입이 올바르지 않습니다"),
+    INVALID_FIELD("U013", "직종 타입이 올바르지 않습니다"),
+    INVALID_ROLE_FIELD_COMBINATION("U015", "선택한 역할과 맞지 않는 직종입니다"),
+    INVALID_GOAL("U014", "목표 타입이 올바르지 않습니다"),
+    INVALID_INTEREST_FIELD("U016", "관심분야 타입이 올바르지 않습니다"),
+    INVALID_SKILL_CATEGORY("U017", "스킬 카테고리가 올바르지 않습니다"),
+    INVALID_COLLABORATION_SCORE("U018", "협업 스타일 점수가 올바르지 않습니다");
 
     private final String statusCode;
     private final String message;

@@ -5,13 +5,16 @@ import com.nect.api.NectDocumentApiTester;
 import com.nect.api.domain.user.dto.AgreeDto;
 import com.nect.api.domain.user.dto.DuplicateCheckDto;
 import com.nect.api.domain.user.dto.LoginDto;
+import com.nect.api.domain.user.dto.ProfileDto;
 import com.nect.api.domain.user.dto.SignUpDto;
 import com.nect.api.domain.user.enums.CheckType;
+import com.nect.core.entity.user.enums.SkillCategory;
 import org.junit.jupiter.api.Test;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
@@ -46,11 +49,11 @@ class UserControllerTest extends NectDocumentApiTester {
                         resource(
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
-                                        .summary("중복 검사 (이메일/전화번호)")
-                                        .description("이메일 또는 전화번호의 중복 여부를 확인합니다. available이 true이면 사용 가능, false이면 이미 사용 중입니다. 검사 type은 - EMAIL: 이메일 중복검사, PHONE: 전화번호 중복검사")
+                                        .summary("중복 검사 (이메일/전화번호/닉네임)")
+                                        .description("이메일 또는 전화번호, 닉네임의 중복 여부를 확인합니다. available이 true이면 사용 가능, false이면 이미 사용 중입니다. 검사 type은 - EMAIL: 이메일 중복검사, PHONE: 전화번호 중복검사, NICKNAME: 닉네임 중복검사")
                                         .requestFields(
-                                                fieldWithPath("type").type(JsonFieldType.STRING).description("검사 타입 (EMAIL, PHONE)"),
-                                                fieldWithPath("value").type(JsonFieldType.STRING).description("검사할 값 (이메일 또는 전화번호)")
+                                                fieldWithPath("type").type(JsonFieldType.STRING).description("검사 타입 (EMAIL, PHONE, NICKNAME)"),
+                                                fieldWithPath("value").type(JsonFieldType.STRING).description("검사할 값 (이메일 또는 전화번호, 닉네임)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
@@ -76,10 +79,7 @@ class UserControllerTest extends NectDocumentApiTester {
                                 "password123",
                                 "password123",
                                 "김테스트",
-                                "testuser",
-                                "01012345678",
-                                LocalDate.of(1999, 1, 1),
-                                "EMPLOYEE"
+                                "01012345678"
                         ))))
                 .andExpect(status().isOk())
                 .andDo(document("user-signup",
@@ -87,16 +87,13 @@ class UserControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
                                         .summary("회원가입")
-                                        .description("새로운 계정을 생성합니다")
+                                        .description("새로운 계정을 생성합니다. 닉네임, 생년월일, 직업, 역할 등은 프로필 설정 API에서 입력합니다.")
                                         .requestFields(
                                                 fieldWithPath("email").type(JsonFieldType.STRING).description("이메일 (고유값, 이메일 형식)"),
                                                 fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호 (최소 8자)"),
                                                 fieldWithPath("passwordConfirm").type(JsonFieldType.STRING).description("비밀번호 확인 (password와 일치해야 함)"),
                                                 fieldWithPath("name").type(JsonFieldType.STRING).description("이름"),
-                                                fieldWithPath("nickname").type(JsonFieldType.STRING).description("닉네임"),
-                                                fieldWithPath("phoneNumber").type(JsonFieldType.STRING).description("전화번호").optional(),
-                                                fieldWithPath("birthDate").type(JsonFieldType.STRING).description("생년월일 (yyyy-MM-dd)").optional(),
-                                                fieldWithPath("job").type(JsonFieldType.STRING).description("직업 (EMPLOYEE, STUDENT, JOB_SEEKER, FREELANCER, BUSINESS_OWNER, OTHER)")
+                                                fieldWithPath("phoneNumber").type(JsonFieldType.STRING).description("전화번호").optional()
                                         )
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
@@ -329,6 +326,68 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body.email").type(JsonFieldType.STRING).description("사용자 이메일")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void setupProfile() throws Exception {
+        // given
+        doNothing().when(userService).setupProfile(anyLong(), any(ProfileDto.ProfileSetupRequestDto.class));
+
+        // when
+        this.mockMvc.perform(post("/api/v1/users/profile/setup")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType("application/json")
+                        .content(toJson(new ProfileDto.ProfileSetupRequestDto(
+                                "testNickname",
+                                "19990315",
+                                "EMPLOYEE",
+                                "DEVELOPER",
+                                List.of(
+                                        new ProfileDto.FieldDto("BACKEND", null),
+                                        new ProfileDto.FieldDto("FULLSTACK", null)
+                                ),
+                                List.of(
+                                        new ProfileDto.SkillDto(SkillCategory.DEVELOPMENT, "REACT", null),
+                                        new ProfileDto.SkillDto(SkillCategory.DEVELOPMENT, "TYPESCRIPT", null)
+                                ),
+                                List.of("IT_WEB_MOBILE", "FINANCE_FINTECH"),
+                                "PORTFOLIO",
+                                new ProfileDto.CollaborationStyleDto(3, 4, 2)
+                        ))))
+                .andExpect(status().isOk())
+                .andDo(document("user-setup-profile",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("프로필 설정")
+                                        .description("사용자의 프로필 정보를 설정합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("nickname").type(JsonFieldType.STRING).description("닉네임 (필수, 고유값)"),
+                                                fieldWithPath("birthDate").type(JsonFieldType.STRING).description("생년월일 (선택, 8자리 형식 YYYYMMDD 예: 19990315)").optional(),
+                                                fieldWithPath("job").type(JsonFieldType.STRING).description("직업 (필수, 예: EMPLOYEE, STUDENT, JOB_SEEKER, FREELANCER, BUSINESSMAN, OTHER)"),
+                                                fieldWithPath("role").type(JsonFieldType.STRING).description("역할 (필수, 예: DESIGNER, DEVELOPER, PLANNER, MARKETER, OTHER)"),
+                                                fieldWithPath("fields[].field").type(JsonFieldType.STRING).description("직종 (필수 - 1개 이상, 예: UI_UX, MOTION_3D, ILLUSTRATION_GRAPHIC 등)"),
+                                                fieldWithPath("fields[].customField").type(JsonFieldType.STRING).description("직종 직접입력 (field가 CUSTOM일 때만 사용)").optional(),
+                                                fieldWithPath("skills[].skillCategory").type(JsonFieldType.STRING).description("스킬 카테고리 (필수, 예: DESIGN, DEVELOPMENT, PLANNING, MARKETING, OTHER)"),
+                                                fieldWithPath("skills[].skill").type(JsonFieldType.STRING).description("스킬 (Enum 값, 예: REACT, JAVA, FIGMA, CUSTOM 등)"),
+                                                fieldWithPath("skills[].customSkillName").type(JsonFieldType.STRING).description("스킬 직접입력 (skill이 CUSTOM일 때만 사용)").optional(),
+                                                fieldWithPath("interests").type(JsonFieldType.ARRAY).description("관심 분야 배열 (Enum 값, 예: IT_WEB_MOBILE, FINANCE_FINTECH 등) (선택)").optional(),
+                                                fieldWithPath("firstGoal").type(JsonFieldType.STRING).description("첫번째 목표 (선택, 예: PORTFOLIO, TEAM_EXPERIENCE, OTHER_FIELD, ETC)").optional(),
+                                                fieldWithPath("collaborationStyle.planning").type(JsonFieldType.NUMBER).description("협업 스타일 - 계획형(1) vs 실행형(5) (선택, 1-5)").optional(),
+                                                fieldWithPath("collaborationStyle.logic").type(JsonFieldType.NUMBER).description("협업 스타일 - 논리형(1) vs 공감형(5) (선택, 1-5)").optional(),
+                                                fieldWithPath("collaborationStyle.leadership").type(JsonFieldType.NUMBER).description("협업 스타일 - 리더형(1) vs 서포터형(5) (선택, 1-5)").optional()
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional()
                                         )
                                         .build()
                         )

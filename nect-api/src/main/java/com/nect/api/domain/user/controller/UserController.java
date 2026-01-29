@@ -3,6 +3,7 @@ package com.nect.api.domain.user.controller;
 import com.nect.api.domain.user.dto.AgreeDto;
 import com.nect.api.domain.user.dto.DuplicateCheckDto;
 import com.nect.api.domain.user.dto.LoginDto;
+import com.nect.api.domain.user.dto.ProfileDto;
 import com.nect.api.domain.user.dto.SignUpDto;
 import com.nect.api.domain.user.service.UserService;
 import com.nect.api.global.response.ApiResponse;
@@ -82,5 +83,14 @@ public class UserController {
     ) {
         LoginDto.EmailResponseDto response = userService.getEmailByUserId(userDetails.getUserId());
         return ApiResponse.ok(response);
+    }
+
+    @PostMapping("/profile/setup")
+    public ApiResponse<Void> setupProfile(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody(required = false) ProfileDto.ProfileSetupRequestDto request
+    ) {
+        userService.setupProfile(userDetails.getUserId(), request);
+        return ApiResponse.ok();
     }
 }
