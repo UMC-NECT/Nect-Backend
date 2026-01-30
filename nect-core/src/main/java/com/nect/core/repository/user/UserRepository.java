@@ -22,4 +22,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	boolean existsByNickname(String nickname);
 
 	List<User> findByUserIdNot(Long userId, Pageable pageable);
+
+	List<User> findByUserIdNot(Long userId);
 }

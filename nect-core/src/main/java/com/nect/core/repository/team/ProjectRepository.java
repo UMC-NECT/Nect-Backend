@@ -26,4 +26,24 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     """)
     List<Project> findHomeProjects(@Param("userId") Long userId, @Param("status") RecruitmentStatus status, Pageable pageable);
 
+    @Query("""
+        SELECT p
+        FROM Project p
+        WHERE p.recruitmentStatus = :status
+        ORDER BY p.createdAt DESC
+    """)
+    List<Project> findHomeProjectsWithoutUser(@Param("status") RecruitmentStatus status, Pageable pageable);
+
+    @Query("""
+        SELECT p
+        FROM Project p
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM ProjectUser pu
+            WHERE pu.project = p
+              AND pu.userId = :userId
+        )
+    """)
+    List<Project> findProjectsExcludingUser(@Param("userId") Long userId);
+
 }

@@ -24,28 +24,32 @@ public class HomeController {
     // 모집 중인 프로젝트 조회
     @GetMapping("/projects")
     public ApiResponse<HomeProjectResponse> recruitingProjects(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
-        HomeProjectResponse projects = queryService.getProjects(userDetails.getUserId(), count);
+        Long userId = (userDetails == null) ? null : userDetails.getUserId();
+        HomeProjectResponse projects = queryService.getProjects(userId, count);
         return ApiResponse.ok(projects);
     }
 
     // 홈화면 프로젝트 추천
     @GetMapping("/recommendations/projects")
     public ApiResponse<HomeProjectResponse> recommendedProjects(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
-        HomeProjectResponse projects = recommendService.getProjects(userDetails.getUserId(), count);
+        Long userId = (userDetails == null) ? null : userDetails.getUserId();
+        HomeProjectResponse projects = recommendService.getProjects(userId, count);
         return ApiResponse.ok(projects);
     }
 
     // 홈화면 매칭 가능한 넥터
     @GetMapping("/members")
     public ApiResponse<HomeMembersResponse> matchableMembers(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
-        HomeMembersResponse members = queryService.getMembers(userDetails.getUserId(), count);
+        Long userId = (userDetails == null) ? null : userDetails.getUserId();
+        HomeMembersResponse members = queryService.getMembers(userId, count);
         return ApiResponse.ok(members);
     }
 
     // 홈화면 팀원 추천
     @GetMapping("/recommendations/members")
     public ApiResponse<HomeMembersResponse> recommendedMembers(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
-        HomeMembersResponse members = recommendService.getMembers(userDetails.getUserId(), count);
+        Long userId = (userDetails == null) ? null : userDetails.getUserId();
+        HomeMembersResponse members = recommendService.getMembers(userId, count);
         return ApiResponse.ok(members);
     }
 
