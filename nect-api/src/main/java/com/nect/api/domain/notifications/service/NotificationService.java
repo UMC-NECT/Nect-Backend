@@ -1,10 +1,10 @@
-package com.nect.api.notifications.service;
+package com.nect.api.domain.notifications.service;
 
 import com.nect.api.global.code.CommonResponseCode;
-import com.nect.api.notifications.command.NotificationCommand;
-import com.nect.api.notifications.dto.NotificationListResponse;
-import com.nect.api.notifications.enums.code.NotificationErrorCode;
-import com.nect.api.notifications.exception.NotificationException;
+import com.nect.api.domain.notifications.command.NotificationCommand;
+import com.nect.api.domain.notifications.dto.NotificationListResponse;
+import com.nect.api.domain.notifications.enums.code.NotificationErrorCode;
+import com.nect.api.domain.notifications.exception.NotificationException;
 import com.nect.core.entity.notifications.Notification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;

@@ -1,9 +1,9 @@
-package com.nect.api.notifications.controller;
+package com.nect.api.domain.notifications.controller;
 
 import com.nect.api.global.response.ApiResponse;
-import com.nect.api.notifications.dto.NotificationListResponse;
-import com.nect.api.notifications.service.NotificationDispatchService;
-import com.nect.api.notifications.service.NotificationService;
+import com.nect.api.domain.notifications.dto.NotificationListResponse;
+import com.nect.api.domain.notifications.service.NotificationDispatchService;
+import com.nect.api.domain.notifications.service.NotificationService;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/notifications")
+@RequestMapping("/api/v1/notifications")
 public class NotificationController {
 
     private final NotificationDispatchService dispatchService;

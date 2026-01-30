@@ -1,9 +1,9 @@
 package com.nect.api.notifications.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.nect.api.notifications.dto.NotificationListResponse;
-import com.nect.api.notifications.dto.NotificationResponse;
-import com.nect.api.notifications.service.NotificationService;
+import com.nect.api.domain.notifications.dto.NotificationListResponse;
+import com.nect.api.domain.notifications.dto.NotificationResponse;
+import com.nect.api.domain.notifications.service.NotificationService;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
@@ -55,7 +55,7 @@ class NotificationControllerTest {
                 eq(20)
         )).willReturn(mockResponse());
 
-        mockMvc.perform(get("/notifications")
+        mockMvc.perform(get("/api/v1/notifications")
                         .param("scope", "MAIN_HOME")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON)

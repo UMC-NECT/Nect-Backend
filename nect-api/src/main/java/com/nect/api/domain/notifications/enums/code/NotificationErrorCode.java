@@ -1,4 +1,4 @@
-package com.nect.api.notifications.enums.code;
+package com.nect.api.domain.notifications.enums.code;
 
 
 import com.nect.api.global.code.ResponseCode;

@@ -1,4 +1,4 @@
-package com.nect.api.notifications.dto;
+package com.nect.api.domain.notifications.dto;
 
 import com.nect.core.entity.notifications.Notification;
 import java.time.format.DateTimeFormatter;
