@@ -1,5 +1,6 @@
 package com.nect.api.domain.notifications.service;
 
+import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.api.global.code.CommonResponseCode;
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.dto.NotificationListResponse;
@@ -9,6 +10,7 @@ import com.nect.core.entity.notifications.Notification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.notifications.NotificationRepository;
+import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
     // 여러 유저에 대해 생성
     @Transactional(readOnly = false)
@@ -70,16 +73,15 @@ public class NotificationService {
     // 알림 목록 조회
     @Transactional(readOnly = true)
     public NotificationListResponse getNotifications(
-            User user,
+            Long userId,
             NotificationScope scope,
             Long cursor,
             int size
     ) {
 
-        // 예외처리
-        if (user == null) { // user 없을 경우
-            throw new NotificationException(CommonResponseCode.FORBIDDEN_ERROR);
-        }
+        // 본인 정보 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
 
         if (scope == null) { // scope 없으면 안됨.
             throw new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_SCOPE);
