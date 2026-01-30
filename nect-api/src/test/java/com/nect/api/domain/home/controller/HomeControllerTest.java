@@ -7,6 +7,11 @@ import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.service.HomeQueryService;
 import com.nect.api.domain.home.service.HomeRecommendService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
+import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.restdocs.payload.FieldDescriptor;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +29,13 @@ import java.util.List;
 import java.util.Map;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -48,14 +55,39 @@ class HomeControllerTest {
     @MockitoBean
     private HomeRecommendService homeRecommendService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_USER"))
+                        .build()
+        );
+    }
+
     @Test
-    @WithMockUser
     @DisplayName("모집 중인 프로젝트 조회 API")
     void 모집_중인_프로젝트_조회_API() throws Exception {
         given(homeQueryService.getProjects(eq(1L), eq(3)))
                 .willReturn(mockProjectResponse());
 
         mockMvc.perform(get("/api/v1/home/projects")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
                         .accept(MediaType.APPLICATION_JSON)
                 )
@@ -65,6 +97,9 @@ class HomeControllerTest {
                                 .tag("홈")
                                 .summary("모집 중인 프로젝트 조회")
                                 .description("홈 화면에서 모집 중인 프로젝트 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .queryParameters(
                                         parameterWithName("count").description("조회할 프로젝트 개수")
                                 )
@@ -75,13 +110,13 @@ class HomeControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("홈화면 프로젝트 추천 API")
     void 홈화면_프로젝트_추천_API() throws Exception {
         given(homeRecommendService.getProjects(eq(1L), eq(3)))
                 .willReturn(mockProjectResponse());
 
         mockMvc.perform(get("/api/v1/home/recommendations/projects")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
                         .accept(MediaType.APPLICATION_JSON)
                 )
@@ -91,6 +126,9 @@ class HomeControllerTest {
                                 .tag("홈")
                                 .summary("홈화면 프로젝트 추천")
                                 .description("홈 화면에서 추천 프로젝트 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .queryParameters(
                                         parameterWithName("count").description("조회할 프로젝트 개수")
                                 )
@@ -101,13 +139,13 @@ class HomeControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("홈화면 매칭 가능한 넥터 API")
     void 홈화면_매칭_가능한_넥터_API() throws Exception {
         given(homeQueryService.getMembers(eq(1L), eq(3)))
                 .willReturn(mockMembersResponse());
 
         mockMvc.perform(get("/api/v1/home/members")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
                         .accept(MediaType.APPLICATION_JSON)
                 )
@@ -117,6 +155,9 @@ class HomeControllerTest {
                                 .tag("홈")
                                 .summary("홈화면 매칭 가능한 넥터 조회")
                                 .description("홈 화면에서 매칭 가능한 넥터 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .queryParameters(
                                         parameterWithName("count").description("조회할 넥터 개수")
                                 )
@@ -127,13 +168,13 @@ class HomeControllerTest {
     }
 
     @Test
-    @WithMockUser
     @DisplayName("홈화면 팀원 추천 API")
     void 홈화면_팀원_추천_API() throws Exception {
         given(homeRecommendService.getMembers(eq(1L), eq(3)))
                 .willReturn(mockMembersResponse());
 
         mockMvc.perform(get("/api/v1/home/recommendations/members")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
                         .accept(MediaType.APPLICATION_JSON)
                 )
@@ -143,6 +184,9 @@ class HomeControllerTest {
                                 .tag("홈")
                                 .summary("홈화면 팀원 추천")
                                 .description("홈 화면에서 추천 팀원 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .queryParameters(
                                         parameterWithName("count").description("조회할 넥터 개수")
                                 )

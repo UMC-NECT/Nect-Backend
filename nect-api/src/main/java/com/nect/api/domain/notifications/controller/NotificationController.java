@@ -4,6 +4,7 @@ import com.nect.api.global.response.ApiResponse;
 import com.nect.api.domain.notifications.dto.NotificationListResponse;
 import com.nect.api.domain.notifications.service.NotificationDispatchService;
 import com.nect.api.domain.notifications.service.NotificationService;
+import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.user.User;
 import lombok.RequiredArgsConstructor;
@@ -53,12 +54,12 @@ public class NotificationController {
      */
     @GetMapping
     public ApiResponse<NotificationListResponse> notifications(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam("scope") NotificationScope scope,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
-        NotificationListResponse response = notificationService.getNotifications(user, scope, cursor, size);
+        NotificationListResponse response = notificationService.getNotifications(userDetails.getUserId(), scope, cursor, size);
         return ApiResponse.ok(response);
     }
 
