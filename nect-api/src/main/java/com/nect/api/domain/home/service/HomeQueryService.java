@@ -25,6 +25,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 홈 화면에서 필요한 프로젝트/멤버 데이터를 조회하는 서비스입니다.
+ *
+ * - 모집 중인 프로젝트 조회
+ * - 매칭 가능한 멤버 조회
+ *
+ * 조회에 필요한 최소한의 집계/가공만 수행하며,
+ * 추천 로직은 HomeRecommendService에서 처리됩니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class HomeQueryService implements HomeService {
