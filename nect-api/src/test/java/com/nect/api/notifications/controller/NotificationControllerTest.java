@@ -55,7 +55,7 @@ class NotificationControllerTest {
                 eq(20)
         )).willReturn(mockResponse());
 
-        mockMvc.perform(get("/notifications")
+        mockMvc.perform(get("/api/v1/notifications")
                         .param("scope", "MAIN_HOME")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON)
