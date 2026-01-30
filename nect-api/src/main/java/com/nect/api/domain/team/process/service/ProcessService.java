@@ -8,7 +8,7 @@ import com.nect.api.domain.team.process.dto.req.ProcessStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
-import com.nect.api.notifications.facade.NotificationFacade;
+import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;

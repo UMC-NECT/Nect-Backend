@@ -12,13 +12,13 @@ public class HomeRecommendService implements HomeService {
 
     @Override
     @Transactional(readOnly = true)
-    public HomeProjectResponse getProjects(Long userId, int count) {
+    public HomeProjectResponse getProjects(Long userId, Integer count) {
         return null;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public HomeMembersResponse getMembers(Long userId, int count) {
+    public HomeMembersResponse getMembers(Long userId, Integer count) {
         return null;
     }
 }
