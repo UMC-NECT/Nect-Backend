@@ -64,3 +64,5 @@ jwt:
 app:
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/auth/callback}
+  auth:
+    key: ${AUTH_KEY:a9F3kLmP7wQzX1bC}

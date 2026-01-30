@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -38,13 +40,13 @@ public class SecurityConfig {
             "/static/**", "/webjars/**",
             "/login/oauth2/**", "/oauth2/**",
             "/actuator/**", "/health", "/error", "/favicon.ico",
-            "/api/members/search-name", "/api/members/test-login", "/api/members/refresh",
-            "/api/upload/image/**",
-
+            "/api/upload/image/**", "/chats/**", "/ws-chat/**", "/*.html",
+            "/api/v1/users/check", "/api/v1/users/signup", "/api/v1/users/login",
+            "/api/v1/users/test-login", "/api/v1/users/refresh",
+            "/api/v1/enums/**",
             "/notifications/subscribe", "/notifications",
-            "/api/upload/image/**","/chats/**","/ws-chat/**","/*.html", "/",
-
-            "/api/v1/projects/**"
+            "/api/v1/projects/**",
+            "/"
     );
 
     @Bean
@@ -69,6 +71,11 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
