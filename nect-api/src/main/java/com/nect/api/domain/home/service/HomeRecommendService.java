@@ -50,7 +50,7 @@ public class HomeRecommendService implements HomeService {
     public HomeProjectResponse getProjects(Long userId, Integer count) {
         // 유저가 속하지 않은 프로젝트를 랜덤으로 count만큼 추천합니다.
 
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -59,8 +59,10 @@ public class HomeRecommendService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 참여하지 않은 프로젝트 목록 조회
-        List<Project> projects = projectRepository.findProjectsExcludingUser(userId);
+        // 참여하지 않은 프로젝트 목록 조회 (비로그인 시 전체)
+        List<Project> projects = (userId == null)
+                ? projectRepository.findAll()
+                : projectRepository.findProjectsExcludingUser(userId);
         if (projects.isEmpty()) {
             return new HomeProjectResponse(List.of());
         }
@@ -142,7 +144,7 @@ public class HomeRecommendService implements HomeService {
     @Transactional(readOnly = true)
     public HomeMembersResponse getMembers(Long userId, Integer count) {
         // 본인을 제외한 전체 멤버 중 랜덤으로 count만큼 추천합니다.
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -151,8 +153,10 @@ public class HomeRecommendService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 본인을 제외한 멤버 목록 조회
-        List<User> users = userRepository.findByUserIdNot(userId);
+        // 본인을 제외한 멤버 목록 조회 (비로그인 시 전체)
+        List<User> users = (userId == null)
+                ? userRepository.findAll()
+                : userRepository.findByUserIdNot(userId);
         if (users.isEmpty()) {
             return new HomeMembersResponse(List.of());
         }

@@ -47,7 +47,7 @@ public class HomeQueryService implements HomeService {
     @Transactional(readOnly = true)
     public HomeProjectResponse getProjects(Long userId, Integer count){
 
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -56,9 +56,11 @@ public class HomeQueryService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 모집 중이며 아직 참여하지 않은 프로젝트 목록 조회
+        // 모집 중 프로젝트 목록 조회 (로그인 시 참여 프로젝트 제외)
         PageRequest pageRequest = PageRequest.of(0, count);
-        List<Project> projects = projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN, pageRequest);
+        List<Project> projects = (userId == null)
+                ? projectRepository.findHomeProjectsWithoutUser(RecruitmentStatus.OPEN, pageRequest)
+                : projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN, pageRequest);
 
         if (projects.isEmpty()) {
             return new HomeProjectResponse(List.of());
@@ -142,7 +144,7 @@ public class HomeQueryService implements HomeService {
     @Transactional(readOnly = true)
     public HomeMembersResponse getMembers(Long userId, Integer count) {
 
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -150,9 +152,11 @@ public class HomeQueryService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 본인을 제외한 홈화면 매칭 가능한 유저 목록 조회
+        // 홈화면 매칭 가능한 유저 목록 조회 (로그인 시 본인 제외)
         PageRequest pageRequest = PageRequest.of(0, count);
-        List<User> users = userRepository.findByUserIdNot(userId, pageRequest);
+        List<User> users = (userId == null)
+                ? userRepository.findAll(pageRequest).getContent()
+                : userRepository.findByUserIdNot(userId, pageRequest);
 
         List<HomeMemberItem> items = users.stream()
                 .map(user -> new HomeMemberItem(
