@@ -2,6 +2,8 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,14 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getLeaderName();
         Long getLeaderFieldId();
         Long getActiveMemberCount();
+    }
+
+    interface ProjectMemberInfo {
+        Long getUserId();
+        String getName();
+        Long getFieldId();
+        ProjectMemberType getMemberType();
+        ProjectMemberStatus getMemberStatus();
     }
 
     Optional<ProjectUser> findByUserIdAndProject(Long userid, Project project);
@@ -64,5 +74,19 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         GROUP BY pu.project.id
     """)
     List<ProjectHomeStat> findProjectHomeStats(@Param("projectIds") List<Long> projectIds);
+
+    @Query("""
+        SELECT
+            pu.userId as userId,
+            u.name as name,
+            pu.fieldId as fieldId,
+            pu.memberType as memberType,
+            pu.memberStatus as memberStatus
+        FROM ProjectUser pu
+        JOIN User u ON u.userId = pu.userId
+        WHERE pu.project.id = :projectId
+        AND pu.memberStatus = 'ACTIVE'
+    """)
+    List<ProjectMemberInfo> findProjectMemberInfos(@Param("projectId") Long projectId);
 
 }
