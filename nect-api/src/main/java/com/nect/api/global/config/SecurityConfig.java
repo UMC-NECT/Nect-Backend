@@ -50,6 +50,10 @@ public class SecurityConfig {
             "/"
     );
 
+    private static final List<String> JWT_EXCLUDE_PATHS = EXCLUDE_PATHS.stream()
+            .filter(path -> !path.equals("/api/v1/home/**"))
+            .toList();
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -82,7 +86,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtUtil, userDetailsService, tokenBlacklistService, EXCLUDE_PATHS);
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService, tokenBlacklistService, JWT_EXCLUDE_PATHS);
     }
 
     @Bean
