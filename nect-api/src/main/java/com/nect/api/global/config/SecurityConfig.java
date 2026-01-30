@@ -44,10 +44,14 @@ public class SecurityConfig {
             "/api/upload/image/**", "/chats/**", "/ws-chat/**", "/*.html",
             "/api/v1/users/check", "/api/v1/users/signup", "/api/v1/users/login",
             "/api/v1/users/test-login", "/api/v1/users/refresh",
-            "/api/v1/enums/**",
+            "/api/v1/enums/**", "/api/v1/home/**",
             "/notifications/subscribe", "/notifications",
             "/"
     );
+
+    private static final List<String> JWT_EXCLUDE_PATHS = EXCLUDE_PATHS.stream()
+            .filter(path -> !path.equals("/api/v1/home/**"))
+            .toList();
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -81,7 +85,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtUtil, userDetailsService, tokenBlacklistService, EXCLUDE_PATHS);
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService, tokenBlacklistService, JWT_EXCLUDE_PATHS);
     }
 
     @Bean
