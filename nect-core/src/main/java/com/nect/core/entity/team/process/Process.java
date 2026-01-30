@@ -6,6 +6,7 @@ import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.SharedDocument;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,22 +61,30 @@ public class Process extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
+    @SQLRestriction("deleted_at is null")
     private final List<ProcessTaskItem> taskItems = new ArrayList<>();
 
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
+    @SQLRestriction("deleted_at is null")
     private final List<Link> links = new ArrayList<>();
+
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
+    @SQLRestriction("deleted_at is null")
+    private final List<ProcessFeedback> feedbacks = new ArrayList<>();
 
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<ProcessUser> processUsers = new ArrayList<>();
 
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
+    @SQLRestriction("deleted_at is null")
     private final List<ProcessSharedDocument> sharedDocuments = new ArrayList<>();
 
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<ProcessField> processFields = new ArrayList<>();
 
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
+    @SQLRestriction("deleted_at is null")
     private final List<ProcessMention> mentions = new ArrayList<>();
 
 
@@ -157,21 +166,6 @@ public class Process extends BaseEntity {
         this.title = title;
     }
 
-    public void replaceMentions(List<Long> mentionedUserIds) {
-        this.mentions.clear();
-        if (mentionedUserIds == null) return;
-
-        for (Long userId : mentionedUserIds) {
-            if (userId == null) continue;
-
-            ProcessMention mention = ProcessMention.builder()
-                    .process(this)
-                    .mentionedUserId(userId)
-                    .build();
-            this.mentions.add(mention);
-        }
-    }
-
 
     public void updateStatusOrder(Integer statusOrder) {
         if (statusOrder != null) this.statusOrder = statusOrder;
@@ -180,6 +174,25 @@ public class Process extends BaseEntity {
 
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void softDeleteCascade() {
+        if (this.deletedAt != null) return; // 이미 삭제면 idempotent
+
+        this.softDelete(); // deletedAt 세팅
+
+        if (this.taskItems != null) {
+            this.taskItems.forEach(ProcessTaskItem::softDelete);
+        }
+        if (this.feedbacks != null) {
+            this.feedbacks.forEach(ProcessFeedback::softDelete);
+        }
+        if (this.links != null) {
+            this.links.forEach(Link::softDelete);
+        }
+        if (this.sharedDocuments != null) {
+            this.sharedDocuments.forEach(ProcessSharedDocument::softDelete);
+        }
     }
 
     public void restore() {

@@ -34,15 +34,12 @@ dependencies {
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-	// WebSocket
-	implementation 'org.springframework.boot:spring-boot-starter-websocket'
-
-
 	// S3
 	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
-
+  
 	// WebSocket
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
 }
 
 ext {
@@ -61,7 +58,10 @@ asciidoctor {
 
 openapi3 {
 	// QUESTION : 500번대 포트연결 에러가 뜨길래 넣어서 해결했는데 넣어야 하는지 궁금합니다.
-	servers = [{ url = 'http://localhost:8080' }]
+	servers = [
+		{ url = 'http://localhost:8080' },
+		{ url = 'https://getnect.tech' }
+	]
 	title = 'Nect API Document'
 	description = 'Nect Application API Document'
 	version = '0.0.1'

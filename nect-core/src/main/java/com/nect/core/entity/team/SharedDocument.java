@@ -56,6 +56,7 @@ public class SharedDocument extends BaseEntity {
     // TODO : 매개변수 User createdBy 추가
     @Builder
     private SharedDocument(
+            Project project,
             boolean isPinned,
             String title,
             String description,
@@ -63,6 +64,7 @@ public class SharedDocument extends BaseEntity {
             FileExt fileExt,
             String fileUrl,
             Long fileSize) {
+        this.project = project;
 //        this.createdBy = createdBy;
         this.isPinned = isPinned;
         this.title = title;
