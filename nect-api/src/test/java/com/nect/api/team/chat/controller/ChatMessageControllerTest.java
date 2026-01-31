@@ -2,15 +2,19 @@ package com.nect.api.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
-import com.nect.api.domain.team.chat.dto.req.ChatNoticeUpdateRequestDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomListDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
+import com.nect.api.domain.team.chat.dto.req.ChatNoticeUpdateRequestDto;
+import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomListDto;
 import com.nect.api.domain.team.chat.service.ChatRoomService;
 import com.nect.api.domain.team.chat.service.ChatService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.chat.enums.MessageType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,14 +32,15 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -56,11 +61,37 @@ class ChatMessageControllerTest {
     @MockitoBean
     private ChatService chatService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
+
+    @BeforeEach
+    void setUpAuth() {
+
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_USER"))
+                        .build()
+        );
+    }
+
     @Test
     @DisplayName("채팅방 메시지 조회")
     void getChatMessages() throws Exception {
-        List<ChatMessageDTO> messages = Arrays.asList(
-                ChatMessageDTO.builder()
+        List<ChatMessageDto> messages = Arrays.asList(
+                ChatMessageDto.builder()
                         .messageId(1L)
                         .roomId(1L)
                         .userName("김민규")
@@ -76,10 +107,11 @@ class ChatMessageControllerTest {
                 .willReturn(messages);
 
         mockMvc.perform(
-                        get("/chats/rooms/{room_id}/messages", 1L)
+                        get("/api/v1/chats/rooms/{room_id}/messages", 1L)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .param("lastMessage_id", "100")
                                 .param("size", "20")
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                                .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
                 .andDo(document("chat-messages-get",
@@ -89,6 +121,9 @@ class ChatMessageControllerTest {
                                 .tag("채팅")
                                 .summary("채팅방 메시지 조회")
                                 .description("특정 채팅방의 과거 메시지 내역을 페이징하여 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .pathParameters(
                                         parameterWithName("room_id").description("채팅방 ID")
                                 )
@@ -104,8 +139,8 @@ class ChatMessageControllerTest {
     @Test
     @DisplayName("내 채팅방 목록 조회")
     void getChatRooms() throws Exception {
-        List<ChatRoomListDTO> rooms = Arrays.asList(
-                ChatRoomListDTO.builder()
+        List<ChatRoomListDto> rooms = Arrays.asList(
+                ChatRoomListDto.builder()
                         .room_id(1L)
                         .room_name("테스트 채팅방")
                         .last_message("마지막 메시지입니다.")
@@ -119,8 +154,9 @@ class ChatMessageControllerTest {
                 .willReturn(rooms);
 
         mockMvc.perform(
-                        get("/chats/rooms")
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                        get("/api/v1/chats/rooms")
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
                 .andDo(document("chat-rooms-list",
@@ -130,6 +166,9 @@ class ChatMessageControllerTest {
                                 .tag("채팅")
                                 .summary("내 채팅방 목록 조회")
                                 .description("현재 로그인한 사용자가 참여 중인 채팅방 목록을 반환합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .build()
                         )
                 ));
@@ -141,7 +180,7 @@ class ChatMessageControllerTest {
         Long roomId = 1L;
         Long userId = 1L;
 
-        ChatRoomLeaveResponseDTO response = ChatRoomLeaveResponseDTO.builder()
+        ChatRoomLeaveResponseDto response = ChatRoomLeaveResponseDto.builder()
                 .roomId(roomId)
                 .userId(userId)
                 .userName("김민규")
@@ -153,8 +192,8 @@ class ChatMessageControllerTest {
                 .willReturn(response);
 
         mockMvc.perform(
-                        RestDocumentationRequestBuilders.delete("/chats/{room_id}/leave", roomId)
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                        RestDocumentationRequestBuilders.delete("/api/v1/chats/{room_id}/leave", roomId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -165,6 +204,9 @@ class ChatMessageControllerTest {
                                 .tag("채팅")
                                 .summary("채팅방 나가기")
                                 .description("사용자가 참여 중인 채팅방에서 퇴장합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .pathParameters(
                                         parameterWithName("room_id").description("나갈 채팅방 ID")
                                 )
@@ -189,10 +231,10 @@ class ChatMessageControllerTest {
         Long messageId = 100L;
         boolean isPinned = true;
 
-        ChatNoticeUpdateRequestDTO request = new ChatNoticeUpdateRequestDTO();
+        ChatNoticeUpdateRequestDto request = new ChatNoticeUpdateRequestDto();
         request.setIsPinned(isPinned);
 
-        ChatNoticeResponseDTO response = ChatNoticeResponseDTO.builder()
+        ChatNoticeResponseDto response = ChatNoticeResponseDto.builder()
                 .messageId(messageId)
                 .roomId(1L)
                 .content("공지 내용입니다.")
@@ -206,8 +248,8 @@ class ChatMessageControllerTest {
                 .willReturn(response);
 
         mockMvc.perform(
-                        RestDocumentationRequestBuilders.patch("/chats/message/{message_id}/notice", messageId)
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                        RestDocumentationRequestBuilders.patch("/api/v1/chats/message/{message_id}/notice", messageId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                 )
@@ -219,6 +261,9 @@ class ChatMessageControllerTest {
                                 .tag("채팅")
                                 .summary("메시지 공지 설정/해제")
                                 .description("채팅방의 특정 메시지를 공지로 등록하거나 등록된 공지를 해제합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .pathParameters(
                                         parameterWithName("message_id").description("대상이 되는 메시지 ID")
                                 )

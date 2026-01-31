@@ -1,6 +1,7 @@
 package com.nect.core.entity.team.chat;
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -19,9 +20,9 @@ public class ChatRoom extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: Project 엔티티 생성 후 @ManyToOne으로 변경 필요
-    @Column(nullable = false)
-    private long projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
 
     // 1:1 채팅방일경우 팀원의 이름
     @Column(length=100)
