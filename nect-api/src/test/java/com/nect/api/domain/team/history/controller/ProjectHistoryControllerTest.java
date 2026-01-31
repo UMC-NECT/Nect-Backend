@@ -1,13 +1,18 @@
 package com.nect.api.domain.team.history.controller;
 
+import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryListResDto;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryResDto;
 import com.nect.api.domain.team.history.service.ProjectHistoryService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +22,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -27,16 +34,15 @@ import java.util.List;
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
-import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.mockito.Mockito.doNothing;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,24 +64,46 @@ class ProjectHistoryControllerTest {
     @MockitoBean
     private ProjectHistoryService historyService;
 
-    private Authentication authWithUser(Long userId) {
-        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_MEMBER"))
+                        .build()
+        );
+    }
+
+    private RequestPostProcessor mockUser(Long userId) {
+        UserDetailsImpl principal = UserDetailsImpl.builder()
                 .userId(userId)
                 .roles(List.of("ROLE_MEMBER"))
                 .build();
 
-        return new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities()
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                principal,
+                "",
+                principal.getAuthorities()
         );
-    }
 
+        return SecurityMockMvcRequestPostProcessors.authentication(auth);
+    }
 
     @Test
     @DisplayName("팀 히스토리 로그 조회(커서 기반, 최근 10개 고정)")
     void getHistories() throws Exception {
-        // given
         long projectId = 1L;
         long userId = 1L;
         Long cursor = 100L;
@@ -107,9 +135,8 @@ class ProjectHistoryControllerTest {
         given(historyService.getHistories(eq(projectId), eq(userId), eq(cursor)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
-                        .with(authentication(authWithUser(userId)))
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("cursor", String.valueOf(cursor))
                         .accept(MediaType.APPLICATION_JSON))
@@ -123,14 +150,13 @@ class ProjectHistoryControllerTest {
                                         .summary("팀 히스토리 로그 조회")
                                         .description("프로젝트 내 팀 히스토리 로그를 커서 기반으로 조회합니다. cursor 미입력 시 최신부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(
-                                                com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName("projectId")
-                                                        .description("프로젝트 ID")
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .queryParameters(
                                                 parameterWithName("cursor").optional().description("커서(이전 페이지 마지막 history_id 등)")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -143,7 +169,6 @@ class ProjectHistoryControllerTest {
                                                         .description("다음 페이지 조회를 위한 커서(null이면 다음 페이지 없음)"),
 
                                                 fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록(최대 10개)"),
-
                                                 fieldWithPath("body.items[].history_id").type(NUMBER).description("히스토리 ID"),
                                                 fieldWithPath("body.items[].actor_user_id").type(NUMBER).description("행위자(유저) ID"),
                                                 fieldWithPath("body.items[].action").type(STRING).description("액션 타입(HistoryAction)"),
@@ -160,7 +185,6 @@ class ProjectHistoryControllerTest {
     @Test
     @DisplayName("팀 히스토리 로그 조회(기본: cursor 미입력, 최근 10개 고정)")
     void getHistories_withoutParams() throws Exception {
-        // given
         long projectId = 1L;
         long userId = 1L;
 
@@ -169,12 +193,11 @@ class ProjectHistoryControllerTest {
                 List.of()
         );
 
-        given(historyService.getHistories(eq(projectId), eq(userId), eq(null)))
+        given(historyService.getHistories(eq(projectId), eq(userId), isNull()))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
-                        .with(authentication(authWithUser(userId)))
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -187,11 +210,10 @@ class ProjectHistoryControllerTest {
                                         .summary("팀 히스토리 로그 조회(기본)")
                                         .description("cursor 미입력 시 서버 정책으로 최신 로그부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(
-                                                com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName("projectId")
-                                                        .description("프로젝트 ID")
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),

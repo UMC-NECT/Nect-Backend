@@ -6,7 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -30,11 +35,15 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -55,6 +64,28 @@ class ProcessLinkControllerTest {
     @MockitoBean
     private ProcessAttachmentService processAttachmentService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_MEMBER"))
+                        .build()
+        );
+    }
+
     private RequestPostProcessor mockUser(Long userId) {
         UserDetailsImpl principal = UserDetailsImpl.builder()
                 .userId(userId)
@@ -70,27 +101,19 @@ class ProcessLinkControllerTest {
         return SecurityMockMvcRequestPostProcessors.authentication(auth);
     }
 
-
     @Test
     @DisplayName("링크 추가")
     void createLink() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
 
-        ProcessLinkCreateReqDto request = new ProcessLinkCreateReqDto(
-                "https://example.com"
-        );
-
-        ProcessLinkCreateResDto response = new ProcessLinkCreateResDto(
-                100L
-        );
+        ProcessLinkCreateReqDto request = new ProcessLinkCreateReqDto("https://example.com");
+        ProcessLinkCreateResDto response = new ProcessLinkCreateResDto(100L);
 
         given(processAttachmentService.createLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/links", projectId, processId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -134,7 +157,6 @@ class ProcessLinkControllerTest {
     @Test
     @DisplayName("링크 삭제")
     void deleteLink() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long linkId = 100L;
@@ -142,7 +164,6 @@ class ProcessLinkControllerTest {
 
         willDoNothing().given(processAttachmentService).deleteLink(eq(projectId), eq(userId), eq(processId), eq(linkId));
 
-        // when, then
         mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/links/{linkId}", projectId, processId, linkId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)

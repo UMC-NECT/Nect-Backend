@@ -1,10 +1,16 @@
 package com.nect.api.domain.team.file.controller;
 
+import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.service.FileService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.enums.FileExt;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,31 +19,31 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
-import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.multipart;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -54,6 +60,28 @@ class FileControllerTest {
     @MockitoBean
     private FileService fileService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_MEMBER"))
+                        .build()
+        );
+    }
+
     private Authentication authWithUser(Long userId) {
         UserDetailsImpl userDetails = UserDetailsImpl.builder()
                 .userId(userId)
@@ -66,7 +94,6 @@ class FileControllerTest {
                 userDetails.getAuthorities()
         );
     }
-
 
     @Test
     @DisplayName("프로젝트 파일 업로드")
@@ -112,10 +139,10 @@ class FileControllerTest {
                                 .summary("프로젝트 파일 업로드")
                                 .description("프로젝트 파일을 업로드합니다. 업로드 성공 시 file_id/file_url 등을 반환합니다.")
                                 .pathParameters(
-                                        parameterWithName("projectId").description("프로젝트 ID")
+                                        ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                 )
                                 .requestHeaders(
-                                        headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                 )
                                 .responseFields(
                                         fieldWithPath("status").type(OBJECT).description("응답 상태"),

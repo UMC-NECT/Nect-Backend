@@ -8,7 +8,11 @@ import com.nect.api.domain.team.process.dto.req.ProcessTaskItemUpsertReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemReorderResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.service.ProcessTaskItemService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,11 +37,16 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -58,6 +67,28 @@ class ProcessTaskItemControllerTest {
     @MockitoBean
     private ProcessTaskItemService processTaskItemService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_MEMBER"))
+                        .build()
+        );
+    }
+
     private RequestPostProcessor mockUser(Long userId) {
         UserDetailsImpl principal = UserDetailsImpl.builder()
                 .userId(userId)
@@ -76,7 +107,6 @@ class ProcessTaskItemControllerTest {
     @Test
     @DisplayName("업무 항목 생성")
     void createTaskItem() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
@@ -98,7 +128,6 @@ class ProcessTaskItemControllerTest {
         given(processTaskItemService.create(eq(projectId), eq(userId), eq(processId), any(ProcessTaskItemUpsertReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/task-items", projectId, processId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -148,7 +177,6 @@ class ProcessTaskItemControllerTest {
     @Test
     @DisplayName("업무 항목 수정")
     void updateTaskItem() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long taskItemId = 100L;
@@ -171,7 +199,6 @@ class ProcessTaskItemControllerTest {
         given(processTaskItemService.update(eq(projectId), eq(userId), eq(processId), eq(taskItemId), any(ProcessTaskItemUpsertReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -222,7 +249,6 @@ class ProcessTaskItemControllerTest {
     @Test
     @DisplayName("업무 항목 삭제")
     void deleteTaskItem() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long taskItemId = 100L;
@@ -230,7 +256,6 @@ class ProcessTaskItemControllerTest {
 
         willDoNothing().given(processTaskItemService).delete(eq(projectId), eq(userId), eq(processId), eq(taskItemId));
 
-        // when, then
         mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/task-items/{taskItemId}", projectId, processId, taskItemId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -271,7 +296,6 @@ class ProcessTaskItemControllerTest {
     @Test
     @DisplayName("업무 항목 드래그 정렬 저장")
     void reorderTaskItems() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
@@ -292,7 +316,6 @@ class ProcessTaskItemControllerTest {
         given(processTaskItemService.reorder(eq(projectId), eq(userId), eq(processId), any(ProcessTaskItemReorderReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/task-items/reorder", projectId, processId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)

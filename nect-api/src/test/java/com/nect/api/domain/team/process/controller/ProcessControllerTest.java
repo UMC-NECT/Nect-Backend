@@ -6,14 +6,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.ProcessService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.user.enums.RoleField;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -32,29 +35,22 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
+import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-
-import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
-import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
-import static org.springframework.restdocs.payload.JsonFieldType.NUMBER;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
-import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
-import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -74,6 +70,32 @@ class ProcessControllerTest {
     @MockitoBean
     private ProcessService processService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    @BeforeEach
+    void setUpAuth() {
+        // 토큰 검증 통과
+        doNothing().when(jwtUtil).validateToken(anyString());
+        // 블랙리스트 아님
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        // 토큰에서 userId 추출
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        // 필터가 SecurityContext에 넣을 UserDetails
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_MEMBER"))
+                        .build()
+        );
+    }
+
     private RequestPostProcessor mockUser(Long userId) {
         UserDetailsImpl principal = UserDetailsImpl.builder()
                 .userId(userId)
@@ -92,30 +114,28 @@ class ProcessControllerTest {
     @Test
     @DisplayName("프로세스 생성")
     void createProcess() throws Exception {
-        // given
         long projectId = 1L;
         long userId = 1L;
         long createdProcessId = 10L;
 
         ProcessCreateReqDto request = new ProcessCreateReqDto(
-                "1주차 미션",                 // process_title
-                "프로세스 내용",              // process_content
-                ProcessStatus.IN_PROGRESS,    // process_status
-                List.of(),                    // assignee_ids
-                List.of(),                    // role_fields
-                null,                         // custom_field_name
-                LocalDate.of(2026, 1, 19),    // start_date
-                LocalDate.of(2026, 1, 25),    // dead_line
-                List.of(),                    // mention_user_ids
-                List.of(),                    // file_ids
-                List.of(),                    // links
-                List.of()                     // task_items
+                "1주차 미션",
+                "프로세스 내용",
+                ProcessStatus.IN_PROGRESS,
+                List.of(),
+                List.of(),
+                null,
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 25),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
         );
 
         given(processService.createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class)))
                 .willReturn(createdProcessId);
 
-        // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -132,6 +152,9 @@ class ProcessControllerTest {
                                         .description("프로젝트에 새로운 프로세스(카드)를 생성합니다.")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
                                                 fieldWithPath("process_title").type(STRING).description("프로세스 제목"),
@@ -168,17 +191,16 @@ class ProcessControllerTest {
                                         .build()
                         )
                 ));
+
         verify(processService).createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class));
     }
 
     @Test
     @DisplayName("프로세스 상세 조회")
     void getProcessDetail() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
-
 
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 1L,
@@ -205,8 +227,8 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 25),
                 0,
 
-                List.of(),                 // role_fields
-                List.of("디자인"),         // custom_fields
+                List.of(),
+                List.of("디자인"),
 
                 List.of(
                         new AssigneeResDto(1L, "유저1", "https://img.com/1.png"),
@@ -237,8 +259,6 @@ class ProcessControllerTest {
         given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId)))
                 .willReturn(response);
 
-
-        // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -326,23 +346,22 @@ class ProcessControllerTest {
     @Test
     @DisplayName("프로세스 기본 정보 수정")
     void updateProcessBasic() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
 
         ProcessBasicUpdateReqDto request = new ProcessBasicUpdateReqDto(
-                "수정된 제목",                                   // process_title
-                "수정된 내용",                                   // process_content
-                ProcessStatus.IN_PROGRESS,                       // process_status
-                LocalDate.of(2026, 1, 20),                       // start_date
-                LocalDate.of(2026, 1, 26),                       // dead_line
+                "수정된 제목",
+                "수정된 내용",
+                ProcessStatus.IN_PROGRESS,
+                LocalDate.of(2026, 1, 20),
+                LocalDate.of(2026, 1, 26),
 
-                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM), // role_fields
-                List.of("AI"),                                      // custom_fields
+                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM),
+                List.of("AI"),
 
-                List.of(1L, 2L),                                    // assignee_ids
-                List.of(3L, 4L)                                     // mention_user_ids
+                List.of(1L, 2L),
+                List.of(3L, 4L)
         );
 
         ProcessBasicUpdateResDto response = new ProcessBasicUpdateResDto(
@@ -353,11 +372,11 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 20),
                 LocalDate.of(2026, 1, 26),
 
-                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM), // roleFields
-                List.of("AI"),                                                    // customFields
+                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM),
+                List.of("AI"),
 
-                List.of(1L, 2L),                                                  // assigneeIds
-                List.of(3L, 4L),                                                  // mentionUserIds
+                List.of(1L, 2L),
+                List.of(3L, 4L),
 
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0)
         );
@@ -365,7 +384,6 @@ class ProcessControllerTest {
         given(processService.updateProcessBasic(eq(projectId), eq(userId), eq(processId), any(ProcessBasicUpdateReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(
                         patch("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
                                 .with(mockUser(userId))
@@ -431,7 +449,6 @@ class ProcessControllerTest {
         verify(processService).updateProcessBasic(eq(projectId), eq(userId), eq(processId), any(ProcessBasicUpdateReqDto.class));
     }
 
-
     @Test
     @DisplayName("프로세스 삭제")
     void deleteProcess() throws Exception {
@@ -471,13 +488,12 @@ class ProcessControllerTest {
                         )
                 ));
 
-        verify(processService).deleteProcess(eq(projectId), eq(userId),  eq(processId));
+        verify(processService).deleteProcess(eq(projectId), eq(userId), eq(processId));
     }
 
     @Test
     @DisplayName("주차별 프로세스 조회")
     void getWeekProcesses() throws Exception {
-        // given
         long projectId = 1L;
         long userId = 1L;
 
@@ -490,7 +506,6 @@ class ProcessControllerTest {
         given(processService.getWeekProcesses(eq(projectId), eq(userId), any()))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/week", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -533,24 +548,20 @@ class ProcessControllerTest {
         verify(processService).getWeekProcesses(eq(projectId), eq(userId), any());
     }
 
-
     @Test
     @DisplayName("파트별 작업 현황 조회")
     void getPartProcesses() throws Exception {
-        // given
         long projectId = 1L;
         long userId = 1L;
 
         ProcessPartResDto response = new ProcessPartResDto(
-                "TEAM",   // lane_key (예: "TEAM" / "FIELD" / "BACKEND" 등)
-                List.of() // groups
+                "TEAM",
+                List.of()
         );
 
         given(processService.getPartProcesses(eq(projectId), eq(userId), any()))
                 .willReturn(response);
 
-
-        // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/part", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -594,7 +605,6 @@ class ProcessControllerTest {
     @Test
     @DisplayName("프로세스 위치(정렬) 변경")
     void updateProcessOrder() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
@@ -618,7 +628,6 @@ class ProcessControllerTest {
         given(processService.updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/order", projectId, processId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -670,7 +679,6 @@ class ProcessControllerTest {
     @Test
     @DisplayName("프로세스 상태 변경")
     void updateProcessStatus() throws Exception {
-        // given
         long projectId = 1L;
         long processId = 10L;
         long userId = 1L;
@@ -686,10 +694,9 @@ class ProcessControllerTest {
         given(processService.updateProcessStatus(eq(projectId), eq(userId), eq(processId), any(ProcessStatusUpdateReqDto.class)))
                 .willReturn(response);
 
-        // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/status", projectId, processId)
                         .with(mockUser(userId))
-                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN) 
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -728,6 +735,4 @@ class ProcessControllerTest {
 
         verify(processService).updateProcessStatus(eq(projectId), eq(userId), eq(processId), any(ProcessStatusUpdateReqDto.class));
     }
-
-
 }
