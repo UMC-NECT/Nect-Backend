@@ -205,8 +205,9 @@ class ProcessControllerTest {
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 1L,
                 "작성자",
-                List.of(101L, 102L)
+                List.of("DESIGNER", "CUSTOM:UX Writer")
         );
+
 
         List<ProcessFeedbackCreateResDto> feedbacks = List.of(
                 new ProcessFeedbackCreateResDto(
@@ -330,7 +331,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.feedbacks[].created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.feedbacks[].created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.feedbacks[].created_by.user_name").type(STRING).description("작성자 이름"),
-                                                fieldWithPath("body.feedbacks[].created_by.field_ids").type(ARRAY).description("작성자 분야 ID 목록"),
+                                                fieldWithPath("body.feedbacks[].created_by.role_fields").type(ARRAY).description("작성자 역할 분야 목록(RoleField/CUSTOM)"),
 
                                                 fieldWithPath("body.feedbacks[].created_at").type(STRING).description("피드백 생성일시"),
 
