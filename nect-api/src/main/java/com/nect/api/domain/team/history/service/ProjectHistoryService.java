@@ -7,6 +7,7 @@ import com.nect.api.domain.team.history.exception.HistoryException;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.history.ProjectHistory;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.history.ProjectHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -23,9 +24,21 @@ public class ProjectHistoryService {
     private static final int PAGE_SIZE = 10;
 
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final ProjectHistoryRepository historyRepository;
 
-    public ProjectHistoryListResDto getHistories(Long projectId, Long cursor) {
+
+    private void assertActiveProjectMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new HistoryException(
+                    HistoryErrorCode.FORBIDDEN,
+                    "not an active project member. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
+
+    public ProjectHistoryListResDto getHistories(Long projectId, Long userId, Long cursor) {
+        assertActiveProjectMember(projectId, userId);
 
         // 프로젝트 존재 확인
         Project project = projectRepository.findById(projectId)

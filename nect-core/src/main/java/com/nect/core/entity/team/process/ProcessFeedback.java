@@ -2,6 +2,7 @@ package com.nect.core.entity.team.process;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -23,10 +24,9 @@ public class ProcessFeedback extends BaseEntity {
     @JoinColumn(name="process_id", nullable=false)
     private Process process;
 
-    // TODO
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "created_by", nullable = false)
-//    private User createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
@@ -41,12 +41,11 @@ public class ProcessFeedback extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // TODO : User createdBy 추가하기
     @Builder
-    private ProcessFeedback(Process process, String content) {
+    private ProcessFeedback(Process process, String content, User createdBy) {
         this.process = process;
-//        this.createdBy = createdBy;
         this.content = content;
+        this.createdBy = createdBy;
         this.status = ProcessFeedbackStatus.OPEN;
     }
 
