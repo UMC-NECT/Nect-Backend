@@ -5,10 +5,7 @@ import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.workspace.enums.PostType;
 import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -47,4 +44,52 @@ public class Post extends BaseEntity {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Builder
+    private Post(User author,
+                 Project project,
+                 PostType postType,
+                 String title,
+                 String content,
+                 Boolean isPinned) {
+        this.author = author;
+        this.project = project;
+        this.postType = postType;
+        this.title = title;
+        this.content = content;
+        this.isPinned = (isPinned != null) ? isPinned : false;
+    }
+
+    public void update(PostType postType,
+                       String title,
+                       String content,
+                       Boolean isPinned) {
+        if (postType != null) this.postType = postType;
+        if (title != null) this.title = title;
+        if (content != null) this.content = content;
+        if (isPinned != null) this.isPinned = isPinned;
+    }
+
+    // 좋아요 증가
+    public void increaseLikeCount() {
+        this.likeCount = (this.likeCount == null ? 0L : this.likeCount) + 1L;
+    }
+
+    // 좋아요 감소
+    public void decreaseLikeCount() {
+        long current = (this.likeCount == null ? 0L : this.likeCount);
+        this.likeCount = Math.max(0L, current - 1L);
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

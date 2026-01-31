@@ -1,6 +1,8 @@
 package com.nect.core.entity.team.history.enums;
 
 public enum HistoryAction {
+    PROJECT_BOARD_BASIC_INFO_UPDATED,
+
     PROCESS_CREATED,
     PROCESS_UPDATED,
     PROCESS_DELETED,
@@ -20,5 +22,15 @@ public enum HistoryAction {
     DOCUMENT_ATTACHED,
     DOCUMENT_DETACHED,
     LINK_ATTACHED,
-    LINK_DETACHED
+    LINK_DETACHED,
+
+    POST_CREATED,
+    POST_UPDATED,
+    POST_DELETED,
+    POST_PINNED,
+    POST_UNPINNED,
+
+    SCHEDULE_CREATED,
+    SCHEDULE_UPDATED,
+    SCHEDULE_DELETED,
 }

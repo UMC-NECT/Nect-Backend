@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
         name = "post_like",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_post_comment_like_comment_member",
+                        name = "uk_post_like_post_user",
                         columnNames = {"post_id", "user_id"}
                 )
         }
@@ -37,4 +37,10 @@ public class PostLike extends BaseEntity {
     void setPost(Post post) { this.post = post; }
     void setUser(User user) { this.user = user; }
 
+    public static PostLike of(Post post, User user) {
+        PostLike pl = new PostLike();
+        pl.post = post;
+        pl.user = user;
+        return pl;
+    }
 }
