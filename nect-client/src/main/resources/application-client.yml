@@ -1,1 +1,9 @@
-# nect-client profile configuration
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+  fallback-model: ${OPENAI_FALLBACK_MODEL:gpt-4.1}
+  connect-timeout-seconds: ${OPENAI_CONNECT_TIMEOUT_SECONDS:2}
+  read-timeout-seconds: ${OPENAI_READ_TIMEOUT_SECONDS:20}
+  max-retries: ${OPENAI_MAX_RETRIES:2}
+  initial-backoff-millis: ${OPENAI_INITIAL_BACKOFF_MILLIS:200}
