@@ -10,6 +10,6 @@ import lombok.*;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 //공지사항 등록 DTO
-public class ChatNoticeUpdateRequestDTO {
+public class ChatNoticeUpdateRequestDto {
     private Boolean isPinned;
 }

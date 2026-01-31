@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 //자신이 속한 채팅방 모음 DTO
-public class ChatRoomListDTO {
+public class ChatRoomListDto {
     private Long room_id;
     private String room_name;
     private String last_message;

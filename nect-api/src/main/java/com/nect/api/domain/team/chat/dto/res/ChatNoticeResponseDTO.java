@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 //공지사항 등록 DTO
-public class ChatNoticeResponseDTO {
+public class ChatNoticeResponseDto {
     private Long messageId;
     private Long roomId;
     private String content;

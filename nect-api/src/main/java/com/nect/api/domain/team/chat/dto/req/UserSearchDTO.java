@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 // 유저 조회 DTO
-public class UserSearchDTO {
+public class UserSearchDto {
     private Long userId;
     private String userName;
     private String profileImage;  //TODO : 프로필 엔티티 생기면 수정 필요

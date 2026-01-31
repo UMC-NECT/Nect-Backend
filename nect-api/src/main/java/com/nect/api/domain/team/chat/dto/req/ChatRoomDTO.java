@@ -16,13 +16,13 @@ import java.util.List;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 //자신이 속한 채팅방 1개 DTO
-public class ChatRoomDTO {
+public class ChatRoomDto {
     private Long roomId;
     private Long projectId;
     private String name;
     private ChatRoomType type;
     private List<Long> userIds;
     private Boolean hasNewMessage; // 새 메시지 여부
-    private ChatMessageDTO lastMessage; // 마지막 메시지
+    private ChatMessageDto lastMessage; // 마지막 메시지
     private LocalDateTime createdAt;
 }

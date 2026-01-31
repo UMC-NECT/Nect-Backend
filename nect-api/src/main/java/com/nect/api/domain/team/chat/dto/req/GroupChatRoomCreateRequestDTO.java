@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 // 팀 채팅 방 생성 DTO
-public class GroupChatRoomCreateRequestDTO {
+public class GroupChatRoomCreateRequestDto {
 
     private Long projectId;//TODO 프로젝트 관련 엔티티 받으면 수정필요
     private String roomName;

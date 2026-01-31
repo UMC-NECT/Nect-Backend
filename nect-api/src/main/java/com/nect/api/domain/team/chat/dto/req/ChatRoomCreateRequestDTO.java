@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 //1:1 방 생성 DTO
-public class ChatRoomCreateRequestDTO {
+public class ChatRoomCreateRequestDto {
     private Long project_id; //TODO 프로젝트  엔티티 받으면 수정필요
     private Long target_user_id;
 }

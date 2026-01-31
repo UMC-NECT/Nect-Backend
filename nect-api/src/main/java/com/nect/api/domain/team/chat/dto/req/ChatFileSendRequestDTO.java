@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatFileSendRequestDTO {
-    private Long userId;//TODO User 엔티티 생성 후 고려사항
+public class ChatFileSendRequestDto {
+    private Long userId;
     private Long fileId;
 }

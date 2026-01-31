@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 // 방 나가기 DTO
-public class ChatRoomLeaveResponseDTO {
+public class ChatRoomLeaveResponseDto {
     private Long roomId;
     private Long userId;
     private String userName;

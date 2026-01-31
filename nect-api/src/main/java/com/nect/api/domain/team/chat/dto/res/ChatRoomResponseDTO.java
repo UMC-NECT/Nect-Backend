@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatRoomResponseDTO{
+public class ChatRoomResponseDto {
     private Long roomId;
     private Long projectId;    //TODO 프로젝트 관련 엔티티에 따라 수정
     private String roomName;

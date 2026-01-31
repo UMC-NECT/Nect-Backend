@@ -11,7 +11,7 @@ import lombok.*;
 @Builder
 //실시간 채팅 DTO
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatMessageSendRequestDTO {
+public class ChatMessageSendRequestDto {
     private Long userId; //TODO 실시간 채팅 테스트용 수정필요
     private String content;
 }
