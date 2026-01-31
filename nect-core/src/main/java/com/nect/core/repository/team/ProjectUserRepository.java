@@ -1,5 +1,6 @@
 package com.nect.core.repository.team;
 
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;

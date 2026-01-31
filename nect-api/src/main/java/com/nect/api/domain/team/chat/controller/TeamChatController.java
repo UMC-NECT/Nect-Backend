@@ -1,10 +1,10 @@
 package com.nect.api.domain.team.chat.controller;
 
 import com.nect.api.global.response.ApiResponse;
-import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.api.domain.team.chat.service.TeamChatService;
 import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/chats/rooms")
+@RequestMapping("/api/v1/chats/rooms")
 @RequiredArgsConstructor
 public class TeamChatController {
 
@@ -24,41 +24,41 @@ public class TeamChatController {
 
 
     @GetMapping("/{projectId}/users")
-    public ApiResponse<List<ProjectMemberResponseDTO>> getProjectMembers(
+    public ApiResponse<List<ProjectMemberResponseDto>> getProjectMembers(
             @PathVariable Long projectId,
                      @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;//TODO 토큰 없을 시 임시 방어 코드
-        List<ProjectMemberResponseDTO> response = teamChatService.getProjectMembers(projectId);
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
+        List<ProjectMemberResponseDto> response = teamChatService.getProjectMembers(projectId);
 
         return ApiResponse.ok(response);
     }
 
     @PostMapping("/personal")
-    public ApiResponse<ChatRoomResponseDTO> createPersonalChatRoom(
-            @RequestBody ChatRoomCreateRequestDTO request,
+    public ApiResponse<ChatRoomResponseDto> createPersonalChatRoom(
+            @RequestBody ChatRoomCreateRequestDto request,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
 
 
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;//TODO 토큰 없을 시 임시 방어 코드
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
 
-        ChatRoomResponseDTO response = teamChatService.createOneOnOneChatRoom(currentUserId, request);
+        ChatRoomResponseDto response = teamChatService.createOneOnOneChatRoom(currentUserId, request);
         return ApiResponse.ok(response);
     }
 
 
     @PostMapping("/group")
-    public ApiResponse<ChatRoomResponseDTO> createGroupChatRoom(
-            @RequestBody GroupChatRoomCreateRequestDTO request
+    public ApiResponse<ChatRoomResponseDto> createGroupChatRoom(
+            @RequestBody GroupChatRoomCreateRequestDto request
             , @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;//TODO 토큰 없을 시 임시 방어 코드
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
 
-        ChatRoomResponseDTO response = teamChatService.createGroupChatRoom(currentUserId, request);
+        ChatRoomResponseDto response = teamChatService.createGroupChatRoom(currentUserId, request);
         return ApiResponse.ok(response);
     }
 

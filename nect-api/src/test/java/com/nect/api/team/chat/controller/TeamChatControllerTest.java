@@ -2,13 +2,17 @@ package com.nect.api.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.api.domain.team.chat.service.TeamChatService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,16 +30,16 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.*;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -53,11 +57,37 @@ public class TeamChatControllerTest {
     @MockitoBean
     private TeamChatService teamChatService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
+
+    @BeforeEach
+    void setUpAuth() {
+
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_USER"))
+                        .build()
+        );
+    }
+
     @Test
     @DisplayName("프로젝트 팀원 조회")
     void getProjectMembers() throws Exception {
-        List<ProjectMemberResponseDTO> users = Arrays.asList(
-                ProjectMemberResponseDTO.builder()
+        List<ProjectMemberResponseDto> users = Arrays.asList(
+                ProjectMemberResponseDto.builder()
                         .userId(2L)
                         .username("김민규")
                         .build()
@@ -67,9 +97,10 @@ public class TeamChatControllerTest {
                 .willReturn(users);
 
         mockMvc.perform(
-                        get("/chats/rooms/{projectId}/users", 1L)
+                        get("/api/v1/chats/rooms/{projectId}/users", 1L)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                                .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
                 .andDo(document("project-members-get",
@@ -79,6 +110,9 @@ public class TeamChatControllerTest {
                                 .tag("채팅방")
                                 .summary("프로젝트 팀원 조회")
                                 .description("특정 프로젝트에 속한 팀원 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .pathParameters(
                                         parameterWithName("projectId").description("프로젝트 ID")
                                 )
@@ -102,11 +136,11 @@ public class TeamChatControllerTest {
     @Test
     @DisplayName("1:1 채팅방 생성")
     void createPersonalChatRoom() throws Exception {
-        ChatRoomCreateRequestDTO request = new ChatRoomCreateRequestDTO();
+        ChatRoomCreateRequestDto request = new ChatRoomCreateRequestDto();
         request.setProject_id(1L);
         request.setTarget_user_id(2L);
 
-        ChatRoomResponseDTO response = ChatRoomResponseDTO.builder()
+        ChatRoomResponseDto response = ChatRoomResponseDto.builder()
                 .roomId(10L)
                 .projectId(1L)
                 .roomName("김민규")
@@ -114,14 +148,15 @@ public class TeamChatControllerTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        given(teamChatService.createOneOnOneChatRoom(anyLong(), any(ChatRoomCreateRequestDTO.class)))
+        given(teamChatService.createOneOnOneChatRoom(anyLong(), any(ChatRoomCreateRequestDto.class)))
                 .willReturn(response);
 
         mockMvc.perform(
-                        post("/chats/rooms/personal")
+                        post("/api/v1/chats/rooms/personal")
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                                .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
                 .andDo(document("chat-room-create-personal",
@@ -131,6 +166,9 @@ public class TeamChatControllerTest {
                                 .tag("채팅방")
                                 .summary("1:1 채팅방 생성")
                                 .description("동일 프로젝트 팀원과 1:1 채팅방을 생성합니다. 이미 존재하면 기존 방을 반환합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .requestFields(
                                         fieldWithPath("project_id").description("프로젝트 ID"),
                                         fieldWithPath("target_user_id").description("상대방 유저 ID")
@@ -154,12 +192,12 @@ public class TeamChatControllerTest {
     @Test
     @DisplayName("그룹 채팅방 생성")
     void createGroupChatRoom() throws Exception {
-        GroupChatRoomCreateRequestDTO request = new GroupChatRoomCreateRequestDTO();
+        GroupChatRoomCreateRequestDto request = new GroupChatRoomCreateRequestDto();
         request.setProjectId(1L);
         request.setRoomName("백엔드 개발팀");
         request.setTargetUserIds(Arrays.asList(1L, 2L, 3L));
 
-        ChatRoomResponseDTO response = ChatRoomResponseDTO.builder()
+        ChatRoomResponseDto response = ChatRoomResponseDto.builder()
                 .roomId(20L)
                 .projectId(1L)
                 .roomName("백엔드 개발팀")
@@ -167,14 +205,15 @@ public class TeamChatControllerTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        given(teamChatService.createGroupChatRoom(anyLong(), any(GroupChatRoomCreateRequestDTO.class)))
+        given(teamChatService.createGroupChatRoom(anyLong(), any(GroupChatRoomCreateRequestDto.class)))
                 .willReturn(response);
 
         mockMvc.perform(
-                        post("/chats/rooms/group")
+                        post("/api/v1/chats/rooms/group")
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .with(user(UserDetailsImpl.builder().userId(1L).roles(List.of("ROLE_USER")).build()))
+                                .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
                 .andDo(document("chat-room-create-group",
@@ -184,6 +223,9 @@ public class TeamChatControllerTest {
                                 .tag("채팅방")
                                 .summary("그룹 채팅방 생성")
                                 .description("프로젝트 내 여러 팀원을 초대하여 그룹 채팅방을 생성합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .requestFields(
                                         fieldWithPath("project_id").description("프로젝트 ID"),
                                         fieldWithPath("room_name").description("채팅방 이름"),

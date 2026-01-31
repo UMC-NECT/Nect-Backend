@@ -1,6 +1,6 @@
 package com.nect.api.domain.team.chat.service;
 
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ public class RedisPublisher {
     private final RedisTemplate<String, Object> objectRedisTemplate;
 
     // 메시지 발행
-    public void publish(String channel, ChatMessageDTO message) {
+    public void publish(String channel, ChatMessageDto message) {
         try {
 
             objectRedisTemplate.convertAndSend(channel, message);

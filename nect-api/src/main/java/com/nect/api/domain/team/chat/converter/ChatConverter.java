@@ -1,10 +1,11 @@
 package com.nect.api.domain.team.chat.converter;
 
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
-import com.nect.api.domain.team.chat.dto.req.ChatRoomDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
+import com.nect.api.domain.team.chat.dto.req.ChatRoomDto;
+import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
@@ -22,8 +23,8 @@ public class ChatConverter {
 
 
     //ChatMessage  -> ChatMessageDto
-    public static ChatMessageDTO toMessageDto(ChatMessage message) {
-        ChatMessageDTO dto = new ChatMessageDTO();
+    public static ChatMessageDto toMessageDto(ChatMessage message) {
+        ChatMessageDto dto = new ChatMessageDto();
         dto.setMessageId(message.getId());
         dto.setRoomId(message.getChatRoom().getId());
 
@@ -36,7 +37,7 @@ public class ChatConverter {
     }
 
     //DTO -> ChatMessage
-    public static ChatMessage toMessage(ChatMessageDTO dto,User user, ChatRoom chatRoom) {
+    public static ChatMessage toMessage(ChatMessageDto dto, User user, ChatRoom chatRoom) {
         return ChatMessage.builder()
                 .chatRoom(chatRoom)
                 .user(user)
@@ -59,18 +60,18 @@ public class ChatConverter {
 
     //ChatRoom 변환
     //ChatRoom-> DTO
-    public static ChatRoomDTO toRoomDto(ChatRoom room) {
-        ChatRoomDTO dto = new ChatRoomDTO();
+    public static ChatRoomDto toRoomDto(ChatRoom room) {
+        ChatRoomDto dto = new ChatRoomDto();
         dto.setRoomId(room.getId());
-        dto.setProjectId(room.getProjectId());
+        dto.setProjectId(room.getProject() != null ? room.getProject().getId() : null);
         dto.setName(room.getName());
         dto.setType(room.getType());
         dto.setCreatedAt(room.getCreatedAt());
         return dto;
     }
     //ChatRoom -> >DTO(멤버포함)
-    public static ChatRoomDTO toRoomDto(ChatRoom room, List<ChatRoomUser> members) {
-        ChatRoomDTO dto = toRoomDto(room);
+    public static ChatRoomDto toRoomDto(ChatRoom room, List<ChatRoomUser> members) {
+        ChatRoomDto dto = toRoomDto(room);
 
         // ChatRoomMember에서 userId 추출
         List<Long> userIds = members.stream()
@@ -81,9 +82,9 @@ public class ChatConverter {
         return dto;
     }
 
-    public static ChatRoom toChatRoomEntity(Long projectId, String roomName, ChatRoomType type) {
+    public static ChatRoom toChatRoomEntity(Project project, String roomName, ChatRoomType type) {
         ChatRoom chatRoom = new ChatRoom();
-        chatRoom.setProjectId(projectId);
+        chatRoom.setProject(project);
         chatRoom.setName(roomName);
         chatRoom.setType(type);
         return chatRoom;
@@ -100,7 +101,7 @@ public class ChatConverter {
         return member;
     }
 
-    public static ChatRoomResponseDTO toResponseDTO(ChatRoom chatRoom, User targetUser) {
+    public static ChatRoomResponseDto toResponseDTO(ChatRoom chatRoom, User targetUser) {
 
         String roomName = chatRoom.getName();
         String profileImage = null;
@@ -111,9 +112,9 @@ public class ChatConverter {
             // profileImage = targetUser.getProfileImage(); // TODO: 나중에 프로필 이미지 생기면 추가
         }
 
-        return ChatRoomResponseDTO.builder()
+        return ChatRoomResponseDto.builder()
                 .roomId(chatRoom.getId())
-                .projectId(chatRoom.getProjectId())
+                .projectId(chatRoom.getProject() != null ? chatRoom.getProject().getId() : null)
                 .roomName(roomName)
                 .roomType(chatRoom.getType())
                 .profileImage(profileImage)
@@ -121,14 +122,14 @@ public class ChatConverter {
                 .build();
     }
 
-    public static ProjectMemberResponseDTO toProjectMemberResponseDTO(User user) {
-        return ProjectMemberResponseDTO.builder()
+    public static ProjectMemberResponseDto toProjectMemberResponseDTO(User user) {
+        return ProjectMemberResponseDto.builder()
                 .userId(user.getUserId())
                 .username(user.getNickname())
                 .build();
     }
 
-    public static List<ProjectMemberResponseDTO> toProjectMemberResponseDTOList(List<User> users) {
+    public static List<ProjectMemberResponseDto> toProjectMemberResponseDTOList(List<User> users) {
         return users.stream()
                 .map(ChatConverter::toProjectMemberResponseDTO)
                 .collect(Collectors.toList());
@@ -136,8 +137,8 @@ public class ChatConverter {
 
 
     //ChatMessage -> ChatNoticeResponseDTO
-    public static ChatNoticeResponseDTO toNoticeResponseDTO(ChatMessage message) {
-        return ChatNoticeResponseDTO.builder()
+    public static ChatNoticeResponseDto toNoticeResponseDTO(ChatMessage message) {
+        return ChatNoticeResponseDto.builder()
                 .messageId(message.getId())
                 .roomId(message.getChatRoom().getId())
                 .content(message.getContent())
