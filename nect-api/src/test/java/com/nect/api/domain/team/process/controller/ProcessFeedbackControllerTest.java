@@ -170,7 +170,8 @@ class ProcessFeedbackControllerTest {
                                                 fieldWithPath("body.created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.created_by.user_name").type(STRING).description("작성자 이름"),
-                                                fieldWithPath("body.created_by.field_ids").type(ARRAY).description("작성자 분야 ID 목록"),
+                                                fieldWithPath("body.created_by.role_fields").type(ARRAY)
+                                                        .description("작성자 역할 분야 목록(RoleField enum name 또는 CUSTOM:직접입력)"),
 
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)")
                                         )
@@ -250,7 +251,8 @@ class ProcessFeedbackControllerTest {
                                                 fieldWithPath("body.created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.created_by.user_name").type(STRING).description("작성자 이름"),
-                                                fieldWithPath("body.created_by.field_ids").type(ARRAY).description("작성자 분야 ID 목록"),
+                                                fieldWithPath("body.created_by.role_fields").type(ARRAY)
+                                                        .description("작성자 역할 분야 목록(RoleField enum name 또는 CUSTOM:직접입력)"),
 
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)"),
                                                 fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)")

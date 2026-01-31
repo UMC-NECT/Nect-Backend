@@ -14,6 +14,7 @@ import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessFeedback;
 import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessFeedbackRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -64,23 +66,28 @@ public class ProcessFeedbackService {
         }
     }
 
-    private Map<Long, List<Long>> getFieldIdsMap(Long projectId, Collection<Long> userIds) {
+    private Map<Long, List<String>> getRoleFieldLabelsMap(Long projectId, Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) return Map.of();
 
-        List<ProjectUserRepository.UserFieldIdsRow> rows =
-                projectUserRepository.findActiveUserFieldIdsByProjectIdAndUserIds(projectId, new ArrayList<>(userIds));
-
-        Map<Long, List<Long>> map = new HashMap<>();
-        for (ProjectUserRepository.UserFieldIdsRow r : rows) {
-            if (r.getUserId() == null) continue;
-            if (r.getFieldId() == null) continue;
-            map.computeIfAbsent(r.getUserId(), k -> new ArrayList<>()).add(r.getFieldId());
-        }
-
-        for (Map.Entry<Long, List<Long>> e : map.entrySet()) {
-            e.setValue(e.getValue().stream().distinct().toList());
-        }
-        return map;
+        return projectUserRepository
+                .findActiveUserRoleFieldsByProjectIdAndUserIds(projectId, new ArrayList<>(userIds))
+                .stream()
+                .filter(r -> r.getUserId() != null)
+                .collect(Collectors.groupingBy(
+                        ProjectUserRepository.UserRoleFieldsRow::getUserId,
+                        Collectors.mapping(
+                                r -> (r.getRoleField() == RoleField.CUSTOM)
+                                        ? "CUSTOM:" + r.getCustomRoleFieldName()
+                                        : r.getRoleField().name(),
+                                Collectors.collectingAndThen(
+                                        Collectors.toList(),
+                                        list -> list.stream()
+                                                .filter(s -> s != null && !s.isBlank())
+                                                .distinct()
+                                                .toList()
+                                )
+                        )
+                ));
     }
 
 
@@ -102,8 +109,8 @@ public class ProcessFeedbackService {
 
         ProcessFeedback saved = processFeedbackRepository.save(feedback);
 
-        Map<Long, List<Long>> fieldIdsMap = getFieldIdsMap(projectId, List.of(userId));
-        List<Long> createdByFields = fieldIdsMap.getOrDefault(userId, List.of());
+        Map<Long, List<String>> roleFieldLabelsMap = getRoleFieldLabelsMap(projectId, List.of(userId));
+        List<String> createdByRoleFields = roleFieldLabelsMap.getOrDefault(userId, List.of());
 
         String createdByUserName = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getName() : null;
 
@@ -127,11 +134,11 @@ public class ProcessFeedbackService {
 
 
         return new ProcessFeedbackCreateResDto(
-            saved.getId(),
-            saved.getContent(),
-            saved.getStatus(),
-            new FeedbackCreatedByResDto(userId, createdByUserName, createdByFields),
-            saved.getCreatedAt()
+                saved.getId(),
+                saved.getContent(),
+                saved.getStatus(),
+                new FeedbackCreatedByResDto(userId, createdByUserName, createdByRoleFields),
+                saved.getCreatedAt()
         );
     }
 
@@ -185,17 +192,17 @@ public class ProcessFeedbackService {
         Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
         String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
 
-        List<Long> createdByFields = List.of();
+        List<String> createdByRoleFields = List.of();
         if (createdByUserId != null) {
-            Map<Long, List<Long>> fieldIdsMap = getFieldIdsMap(projectId, List.of(createdByUserId));
-            createdByFields = fieldIdsMap.getOrDefault(createdByUserId, List.of());
+            Map<Long, List<String>> roleFieldLabelsMap = getRoleFieldLabelsMap(projectId, List.of(createdByUserId));
+            createdByRoleFields = roleFieldLabelsMap.getOrDefault(createdByUserId, List.of());
         }
 
         return new ProcessFeedbackUpdateResDto(
                 feedback.getId(),
                 feedback.getContent(),
                 feedback.getStatus(),
-                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByFields),
+                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByRoleFields),
                 feedback.getCreatedAt(),
                 feedback.getUpdatedAt()
         );

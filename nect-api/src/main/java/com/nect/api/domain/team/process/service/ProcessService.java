@@ -331,22 +331,25 @@ public class ProcessService {
                 .distinct()
                 .toList();
 
-        Map<Long, List<Long>> createdByFieldIdsMap = projectUserRepository
-                .findActiveUserFieldIdsByProjectIdAndUserIds(projectId, feedbackCreatedByUserIds)
-                .stream()
-                .collect(java.util.stream.Collectors.groupingBy(
-                        ProjectUserRepository.UserFieldIdsRow::getUserId,
-                        java.util.stream.Collectors.mapping(
-                                r -> r.getFieldId(),
-                                java.util.stream.Collectors.collectingAndThen(
-                                        java.util.stream.Collectors.toList(),
-                                        list -> list.stream()
-                                                .filter(Objects::nonNull)
-                                                .distinct()
-                                                .toList()
+        Map<Long, List<String>> createdByRoleFieldLabelsMap =
+                projectUserRepository
+                        .findActiveUserRoleFieldsByProjectIdAndUserIds(projectId, feedbackCreatedByUserIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                ProjectUserRepository.UserRoleFieldsRow::getUserId,
+                                Collectors.mapping(
+                                        r -> (r.getRoleField() == RoleField.CUSTOM)
+                                                ? "CUSTOM:" + r.getCustomRoleFieldName()
+                                                : r.getRoleField().name(),
+                                        Collectors.collectingAndThen(
+                                                Collectors.toList(),
+                                                list -> list.stream()
+                                                        .filter(s -> s != null && !s.isBlank())
+                                                        .distinct()
+                                                        .toList()
+                                        )
                                 )
-                        )
-                ));
+                        ));
 
         // feedbacks 채우기
         List<ProcessFeedbackCreateResDto> feedbacks = process.getFeedbacks().stream()
@@ -355,14 +358,14 @@ public class ProcessService {
                     User createdBy = f.getCreatedBy();
 
                     Long createdById = (createdBy == null) ? null : createdBy.getUserId();
-                    List<Long> createdByFieldIds = (createdById == null)
+                    List<String> createdByRoleFieldLabels = (createdById == null)
                             ? List.of()
-                            : createdByFieldIdsMap.getOrDefault(createdById, List.of());
+                            : createdByRoleFieldLabelsMap.getOrDefault(createdById, List.of());
 
                     FeedbackCreatedByResDto createdByRes = new FeedbackCreatedByResDto(
                             createdById,
                             createdBy == null ? null : createdBy.getName(),
-                            createdByFieldIds
+                            createdByRoleFieldLabels
                     );
 
                     return new ProcessFeedbackCreateResDto(

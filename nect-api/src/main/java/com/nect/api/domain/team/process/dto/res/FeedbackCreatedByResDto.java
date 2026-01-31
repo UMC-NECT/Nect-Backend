@@ -11,7 +11,7 @@ public record FeedbackCreatedByResDto(
         @JsonProperty("user_name")
         String userName,
 
-        @JsonProperty("field_ids")
-        List<Long> fieldIds
+        @JsonProperty("role_fields")
+        List<String> roleFields
 ){}
 
