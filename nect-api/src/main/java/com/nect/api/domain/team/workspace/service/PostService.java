@@ -392,7 +392,7 @@ public class PostService {
 
         // 언급 대상이 전부 프로젝트 멤버인지 검증
         if (!req.isEmpty()) {
-            long cnt = projectUserRepository.countByProjectIdAndUserIdIn(projectId, req);
+            long cnt = projectUserRepository.countByProject_IdAndUserIdIn(projectId, req);
             if (cnt != req.size()) {
                 throw new PostException(
                         PostErrorCode.INVALID_REQUEST,
