@@ -11,6 +11,7 @@ import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessTaskItem;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.team.process.ProcessTaskItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,13 +26,21 @@ import java.util.stream.Collectors;
 public class ProcessTaskItemService {
     private final ProcessRepository processRepository;
     private final ProcessTaskItemRepository taskItemRepository;
+    private final ProjectUserRepository projectUserRepository;
+    private final ProjectHistoryPublisher historyPublisher;
 
-    // TODO : 알림 & History 추가 예정
+    // TODO : 알림 추가 예정
 //    private final NotificationFacade notificationFacade;
 
-    // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
-
-    private final ProjectHistoryPublisher historyPublisher;
+    // 헬퍼 메서드
+    private void assertWritableMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new ProcessException(
+                    ProcessErrorCode.FORBIDDEN,
+                    "프로젝트 멤버가 아닙니다. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -65,9 +74,8 @@ public class ProcessTaskItemService {
 
     // 항목 생성 서비스
     @Transactional
-    public ProcessTaskItemResDto create(Long projectId, Long processId, ProcessTaskItemUpsertReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 task item 생성 가능)
+    public ProcessTaskItemResDto create(Long projectId, Long userId, Long processId, ProcessTaskItemUpsertReqDto req) {
+        assertWritableMember(projectId, userId);
 
         Process process = getActiveProcess(projectId, processId);
 
@@ -98,9 +106,9 @@ public class ProcessTaskItemService {
 
         ProcessTaskItem saved = taskItemRepository.save(newItem);
 
+        // 최종 정규화
         normalizeSortOrder(processId);
 
-        Long actorUserId = 1L; // TODO(인증): 현재 로그인 유저
         // TODO(Notification):
         // - 프로젝트 멤버 전체 또는 해당 프로세스 관련자(assignee/mention)에게 "업무 항목 추가" 알림 전송
         // - 유저/멤버십 붙으면 NotificationFacade 주입 후 notify 호출
@@ -113,10 +121,11 @@ public class ProcessTaskItemService {
         meta.put("taskItemId", saved.getId());
         meta.put("content", saved.getContent());
         meta.put("isDone", saved.isDone());
-        meta.put("sortOrder", saved.getSortOrder()); // normalize 이후 최종 값
+        meta.put("sortOrder", saved.getSortOrder());
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.TASK_ITEM_CREATED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -134,9 +143,8 @@ public class ProcessTaskItemService {
 
     // 업무 항목 수정
     @Transactional
-    public ProcessTaskItemResDto update(Long projectId, Long processId, Long taskItemId, ProcessTaskItemUpsertReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
+    public ProcessTaskItemResDto update(Long projectId, Long userId, Long processId, Long taskItemId, ProcessTaskItemUpsertReqDto req) {
+        assertWritableMember(projectId, userId);
 
         getActiveProcess(projectId, processId);
 
@@ -149,11 +157,17 @@ public class ProcessTaskItemService {
 
         boolean changed = false;
 
+        if (req == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "request is null");
+        }
+
         if (req.content() != null) {
-            if (req.content().isBlank())
-                throw new ProcessException(ProcessErrorCode.INVALID_TASK_ITEM_CONTENT);
-            if (!req.content().equals(beforeContent)) {
-                item.updateContent(req.content());
+            if (req.content().isBlank()) {
+                throw new ProcessException(ProcessErrorCode.INVALID_TASK_ITEM_CONTENT, "content is blank");
+            }
+            String afterContent = req.content().trim();
+            if (!Objects.equals(beforeContent, afterContent)) {
+                item.updateContent(afterContent);
                 changed = true;
             }
         }
@@ -165,6 +179,7 @@ public class ProcessTaskItemService {
                 changed = true;
             }
         }
+
         // sort_order 수정
         if (req.sortOrder() != null) {
             // 항상 현재 상태를 먼저 정규화해서 null/중복 order 제거
@@ -193,16 +208,8 @@ public class ProcessTaskItemService {
             }
         }
 
+
         if (changed) {
-            Long actorUserId = 1L; // TODO(인증)
-
-            // TODO(Notification):
-            // - 유저/멤버십 연동 후 수신자 결정(프로젝트 멤버 / 해당 프로세스 assignee / mention 등)
-            // - "업무 항목 수정" 알림 전송
-            // - meta에 변경 요약 포함 권장(예: done 토글, 내용 변경, 순서 변경)
-            // - 권장: AFTER_COMMIT 이벤트 리스너로 전송
-            // notifyTaskItemUpdatedTodo(projectId, actorUserId, processId, item.getId(), ...);
-
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("processId", processId);
             meta.put("taskItemId", item.getId());
@@ -217,8 +224,16 @@ public class ProcessTaskItemService {
                     "sortOrder", item.getSortOrder()
             ));
 
+            // TODO(Notification):
+            // - 유저/멤버십 연동 후 수신자 결정(프로젝트 멤버 / 해당 프로세스 assignee / mention 등)
+            // - "업무 항목 수정" 알림 전송
+            // - meta에 변경 요약 포함 권장(예: done 토글, 내용 변경, 순서 변경)
+            // - 권장: AFTER_COMMIT 이벤트 리스너로 전송
+            // notifyTaskItemUpdatedTodo(projectId, actorUserId, processId, item.getId(), ...);
+
             historyPublisher.publish(
                     projectId,
+                    userId,
                     HistoryAction.TASK_ITEM_UPDATED,
                     HistoryTargetType.PROCESS,
                     processId,
@@ -239,16 +254,14 @@ public class ProcessTaskItemService {
 
     // 업무 항목 삭제
     @Transactional
-    public void delete(Long projectId, Long processId, Long taskItemId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
+    public void delete(Long projectId, Long userId, Long processId, Long taskItemId) {
+        assertWritableMember(projectId, userId);
 
         getActiveProcess(projectId, processId);
 
         ProcessTaskItem item = getTaskItem(processId, taskItemId);
 
-        // TODO(HISTORY/NOTI): 삭제 전 스냅샷(내용/완료여부/정렬순서) 확보
-
+        // Before 스냅샷
         String beforeContent = item.getContent();
         boolean beforeDone = item.isDone();
         Integer beforeOrder = item.getSortOrder();
@@ -257,7 +270,8 @@ public class ProcessTaskItemService {
 
         normalizeSortOrder(processId);
 
-        // TODO(Notification/ HISTORY):
+        // TODO(Notification)
+
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
         meta.put("taskItemId", taskItemId);
@@ -267,6 +281,7 @@ public class ProcessTaskItemService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.TASK_ITEM_DELETED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -278,38 +293,50 @@ public class ProcessTaskItemService {
 
     // 업무 위치 변경 서비스
     @Transactional
-    public ProcessTaskItemReorderResDto reorder(Long projectId, Long processId, ProcessTaskItemReorderReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 reorder 가능)
+    public ProcessTaskItemReorderResDto reorder(Long projectId, Long userId, Long processId, ProcessTaskItemReorderReqDto req) {
+        assertWritableMember(projectId, userId);
 
-        List<Long> orderedIds = req.orderedTaskItemIds();
-
-        if (orderedIds == null || orderedIds.isEmpty()) {
-            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST,
-                    "ordered_task_item_ids is empty"
-            );
-        }
-
-        // 중복 체크
-        Set<Long> uniqItems = new HashSet<>(orderedIds);
-        if(uniqItems.size() != orderedIds.size()) {
-            throw new ProcessException(
-                    ProcessErrorCode.INVALID_REQUEST,
-                    "ordered_task_item_ids contains duplicates"
-            );
-        }
-
-        // 프로젝트 소속 검증
         getActiveProcess(projectId, processId);
 
-        // 혹시 기존 sortOrder가 꼬여있어도 안전하게 시작
+        if (req == null || req.orderedTaskItemIds() == null || req.orderedTaskItemIds().isEmpty()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids is empty");
+        }
+
+        List<Long> orderedIds = req.orderedTaskItemIds().stream()
+                .filter(Objects::nonNull)
+                .toList();
+
+        if (orderedIds.isEmpty()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids is empty");
+        }
+
+        if (new HashSet<>(orderedIds).size() != orderedIds.size()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids contains duplicates");
+        }
+
+        // 꼬임 방지용 정규화
         normalizeSortOrder(processId);
 
-        // TODO(NOTI): before orderedIds 스냅샷이 필요하면 여기서 조회
 
+        // TODO(HISTORY/NOTI): before orderedIds 스냅샷이 필요하면 여기서 조회
         List<Long> beforeIds = taskItemRepository
                 .findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId)
-                .stream().map(ProcessTaskItem::getId).toList();
+                .stream()
+                .map(ProcessTaskItem::getId)
+                .toList();
+
+        // 변경 없으면 그대로 반환
+        if (beforeIds.equals(orderedIds)) {
+            List<ProcessTaskItemResDto> resItems = taskItemRepository
+                    .findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId)
+                    .stream()
+                    .map(t -> new ProcessTaskItemResDto(
+                            t.getId(), t.getContent(), t.isDone(), t.getSortOrder(), t.getDoneAt()
+                    ))
+                    .toList();
+
+            return new ProcessTaskItemReorderResDto(processId, resItems);
+        }
 
 
         // 현재 전체 항목
@@ -344,24 +371,19 @@ public class ProcessTaskItemService {
         }
 
         // TODO(Notification):
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("beforeOrderedTaskItemIds", beforeIds);
+        meta.put("afterOrderedTaskItemIds", orderedIds);
 
-        if (!beforeIds.equals(orderedIds)) {
-            Map<String, Object> meta = new LinkedHashMap<>();
-            meta.put("processId", processId);
-            meta.put("beforeOrderedTaskItemIds", beforeIds);
-            meta.put("afterOrderedTaskItemIds", orderedIds);
-
-            historyPublisher.publish(
-                    projectId,
-                    HistoryAction.TASK_ITEM_REORDERED,
-                    HistoryTargetType.PROCESS,
-                    processId,
-                    meta
-            );
-        }
-
-
-
+        historyPublisher.publish(
+                projectId,
+                userId,
+                HistoryAction.TASK_ITEM_REORDERED,
+                HistoryTargetType.PROCESS,
+                processId,
+                meta
+        );
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 
         List<ProcessTaskItemResDto> resItems = orderedIds.stream()

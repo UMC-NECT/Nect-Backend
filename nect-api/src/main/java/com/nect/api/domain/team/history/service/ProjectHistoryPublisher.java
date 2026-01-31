@@ -18,16 +18,18 @@ public class ProjectHistoryPublisher {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
-    // TODO(인증): Security 붙이면 currentUserId로 교체
-    private Long getActorUserId() {
-        return 1L;
-    }
-
-    public void publish(Long projectId, HistoryAction action, HistoryTargetType targetType, Long targetId, Map<String, Object> meta) {
+    public void publish(
+            Long projectId,
+            Long actorUserId,
+            HistoryAction action,
+            HistoryTargetType targetType,
+            Long targetId,
+            Map<String, Object> meta
+    ) {
         eventPublisher.publishEvent(
                 ProjectHistoryEvent.of(
                         projectId,
-                        getActorUserId(),
+                        actorUserId,
                         action,
                         targetType,
                         targetId,

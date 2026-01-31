@@ -13,15 +13,15 @@ import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessFeedback;
+import com.nect.core.entity.user.User;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessFeedbackRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -29,13 +29,18 @@ public class ProcessFeedbackService {
 
     private final ProcessRepository processRepository;
     private final ProcessFeedbackRepository processFeedbackRepository;
-
-    // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
-    // private final Auth
-    // private final UserRepository userRepository;
-    // private final ProjectUserRepository projectUserRepository;
-
+    private final ProjectUserRepository projectUserRepository;
     private final ProjectHistoryPublisher historyPublisher;
+
+    // 헬퍼 메서드
+    private void assertWritableMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new ProcessException(
+                    ProcessErrorCode.FORBIDDEN,
+                    "프로젝트 멤버가 아닙니다. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -59,31 +64,48 @@ public class ProcessFeedbackService {
         }
     }
 
+    private Map<Long, List<Long>> getFieldIdsMap(Long projectId, Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Map.of();
+
+        List<ProjectUserRepository.UserFieldIdsRow> rows =
+                projectUserRepository.findActiveUserFieldIdsByProjectIdAndUserIds(projectId, new ArrayList<>(userIds));
+
+        Map<Long, List<Long>> map = new HashMap<>();
+        for (ProjectUserRepository.UserFieldIdsRow r : rows) {
+            if (r.getUserId() == null) continue;
+            if (r.getFieldId() == null) continue;
+            map.computeIfAbsent(r.getUserId(), k -> new ArrayList<>()).add(r.getFieldId());
+        }
+
+        for (Map.Entry<Long, List<Long>> e : map.entrySet()) {
+            e.setValue(e.getValue().stream().distinct().toList());
+        }
+        return map;
+    }
+
+
     // 피드백 생성 서비스
     @Transactional
-    public ProcessFeedbackCreateResDto createFeedback(Long projectId, Long processId, ProcessFeedbackCreateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 피드백 생성 가능)
-        // TODO(작성자): createdByUserId = currentUserId 로 저장되도록 엔티티/필드 설계 필요
-        // TODO(작성자 응답): createdByUserName / createdByFields 는 User/ProjectUser 연동 후 채우기
-
+    public ProcessFeedbackCreateResDto createFeedback(Long projectId, Long userId, Long processId, ProcessFeedbackCreateReqDto req) {
+        assertWritableMember(projectId, userId);
         validateContent(req.content());
 
         Process process = getActiveProcess(projectId, processId);
 
-        // TODO : 로그인 유저 조회 + 프로젝트 멤버 검증 + 분야 아이디 조회하기
-        Long createdByUserId = 1L; // 임시
-        String createdByUserName = "임시유저"; // 임시
-        List<Long> createdByFields = List.of();
+        User actor = User.builder().userId(userId).build();
 
         ProcessFeedback feedback = ProcessFeedback.builder()
                 .process(process)
                 .content(req.content())
+                .createdBy(actor)
                 .build();
 
         ProcessFeedback saved = processFeedbackRepository.save(feedback);
 
-        Long actorUserId = createdByUserId; // TODO(인증) 붙으면 currentUserId 사용
+        Map<Long, List<Long>> fieldIdsMap = getFieldIdsMap(projectId, List.of(userId));
+        List<Long> createdByFields = fieldIdsMap.getOrDefault(userId, List.of());
+
+        String createdByUserName = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getName() : null;
 
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
@@ -92,6 +114,7 @@ public class ProcessFeedbackService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.FEEDBACK_CREATED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -107,7 +130,7 @@ public class ProcessFeedbackService {
             saved.getId(),
             saved.getContent(),
             saved.getStatus(),
-//            new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByFields),
+            new FeedbackCreatedByResDto(userId, createdByUserName, createdByFields),
             saved.getCreatedAt()
         );
     }
@@ -115,12 +138,8 @@ public class ProcessFeedbackService {
 
     // 피드백 수정
     @Transactional
-    public ProcessFeedbackUpdateResDto updateFeedback(Long projectId, Long processId, Long feedbackId, ProcessFeedbackUpdateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
-        // TODO(인가-작성자): "피드백 작성자만 수정 가능" 정책이면 feedback.createdBy == currentUserId 검증 추가
-        // TODO(작성자 응답): createdByUserName / createdByFields 연동 후 채우기
-
+    public ProcessFeedbackUpdateResDto updateFeedback(Long projectId, Long userId, Long processId, Long feedbackId, ProcessFeedbackUpdateReqDto req) {
+        assertWritableMember(projectId, userId);
 
         validateContent(req.content());
 
@@ -130,10 +149,9 @@ public class ProcessFeedbackService {
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
         String beforeContent = feedback.getContent();
-
         feedback.updateContent(req.content());
+        String afterContent = feedback.getContent();
 
-        Long actorUserId = 1L; // TODO(인증)
 
         // TODO(Notification):
         // - "피드백 수정" 알림 트리거 지점
@@ -142,9 +160,7 @@ public class ProcessFeedbackService {
         // - meta: before/after 또는 "수정됨" 정도만
         // - 권장: AFTER_COMMIT 이후 알림 전송(이벤트 리스너)
 
-        String afterContent = feedback.getContent();
-
-        if (!beforeContent.equals(afterContent)) {
+        if (!Objects.equals(beforeContent, afterContent)) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("processId", processId);
             meta.put("feedbackId", feedbackId);
@@ -153,6 +169,7 @@ public class ProcessFeedbackService {
 
             historyPublisher.publish(
                     projectId,
+                    userId,
                     HistoryAction.FEEDBACK_UPDATED,
                     HistoryTargetType.PROCESS,
                     processId,
@@ -160,11 +177,19 @@ public class ProcessFeedbackService {
             );
         }
 
+
         // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 
-        Long createdByUserId = 1L; // 임시
-        String createdByUserName = "임시유저"; // 임시
+        // createdBy 응답 채우기 (User + ProjectUser fieldIds)
+        User createdBy = feedback.getCreatedBy();
+        Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
+        String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
+
         List<Long> createdByFields = List.of();
+        if (createdByUserId != null) {
+            Map<Long, List<Long>> fieldIdsMap = getFieldIdsMap(projectId, List.of(createdByUserId));
+            createdByFields = fieldIdsMap.getOrDefault(createdByUserId, List.of());
+        }
 
         return new ProcessFeedbackUpdateResDto(
                 feedback.getId(),
@@ -179,10 +204,8 @@ public class ProcessFeedbackService {
 
     // 피드백 삭제
     @Transactional
-    public ProcessFeedbackDeleteResDto deleteFeedback(Long projectId, Long processId, Long feedbackId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
-        // TODO(인가-작성자): "피드백 작성자만 삭제 가능" 정책이면 feedback.createdBy == currentUserId 검증 추가
+    public ProcessFeedbackDeleteResDto deleteFeedback(Long projectId, Long userId, Long processId, Long feedbackId) {
+        assertWritableMember(projectId, userId);
 
         getActiveProcess(projectId, processId);
 
@@ -195,8 +218,6 @@ public class ProcessFeedbackService {
 
         String beforeContent = feedback.getContent();
         feedback.softDelete();
-
-        Long actorUserId = 1L; // TODO(인증)
 
         // TODO(Notification):
         // - "피드백 삭제" 알림 트리거 지점
@@ -213,6 +234,7 @@ public class ProcessFeedbackService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.FEEDBACK_DELETED,
                 HistoryTargetType.PROCESS,
                 processId,

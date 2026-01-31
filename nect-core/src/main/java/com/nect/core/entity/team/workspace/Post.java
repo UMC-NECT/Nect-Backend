@@ -3,6 +3,7 @@ package com.nect.core.entity.team.workspace;
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.workspace.enums.PostType;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,10 +21,9 @@ public class Post extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "user_id", nullable = false)
-//    private User author;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
@@ -44,9 +44,6 @@ public class Post extends BaseEntity {
 
     @Column(name = "like_count", nullable = false)
     private Long likeCount = 0L;
-
-    @Column(name = "comment_count", nullable = false)
-    private Long commentCount = 0L;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

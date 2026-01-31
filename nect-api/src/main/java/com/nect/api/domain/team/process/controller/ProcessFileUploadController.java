@@ -3,8 +3,10 @@ package com.nect.api.domain.team.process.controller;
 import com.nect.api.domain.team.process.facade.ProcessAttachmentFacade;
 import com.nect.api.domain.team.process.dto.res.ProcessFileUploadAndAttachResDto;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,8 +21,10 @@ public class ProcessFileUploadController {
     public ApiResponse<ProcessFileUploadAndAttachResDto> uploadAndAttach(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestPart("file") MultipartFile file
     ) {
-        return ApiResponse.ok(processAttachmentFacade.uploadAndAttachFile(projectId, processId, file));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processAttachmentFacade.uploadAndAttachFile(projectId, userId, processId, file));
     }
 }

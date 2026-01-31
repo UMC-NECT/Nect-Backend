@@ -8,7 +8,9 @@ import com.nect.api.domain.team.process.dto.res.ProcessFeedbackDeleteResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFeedbackUpdateResDto;
 import com.nect.api.domain.team.process.service.ProcessFeedbackService;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,13 +20,16 @@ public class ProcessFeedbackController {
 
     private final ProcessFeedbackService processFeedbackService;
 
+
     @PostMapping
     public ApiResponse<ProcessFeedbackCreateResDto> createFeedback(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessFeedbackCreateReqDto request
     ) {
-        ProcessFeedbackCreateResDto res = processFeedbackService.createFeedback(projectId, processId, request);
+        Long userId = userDetails.getUserId();
+        ProcessFeedbackCreateResDto res = processFeedbackService.createFeedback(projectId, userId, processId, request);
         return ApiResponse.ok(res);
     }
 
@@ -33,10 +38,11 @@ public class ProcessFeedbackController {
             @PathVariable Long projectId,
             @PathVariable Long processId,
             @PathVariable Long feedbackId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessFeedbackUpdateReqDto request
     ) {
-        ProcessFeedbackUpdateResDto res =
-                processFeedbackService.updateFeedback(projectId, processId, feedbackId, request);
+        Long userId = userDetails.getUserId();
+        ProcessFeedbackUpdateResDto res = processFeedbackService.updateFeedback(projectId, userId, processId, feedbackId, request);
         return ApiResponse.ok(res);
     }
 
@@ -44,10 +50,11 @@ public class ProcessFeedbackController {
     public ApiResponse<ProcessFeedbackDeleteResDto> deleteFeedback(
             @PathVariable Long projectId,
             @PathVariable Long processId,
-            @PathVariable Long feedbackId
+            @PathVariable Long feedbackId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        ProcessFeedbackDeleteResDto res =
-                processFeedbackService.deleteFeedback(projectId, processId, feedbackId);
+        Long userId = userDetails.getUserId();
+        ProcessFeedbackDeleteResDto res = processFeedbackService.deleteFeedback(projectId, userId, processId, feedbackId);
         return ApiResponse.ok(res);
     }
 }

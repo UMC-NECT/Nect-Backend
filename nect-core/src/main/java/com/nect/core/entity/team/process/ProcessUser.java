@@ -2,6 +2,7 @@ package com.nect.core.entity.team.process;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.process.enums.AssignmentRole;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -33,16 +34,10 @@ public class ProcessUser extends BaseEntity {
     @JoinColumn(name = "process_id", nullable = false)
     private Process process;
 
-    // TODO
-    // 연관 관계는 주석으로 유지하되, DB 컬럼만 미리 만들어둠
-    @Column(name = "member_id")
-    private Long memberId;
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "user_id", nullable = false)
-//    private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "assignment_role", nullable = false)
@@ -56,9 +51,9 @@ public class ProcessUser extends BaseEntity {
 
     // TODO : user 추가
     @Builder
-    public ProcessUser(Process process, AssignmentRole assignmentRole, LocalDateTime assignedAt) {
+    public ProcessUser(Process process, User user, AssignmentRole assignmentRole, LocalDateTime assignedAt) {
         this.process = process;
-//        this.user = user;
+        this.user = user;
         this.assignmentRole = assignmentRole;
         this.assignedAt = (assignedAt != null) ? assignedAt : LocalDateTime.now();
         this.deletedAt = null;
@@ -68,11 +63,20 @@ public class ProcessUser extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void restore() {
+        this.deletedAt = null;
+        this.assignedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
+
     void setProcess(Process process) {
         this.process = process;
     }
 
-//    void setMember(User user) {
-//        this.user = user;
-//    }
+    void setUser(User user) {
+        this.user = user;
+    }
 }

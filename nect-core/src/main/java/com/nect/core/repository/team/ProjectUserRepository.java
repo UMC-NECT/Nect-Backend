@@ -22,6 +22,11 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getActiveMemberCount();
     }
 
+    interface UserFieldIdsRow {
+        Long getUserId();
+        Long getFieldId();
+    }
+
     Optional<ProjectUser> findByUserIdAndProject(Long userid, Project project);
 
     @Query("""
@@ -64,5 +69,18 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         GROUP BY pu.project.id
     """)
     List<ProjectHomeStat> findProjectHomeStats(@Param("projectIds") List<Long> projectIds);
+
+
+    @Query("""
+        select pu.userId as userId, pu.fieldId as fieldId
+        from ProjectUser pu
+        where pu.project.id = :projectId
+          and pu.memberStatus = 'ACTIVE'
+          and pu.userId in :userIds
+    """)
+    List<UserFieldIdsRow> findActiveUserFieldIdsByProjectIdAndUserIds(
+            @Param("projectId") Long projectId,
+            @Param("userIds") List<Long> userIds
+    );
 
 }

@@ -6,13 +6,13 @@ import java.util.List;
 
 public record FieldGroupResDto(
         @JsonProperty("field_id")
-        Long fieldId,
+        String fieldId,          // "ROLE:BACKEND" / "CUSTOM:영상편집" 같은 laneKey
 
         @JsonProperty("field_name")
-        String fieldName,
+        String fieldName,        // "BACKEND" / "영상편집"
 
         @JsonProperty("field_order")
-        Integer fieldOrder,
+        Integer fieldOrder,      // ROLE=0, CUSTOM=1 같은 타입 order(정해진 우선순위 없음)
 
         List<ProcessCardResDto> processes
 ) {}
