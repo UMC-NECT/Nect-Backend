@@ -83,8 +83,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("projectId") Long projectId,
             @Param("userIds") List<Long> userIds
     );
-
+           
     long countByProjectIdAndUserIdIn(Long projectId, List<Long> userIds);
-
 
 }
