@@ -41,12 +41,11 @@ public class SecurityConfig {
             "/static/**", "/webjars/**",
             "/login/oauth2/**", "/oauth2/**",
             "/actuator/**", "/health", "/error", "/favicon.ico",
-            "/api/upload/image/**", "/chats/**", "/ws-chat/**", "/*.html",
+            "/api/upload/image/**", "/api/v1/chats/**", "/ws-chat/**", "/*.html",
             "/api/v1/users/check", "/api/v1/users/signup", "/api/v1/users/login",
             "/api/v1/users/test-login", "/api/v1/users/refresh",
             "/api/v1/enums/**", "/api/v1/home/**",
             "/notifications/subscribe", "/notifications",
-            "/api/v1/projects/**",
             "/"
     );
 

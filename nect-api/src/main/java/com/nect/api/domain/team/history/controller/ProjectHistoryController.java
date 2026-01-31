@@ -3,7 +3,9 @@ package com.nect.api.domain.team.history.controller;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryListResDto;
 import com.nect.api.domain.team.history.service.ProjectHistoryService;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,8 +19,10 @@ public class ProjectHistoryController {
     @GetMapping
     public ApiResponse<ProjectHistoryListResDto> getHistories(
             @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) Long cursor
     ) {
-        return ApiResponse.ok(historyService.getHistories(projectId, cursor));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(historyService.getHistories(projectId, userId, cursor));
     }
 }

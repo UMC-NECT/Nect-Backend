@@ -1,9 +1,8 @@
 package com.nect.api.domain.team.chat.controller;
 
 
-import com.nect.api.domain.team.chat.dto.req.ChatFileSendRequestDTO;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageSendRequestDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatFileSendRequestDto;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageSendRequestDto;
 import com.nect.api.domain.team.chat.service.ChatFileService;
 import com.nect.api.domain.team.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -24,16 +23,11 @@ public class ChatWebSocketController {
     @MessageMapping("/chat-send/{room_id}")
     public void sendMessage(
             @DestinationVariable("room_id") Long room_id,
-            ChatMessageSendRequestDTO request,
+            ChatMessageSendRequestDto request,
             Principal principal
     ) {
-        // TODO 임시 방어 코드
-        Long currentUserId;
-        if (principal != null) {
-            currentUserId = Long.valueOf(principal.getName());
-        } else {
-            currentUserId = (request.getUserId() != null) ? request.getUserId() : 1L;
-        }
+        Long currentUserId = Long.valueOf(principal.getName());
+        chatService.sendMessage(room_id, currentUserId, request.getContent());
 
         log.info(" WebSocket 메시지 수신 - roomId: {}, user_id: {}, content: {}",
                 room_id, request.getUserId(), request.getContent());
@@ -50,16 +44,10 @@ public class ChatWebSocketController {
     @MessageMapping("/chat-file/{room_id}")
     public void sendFileMessage(
             @DestinationVariable("room_id") Long roomId,
-            ChatFileSendRequestDTO request,
+            ChatFileSendRequestDto request,
             Principal principal
     ) {
-        // TODO 임시 방어 코드
-        Long currentUserId;
-        if (principal != null) {
-            currentUserId = Long.valueOf(principal.getName());
-        } else {
-            currentUserId = (request.getUserId() != null) ? request.getUserId() : 1L;
-        }
+        Long currentUserId = Long.valueOf(principal.getName());
 
         log.info("파일 전송 요청 - room: {}, fileId: {}", roomId, request.getFileId());
 

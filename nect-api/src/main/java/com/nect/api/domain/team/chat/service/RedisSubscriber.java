@@ -1,7 +1,7 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class RedisSubscriber implements MessageListener { // MessageListener 인
             log.info(" Redis Subscriber 수신 - Message: {}", publishMessage);
 
             //  JSON 문자열 -> DTO 변환
-            ChatMessageDTO chatMessage = objectMapper.readValue(publishMessage, ChatMessageDTO.class);
+            ChatMessageDto chatMessage = objectMapper.readValue(publishMessage, ChatMessageDto.class);
 
             //  WebSocket 구독자들에게 전송
             String destination = "/topic/chatroom/" + chatMessage.getRoomId();

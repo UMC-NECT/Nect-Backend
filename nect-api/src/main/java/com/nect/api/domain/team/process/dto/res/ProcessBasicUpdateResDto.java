@@ -2,6 +2,7 @@ package com.nect.api.domain.team.process.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,8 +27,11 @@ public record ProcessBasicUpdateResDto(
         @JsonProperty("dead_line")
         LocalDate deadLine,
 
-        @JsonProperty("field_ids")
-        List<Long> fieldIds,
+        @JsonProperty("role_fields")
+        List<RoleField> roleFields,
+
+        @JsonProperty("custom_fields")
+        List<String> customFields,
 
         @JsonProperty("assignee_ids")
         List<Long> assigneeIds,
@@ -39,7 +43,8 @@ public record ProcessBasicUpdateResDto(
         LocalDateTime updatedAt
 ) {
     public ProcessBasicUpdateResDto {
-        fieldIds = (fieldIds == null) ? List.of() : fieldIds;
+        roleFields = (roleFields == null) ? List.of() : roleFields;
+        customFields = (customFields == null) ? List.of() : customFields;
         assigneeIds = (assigneeIds == null) ? List.of() : assigneeIds;
         mentionUserIds = (mentionUserIds == null) ? List.of() : mentionUserIds;
     }

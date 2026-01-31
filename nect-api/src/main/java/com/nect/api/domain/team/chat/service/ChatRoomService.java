@@ -1,7 +1,7 @@
 package com.nect.api.domain.team.chat.service;
 
-import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomListDTO;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomListDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
 import com.nect.core.entity.team.chat.ChatMessage;
@@ -36,7 +36,7 @@ public class ChatRoomService {
     private final ChatService chatService;
 
 
-    public List<ChatRoomListDTO> getMyChatRooms(Long user_id) {
+    public List<ChatRoomListDto> getMyChatRooms(Long user_id) {
 
         //  내가 소속된 방 멤버 정보 다 가져오기
         List<ChatRoomUser> myMemberships = chatRoomUserRepository.findAllByUserUserId(user_id);
@@ -57,7 +57,7 @@ public class ChatRoomService {
                 }
             }
 
-            return ChatRoomListDTO.builder()
+            return ChatRoomListDto.builder()
                     .room_id(room.getId())
                     .room_name(room.getName())
                     .last_message(lastMessage != null ? lastMessage.getContent() : "")
@@ -70,7 +70,7 @@ public class ChatRoomService {
 
 
     @Transactional
-    public ChatRoomLeaveResponseDTO leaveChatRoom(Long roomId, Long userId) {
+    public ChatRoomLeaveResponseDto leaveChatRoom(Long roomId, Long userId) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
@@ -90,7 +90,7 @@ public class ChatRoomService {
 
 
         //TODO 추후에 리팩토링 할 때 컨버터로 넣겠습니다.
-        return ChatRoomLeaveResponseDTO.builder()
+        return ChatRoomLeaveResponseDto.builder()
                 .roomId(roomId)
                 .userId(userId)
                 .userName(user.getNickname())

@@ -9,6 +9,8 @@ import lombok.Getter;
 public enum HistoryErrorCode implements ResponseCode {
     INVALID_REQUEST("H4001", "요청 값이 올바르지 않습니다."),
 
+    FORBIDDEN("H4030", "해당 프로젝트에 대한 권한이 없습니다."),
+
     PROJECT_NOT_FOUND("H4041", "프로젝트를 찾을 수 없습니다."),
     HISTORY_NOT_FOUND("H4042", "히스토리를 찾을 수 없습니다.");
 

@@ -1,8 +1,8 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
+import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
 import com.nect.core.entity.team.chat.ChatMessage;
@@ -18,7 +18,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +37,7 @@ public class ChatService {
 
 
     @Transactional
-    public ChatMessageDTO sendMessage(Long roomId, Long userId, String content) {
+    public ChatMessageDto sendMessage(Long roomId, Long userId, String content) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
@@ -51,7 +50,7 @@ public class ChatService {
         ChatMessage message = ChatConverter.toTextMessage(chatRoom, user, content);
         chatMessageRepository.save(message);
 
-        ChatMessageDTO messageDto = ChatConverter.toMessageDto(message);
+        ChatMessageDto messageDto = ChatConverter.toMessageDto(message);
 
         //Redis 발행
         String channel = "chatroom:" + roomId;
@@ -64,7 +63,7 @@ public class ChatService {
 
 
     @Transactional(readOnly = true)
-    public List<ChatMessageDTO> getChatMessages(Long roomId, Long lastMessageId, int size) {
+    public List<ChatMessageDto> getChatMessages(Long roomId, Long lastMessageId, int size) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
@@ -88,7 +87,7 @@ public class ChatService {
     }
 
     @Transactional
-    public ChatNoticeResponseDTO createNotice(Long messageId, Boolean isPinned) {
+    public ChatNoticeResponseDto createNotice(Long messageId, Boolean isPinned) {
 
         ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));

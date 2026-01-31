@@ -7,6 +7,7 @@ import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,9 +32,21 @@ public class FileService {
     private static final Set<FileExt> LIMIT_20MB = EnumSet.of(FileExt.PDF, FileExt.DOCS, FileExt.PPTX, FileExt.FIG, FileExt.ZIP);
 
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
 
-    public FileUploadResDto upload(Long projectId, MultipartFile file) {
+    private void assertActiveProjectMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new FileException(
+                    FileErrorCode.FORBIDDEN,
+                    "not an active project member. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
+
+    public FileUploadResDto upload(Long projectId, Long userId, MultipartFile file) {
+        assertActiveProjectMember(projectId, userId);
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new FileException(FileErrorCode.PROJECT_NOT_FOUND, "projectId = " + projectId));
 
