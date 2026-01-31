@@ -25,6 +25,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * 홈 화면에서 필요한 프로젝트/멤버 데이터를 조회하는 서비스입니다.
+ *
+ * - 모집 중인 프로젝트 조회
+ * - 매칭 가능한 멤버 조회
+ *
+ * 조회에 필요한 최소한의 집계/가공만 수행하며,
+ * 추천 로직은 HomeRecommendService에서 처리됩니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class HomeQueryService implements HomeService {
@@ -38,7 +47,7 @@ public class HomeQueryService implements HomeService {
     @Transactional(readOnly = true)
     public HomeProjectResponse getProjects(Long userId, Integer count){
 
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -47,9 +56,11 @@ public class HomeQueryService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 모집 중이며 아직 참여하지 않은 프로젝트 목록 조회
+        // 모집 중 프로젝트 목록 조회 (로그인 시 참여 프로젝트 제외)
         PageRequest pageRequest = PageRequest.of(0, count);
-        List<Project> projects = projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN, pageRequest);
+        List<Project> projects = (userId == null)
+                ? projectRepository.findHomeProjectsWithoutUser(RecruitmentStatus.OPEN, pageRequest)
+                : projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN, pageRequest);
 
         if (projects.isEmpty()) {
             return new HomeProjectResponse(List.of());
@@ -133,7 +144,7 @@ public class HomeQueryService implements HomeService {
     @Transactional(readOnly = true)
     public HomeMembersResponse getMembers(Long userId, Integer count) {
 
-        if (userId == null || count == null) {
+        if (count == null) {
             throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
         }
 
@@ -141,9 +152,11 @@ public class HomeQueryService implements HomeService {
             throw new CustomException(HomeErrorCode.INVALID_HOME_COUNT);
         }
 
-        // 본인을 제외한 홈화면 매칭 가능한 유저 목록 조회
+        // 홈화면 매칭 가능한 유저 목록 조회 (로그인 시 본인 제외)
         PageRequest pageRequest = PageRequest.of(0, count);
-        List<User> users = userRepository.findByUserIdNot(userId, pageRequest);
+        List<User> users = (userId == null)
+                ? userRepository.findAll(pageRequest).getContent()
+                : userRepository.findByUserIdNot(userId, pageRequest);
 
         List<HomeMemberItem> items = users.stream()
                 .map(user -> new HomeMemberItem(
