@@ -2,6 +2,7 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -82,5 +83,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("projectId") Long projectId,
             @Param("userIds") List<Long> userIds
     );
+           
+    long countByProjectIdAndUserIdIn(Long projectId, List<Long> userIds);
 
 }
