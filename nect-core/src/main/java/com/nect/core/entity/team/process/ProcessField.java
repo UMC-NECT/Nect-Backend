@@ -1,11 +1,13 @@
 package com.nect.core.entity.team.process;
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -13,11 +15,11 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "process_field",
+        name="process_field",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_process_field_process_field",
-                        columnNames = {"process_id", "field_id"}
+                        name="uk_process_field_process_role_field",
+                        columnNames={"process_id","role_field"}
                 )
         }
 )
@@ -30,25 +32,35 @@ public class ProcessField extends BaseEntity {
     @JoinColumn(name = "process_id", nullable = false)
     private Process process;
 
-    // TODO
-    // FIXME: 유니크 제약 조건(uk_process_field_process_field) 에러 해결을 위해 임시 컬럼 추가
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "field_id", nullable = false)
-//    private Field field;
-    @Column(name = "field_id")
-    private Long fieldId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role_field", nullable = false, length = 50)
+    private RoleField roleField;
 
-
+    // CUSTOM 대응
+    @Column(name = "custom_field_name", length = 50)
+    private String customFieldName;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // TODO : Field 추가
     @Builder
-    public ProcessField(Process process) {
+    public ProcessField(Process process, RoleField roleField, String customFieldName) {
         this.process = process;
-//        this.field = field;
+        this.roleField = roleField;
+        this.customFieldName = customFieldName;
     }
 
     void setProcess(Process process) { this.process = process; }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
+    }
 }

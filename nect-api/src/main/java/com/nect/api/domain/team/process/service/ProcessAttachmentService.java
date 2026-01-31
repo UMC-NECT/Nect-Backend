@@ -13,6 +13,7 @@ import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Link;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessSharedDocument;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.LinkRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
@@ -28,6 +29,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ProcessAttachmentService {
 
+    private final ProjectUserRepository projectUserRepository;
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
     private final ProcessSharedDocumentRepository processSharedDocumentRepository;
@@ -36,9 +38,17 @@ public class ProcessAttachmentService {
 
     // TODO(TEAM EVENT FACADE): Attachment 변경 시(Notification) ActivityFacade로 통합 예정
 
-    // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
-
     private final ProjectHistoryPublisher historyPublisher;
+
+    // 헬퍼 메서드
+    private void assertActiveProjectMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new AttachmentException(
+                    AttachmentErrorCode.FORBIDDEN,
+                    "not an active project member. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
 
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -48,11 +58,11 @@ public class ProcessAttachmentService {
                 ));
     }
 
-    private SharedDocument getActiveDocument(Long fileId /*, Long projectId */) {
-        return sharedDocumentRepository.findByIdAndDeletedAtIsNull(fileId)
+    private SharedDocument getActiveDocument(Long projectId, Long fileId) {
+        return sharedDocumentRepository.findByIdAndProjectIdAndDeletedAtIsNull(fileId, projectId)
                 .orElseThrow(() -> new AttachmentException(
                         AttachmentErrorCode.FILE_NOT_FOUND,
-                        "fileId=" + fileId
+                        "projectId=" + projectId + ", fileId=" + fileId
                 ));
     }
 
@@ -70,15 +80,13 @@ public class ProcessAttachmentService {
 
     // 프로세스 파일 첨부 서비스
     @Transactional
-    public ProcessFileAttachResDto attachFile(Long projectId, Long processId, ProcessFileAttachReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 파일 첨부 가능)
-
+    public ProcessFileAttachResDto attachFile(Long projectId, Long userId, Long processId, ProcessFileAttachReqDto req) {
+        assertActiveProjectMember(projectId, userId);
         validateFileAttachReq(req);
 
         Process process = getActiveProcess(projectId, processId);
 
-        SharedDocument doc = getActiveDocument(req.fileId());
+        SharedDocument doc = getActiveDocument(projectId, req.fileId());
 
         if (processSharedDocumentRepository.existsByProcessIdAndDocumentIdAndDeletedAtIsNull(process.getId(), doc.getId())) {
             throw new AttachmentException(
@@ -104,6 +112,7 @@ public class ProcessAttachmentService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.DOCUMENT_ATTACHED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -115,9 +124,8 @@ public class ProcessAttachmentService {
 
     // 프로세스 파일 첨부해제 서비스
     @Transactional
-    public void detachFile(Long projectId, Long processId, Long fileId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
+    public void detachFile(Long projectId, Long userId, Long processId, Long fileId) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = getActiveProcess(projectId, processId);
 
@@ -137,6 +145,7 @@ public class ProcessAttachmentService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.DOCUMENT_DETACHED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -147,10 +156,8 @@ public class ProcessAttachmentService {
 
     // 프로세스 링크 추가 서비스
     @Transactional
-    public ProcessLinkCreateResDto createLink(Long projectId, Long processId, ProcessLinkCreateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 링크 추가 가능)
-
+    public ProcessLinkCreateResDto createLink(Long projectId, Long userId, Long processId, ProcessLinkCreateReqDto req) {
+        assertActiveProjectMember(projectId, userId);
         validateLinkCreateReq(req);
 
         Process process = getActiveProcess(projectId, processId);
@@ -172,6 +179,7 @@ public class ProcessAttachmentService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.LINK_ATTACHED,
                 HistoryTargetType.PROCESS,
                 processId,
@@ -183,9 +191,8 @@ public class ProcessAttachmentService {
 
     // 프로세스 링크 삭제 서비스
     @Transactional
-    public void deleteLink(Long projectId, Long processId, Long linkId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증
+    public void deleteLink(Long projectId, Long userId, Long processId, Long linkId) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = getActiveProcess(projectId, processId);
 
@@ -207,6 +214,7 @@ public class ProcessAttachmentService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.LINK_DETACHED,
                 HistoryTargetType.PROCESS,
                 processId,

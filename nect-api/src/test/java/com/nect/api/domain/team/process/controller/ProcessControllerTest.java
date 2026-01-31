@@ -6,9 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.ProcessService;
+import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -18,8 +20,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -51,7 +57,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.subsecti
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
 class ProcessControllerTest {
@@ -68,32 +74,50 @@ class ProcessControllerTest {
     @MockitoBean
     private ProcessService processService;
 
+    private RequestPostProcessor mockUser(Long userId) {
+        UserDetailsImpl principal = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_MEMBER"))
+                .build();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                principal,
+                "",
+                principal.getAuthorities()
+        );
+
+        return SecurityMockMvcRequestPostProcessors.authentication(auth);
+    }
+
     @Test
     @DisplayName("프로세스 생성")
     void createProcess() throws Exception {
         // given
         long projectId = 1L;
+        long userId = 1L;
         long createdProcessId = 10L;
 
         ProcessCreateReqDto request = new ProcessCreateReqDto(
                 "1주차 미션",                 // process_title
                 "프로세스 내용",              // process_content
                 ProcessStatus.IN_PROGRESS,    // process_status
-                List.of(),                    // assignee_ids  (기존: List.of(1L, 2L))
-                List.of(),                    // field_ids     (기존: List.of(101L, 102L))
+                List.of(),                    // assignee_ids
+                List.of(),                    // role_fields
+                null,                         // custom_field_name
                 LocalDate.of(2026, 1, 19),    // start_date
                 LocalDate.of(2026, 1, 25),    // dead_line
-                List.of(),                    // mention_user_ids (기존: List.of(3L, 4L))
-                List.of(),                    // file_ids         (기존: List.of(1001L, 1002L)
-                List.of(),                    // links            (기존: List.of("https://a.com"))
-                List.of()                     // task_items       (기존: 2개)
+                List.of(),                    // mention_user_ids
+                List.of(),                    // file_ids
+                List.of(),                    // links
+                List.of()                     // task_items
         );
 
-        given(processService.createProcess(anyLong(), any(ProcessCreateReqDto.class)))
+        given(processService.createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class)))
                 .willReturn(createdProcessId);
 
         // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes", projectId)
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -113,17 +137,24 @@ class ProcessControllerTest {
                                                 fieldWithPath("process_title").type(STRING).description("프로세스 제목"),
                                                 fieldWithPath("process_content").type(STRING).description("프로세스 내용"),
                                                 fieldWithPath("process_status").type(STRING).description("프로세스 상태"),
+
                                                 fieldWithPath("assignee_ids").type(ARRAY).description("담당자 ID 목록"),
-                                                fieldWithPath("field_ids").type(ARRAY).description("분야 ID 목록"),
-                                                fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
-                                                fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
-                                                fieldWithPath("mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
-                                                fieldWithPath("file_ids").type(ARRAY).description("파일 ID 목록"),
-                                                fieldWithPath("links").type(ARRAY).description("링크 목록"),
-                                                fieldWithPath("task_items").type(ARRAY).description("하위 작업 목록")
-//                                                fieldWithPath("task_items[].content").type(STRING).description("하위 작업 내용"),
-//                                                fieldWithPath("task_items[].is_done").type(BOOLEAN).description("완료 여부"),
-//                                                fieldWithPath("task_items[].sort_order").type(NUMBER).description("정렬 순서")
+                                                fieldWithPath("role_fields").type(ARRAY).description("분야 목록 (예: BACKEND, FRONTEND 등)"),
+                                                fieldWithPath("custom_field_name").optional().type(STRING).description("커스텀 분야명(null 가능)"),
+
+                                                fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+
+                                                fieldWithPath("mention_user_ids").type(ARRAY).description("멘션된 유저 ID 목록"),
+                                                fieldWithPath("file_ids").type(ARRAY).description("첨부 파일 ID 목록"),
+
+                                                fieldWithPath("links").type(ARRAY).description("첨부 링크 목록"),
+                                                fieldWithPath("links[].url").optional().type(STRING).description("링크 URL"),
+
+                                                fieldWithPath("task_items").type(ARRAY).description("업무 항목(TaskItem) 목록"),
+                                                fieldWithPath("task_items[].content").optional().type(STRING).description("업무 항목 내용"),
+                                                fieldWithPath("task_items[].is_done").optional().type(BOOLEAN).description("완료 여부"),
+                                                fieldWithPath("task_items[].sort_order").optional().type(NUMBER).description("정렬 순서")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").description("응답 상태"),
@@ -137,6 +168,7 @@ class ProcessControllerTest {
                                         .build()
                         )
                 ));
+        verify(processService).createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class));
     }
 
     @Test
@@ -145,6 +177,24 @@ class ProcessControllerTest {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
+
+
+        FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
+                1L,
+                "작성자",
+                List.of(101L, 102L)
+        );
+
+        List<ProcessFeedbackCreateResDto> feedbacks = List.of(
+                new ProcessFeedbackCreateResDto(
+                        1L,
+                        "피드백 내용",
+                        ProcessFeedbackStatus.OPEN,
+                        createdBy,
+                        LocalDateTime.of(2026, 1, 24, 0, 0, 0)
+                )
+        );
 
         ProcessDetailResDto response = new ProcessDetailResDto(
                 processId,
@@ -154,27 +204,19 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 19),
                 LocalDate.of(2026, 1, 25),
                 0,
-                List.of(101L, 102L),
+
+                List.of(),                 // role_fields
+                List.of("디자인"),         // custom_fields
+
                 List.of(
                         new AssigneeResDto(1L, "유저1", "https://img.com/1.png"),
                         new AssigneeResDto(2L, "유저2", "https://img.com/2.png")
                 ),
                 List.of(3L, 4L),
+
                 List.of(
-                        new FileResDto(
-                                1001L,
-                                "spec.pdf",
-                                "https://s3.amazonaws.com/nect/spec.pdf",
-                                FileExt.PDF,
-                                1024L
-                        ),
-                        new FileResDto(
-                                1002L,
-                                "image.jpg",
-                                "https://s3.amazonaws.com/nect/image.jpg",
-                                FileExt.JPG,
-                                2048L
-                        )
+                        new FileResDto(1001L, "spec.pdf", "https://s3.amazonaws.com/nect/spec.pdf", FileExt.PDF, 1024L),
+                        new FileResDto(1002L, "image.jpg", "https://s3.amazonaws.com/nect/image.jpg", FileExt.JPG, 2048L)
                 ),
                 List.of(
                         new LinkResDto(1L, "https://a.com"),
@@ -184,25 +226,22 @@ class ProcessControllerTest {
                         new ProcessTaskItemResDto(1L, "세부작업1", false, 0, null),
                         new ProcessTaskItemResDto(2L, "세부작업2", true, 1, LocalDate.of(2026, 1, 20))
                 ),
-                List.of(
-                        new ProcessFeedbackCreateResDto(
-                                1L,
-                                "피드백 내용",
-                                ProcessFeedbackStatus.OPEN,
-                                LocalDateTime.of(2026, 1, 24, 0, 0, 0)
-                        )
-                ),
+
+                feedbacks,
+
                 LocalDateTime.of(2026, 1, 19, 0, 0, 0),
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0),
                 null
         );
 
-        given(processService.getProcessDetail(anyLong(), anyLong()))
+        given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId)))
                 .willReturn(response);
 
 
         // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-detail",
@@ -216,6 +255,9 @@ class ProcessControllerTest {
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").description("응답 상태"),
@@ -232,7 +274,8 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
                                                 fieldWithPath("body.status_order").type(NUMBER).description("상태 내 정렬 순서"),
 
-                                                fieldWithPath("body.field_ids").type(ARRAY).description("분야 ID 목록"),
+                                                fieldWithPath("body.role_fields").type(ARRAY).description("역할 분야 목록(RoleField)"),
+                                                fieldWithPath("body.custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
 
                                                 fieldWithPath("body.assignees").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.assignees[].user_id").type(NUMBER).description("담당자 유저 ID"),
@@ -263,6 +306,12 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.feedbacks[].feedback_id").type(NUMBER).description("피드백 ID"),
                                                 fieldWithPath("body.feedbacks[].content").type(STRING).description("피드백 내용"),
                                                 fieldWithPath("body.feedbacks[].status").type(STRING).description("피드백 상태"),
+
+                                                fieldWithPath("body.feedbacks[].created_by").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.feedbacks[].created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.feedbacks[].created_by.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.feedbacks[].created_by.field_ids").type(ARRAY).description("작성자 분야 ID 목록"),
+
                                                 fieldWithPath("body.feedbacks[].created_at").type(STRING).description("피드백 생성일시"),
 
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시"),
@@ -280,13 +329,21 @@ class ProcessControllerTest {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
-        var request = objectMapper.createObjectNode();
-        request.put("process_title", "수정된 제목");
-        request.put("process_content", "수정된 내용");
-        request.put("process_status", "IN_PROGRESS");
-        request.put("start_date", "2026-01-20");
-        request.put("dead_line", "2026-01-26");
+        ProcessBasicUpdateReqDto request = new ProcessBasicUpdateReqDto(
+                "수정된 제목",                                   // process_title
+                "수정된 내용",                                   // process_content
+                ProcessStatus.IN_PROGRESS,                       // process_status
+                LocalDate.of(2026, 1, 20),                       // start_date
+                LocalDate.of(2026, 1, 26),                       // dead_line
+
+                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM), // role_fields
+                List.of("AI"),                                      // custom_fields
+
+                List.of(1L, 2L),                                    // assignee_ids
+                List.of(3L, 4L)                                     // mention_user_ids
+        );
 
         ProcessBasicUpdateResDto response = new ProcessBasicUpdateResDto(
                 processId,
@@ -295,19 +352,27 @@ class ProcessControllerTest {
                 ProcessStatus.IN_PROGRESS,
                 LocalDate.of(2026, 1, 20),
                 LocalDate.of(2026, 1, 26),
-                List.of(),  // field_ids도 문서 예시 맞춰서
-                List.of(),
-                List.of(),
+
+                List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM), // roleFields
+                List.of("AI"),                                                    // customFields
+
+                List.of(1L, 2L),                                                  // assigneeIds
+                List.of(3L, 4L),                                                  // mentionUserIds
+
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0)
         );
 
-        given(processService.updateProcessBasic(anyLong(), anyLong(), any(ProcessBasicUpdateReqDto.class)))
+        given(processService.updateProcessBasic(eq(projectId), eq(userId), eq(processId), any(ProcessBasicUpdateReqDto.class)))
                 .willReturn(response);
 
         // when, then
-        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(
+                        patch("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
+                                .with(mockUser(userId))
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
                 .andExpect(status().isOk())
                 .andDo(document("process-basic-update",
                         preprocessRequest(prettyPrint()),
@@ -321,15 +386,22 @@ class ProcessControllerTest {
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
                                         )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
                                         .requestFields(
                                                 fieldWithPath("process_title").optional().type(STRING).description("프로세스 제목"),
                                                 fieldWithPath("process_content").optional().type(STRING).description("프로세스 내용"),
                                                 fieldWithPath("process_status").optional().type(STRING).description("프로세스 상태"),
-                                                fieldWithPath("assignee_ids").optional().type(ARRAY).description("담당자 ID 목록 (미포함 시 변경 없음, []면 비우기)"),
-                                                fieldWithPath("field_ids").optional().type(ARRAY).description("분야 ID 목록 (미포함 시 변경 없음, []면 비우기)"),
+
                                                 fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd)"),
                                                 fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd)"),
-                                                fieldWithPath("mention_user_ids").optional().type(ARRAY).description("멘션 유저 ID 목록 (미포함 시 변경 없음, []면 비우기)")
+
+                                                fieldWithPath("assignee_ids").optional().type(ARRAY).description("담당자 ID 목록 (미포함 시 변경 없음, []면 비우기)"),
+                                                fieldWithPath("mention_user_ids").optional().type(ARRAY).description("멘션 유저 ID 목록 (미포함 시 변경 없음, []면 비우기)"),
+
+                                                fieldWithPath("role_fields").optional().type(ARRAY).description("역할 분야 목록(RoleField)"),
+                                                fieldWithPath("custom_fields").optional().type(ARRAY).description("커스텀 분야명 목록(CUSTOM 선택 시)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -337,30 +409,39 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
                                                 fieldWithPath("status.description").optional().description("상세 설명"),
 
-                                                fieldWithPath("body").description("응답 바디"),
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.process_title").type(STRING).description("프로세스 제목"),
                                                 fieldWithPath("body.process_content").type(STRING).description("프로세스 내용"),
                                                 fieldWithPath("body.process_status").type(STRING).description("프로세스 상태"),
                                                 fieldWithPath("body.start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
                                                 fieldWithPath("body.dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.field_ids").type(ARRAY).description("분야 ID 목록"),
+
+                                                fieldWithPath("body.role_fields").type(ARRAY).description("역할 분야 목록(RoleField)"),
+                                                fieldWithPath("body.custom_fields").type(ARRAY).description("커스텀 분야명 목록(CUSTOM 선택 시)"),
+
                                                 fieldWithPath("body.assignee_ids").type(ARRAY).description("담당자 ID 목록"),
                                                 fieldWithPath("body.mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
-                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시")
+                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)")
                                         )
                                         .build()
                         )
                 ));
+
+        verify(processService).updateProcessBasic(eq(projectId), eq(userId), eq(processId), any(ProcessBasicUpdateReqDto.class));
     }
+
 
     @Test
     @DisplayName("프로세스 삭제")
     void deleteProcess() throws Exception {
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
         mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-delete",
@@ -375,16 +456,22 @@ class ProcessControllerTest {
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
                                         )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
                                         .responseFields(
-                                                fieldWithPath("status").description("응답 상태"),
-                                                fieldWithPath("status.statusCode").description("상태 코드"),
-                                                fieldWithPath("status.message").description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명(주로 에러 시)")
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명(주로 에러 시)"),
+
+                                                fieldWithPath("body").type(NULL).optional().description("응답 바디(없음)")
                                         )
                                         .build()
                         )
                 ));
-        verify(processService).deleteProcess(projectId, processId);
+
+        verify(processService).deleteProcess(eq(projectId), eq(userId),  eq(processId));
     }
 
     @Test
@@ -392,18 +479,20 @@ class ProcessControllerTest {
     void getWeekProcesses() throws Exception {
         // given
         long projectId = 1L;
+        long userId = 1L;
 
         ProcessWeekResDto response = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 19),
-                List.of(), // common_lane 비워둠
-                List.of()  // by_field 비워둠
+                List.of(),
+                List.of()
         );
 
-        given(processService.getWeekProcesses(eq(projectId), any()))
+        given(processService.getWeekProcesses(eq(projectId), eq(userId), any()))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/week", projectId)
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("start_date", "2026-01-19")
                         .accept(MediaType.APPLICATION_JSON))
@@ -423,18 +512,17 @@ class ProcessControllerTest {
                                                 parameterWithName("start_date").optional().description("주 시작일(yyyy-MM-dd)")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
                                                 fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
 
-                                                // 중첩 DTO 내부 필드를 아직 모르니 subsection으로 처리
                                                 subsectionWithPath("body.common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
                                                 subsectionWithPath("body.by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
                                         )
@@ -442,6 +530,7 @@ class ProcessControllerTest {
                         )
                 ));
 
+        verify(processService).getWeekProcesses(eq(projectId), eq(userId), any());
     }
 
 
@@ -450,17 +539,20 @@ class ProcessControllerTest {
     void getPartProcesses() throws Exception {
         // given
         long projectId = 1L;
+        long userId = 1L;
 
         ProcessPartResDto response = new ProcessPartResDto(
-                1L,
-                List.of() // status_groups 비워둠
+                "TEAM",   // lane_key (예: "TEAM" / "FIELD" / "BACKEND" 등)
+                List.of() // groups
         );
 
-        given(processService.getPartProcesses(eq(projectId), any()))
+        given(processService.getPartProcesses(eq(projectId), eq(userId), any()))
                 .willReturn(response);
+
 
         // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/part", projectId)
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("field_id", "1")
                         .accept(MediaType.APPLICATION_JSON))
@@ -480,23 +572,23 @@ class ProcessControllerTest {
                                                 parameterWithName("field_id").optional().description("분야 ID (미입력 시 팀 탭)")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
                                                 fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.field_id").optional().type(NUMBER).description("분야 ID (팀 탭이면 null 가능)"),
-
-                                                // 중첩 DTO 내부는 subsection 처리
-                                                subsectionWithPath("body.status_groups").type(ARRAY).description("상태별 그룹 목록")
+                                                fieldWithPath("body.lane_key").type(STRING).description("레인 키(팀/파트 구분 키)"),
+                                                subsectionWithPath("body.groups").type(ARRAY).description("상태별 그룹 목록")
                                         )
                                         .build()
                         )
                 ));
+
+        verify(processService).getPartProcesses(eq(projectId), eq(userId), any());
     }
 
     @Test
@@ -505,10 +597,12 @@ class ProcessControllerTest {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
         ProcessOrderUpdateReqDto request = new ProcessOrderUpdateReqDto(
                 ProcessStatus.IN_PROGRESS,
                 List.of(10L, 11L, 12L),
+                "TEAM",
                 LocalDate.of(2026, 1, 19),
                 LocalDate.of(2026, 1, 25)
         );
@@ -521,11 +615,12 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 25)
         );
 
-        given(processService.updateProcessOrder(eq(projectId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
+        given(processService.updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/order", projectId, processId)
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -543,11 +638,12 @@ class ProcessControllerTest {
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
                                                 fieldWithPath("status").type(STRING).description("변경할 프로세스 상태"),
                                                 fieldWithPath("ordered_process_ids").type(ARRAY).description("해당 상태 컬럼에서의 프로세스 정렬 ID 목록"),
+                                                fieldWithPath("lane_key").type(STRING).description("레인 키(TEAM/파트명 등)"),
                                                 fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
                                                 fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)")
                                         )
@@ -555,8 +651,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
                                                 fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명"),
-
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("대상 프로세스 ID"),
@@ -569,6 +664,7 @@ class ProcessControllerTest {
                         )
                 ));
 
+        verify(processService).updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class));
     }
 
     @Test
@@ -577,6 +673,7 @@ class ProcessControllerTest {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
         ProcessStatusUpdateReqDto request = new ProcessStatusUpdateReqDto(ProcessStatus.DONE);
 
@@ -586,11 +683,12 @@ class ProcessControllerTest {
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0)
         );
 
-        given(processService.updateProcessStatus(eq(projectId), eq(processId), any(ProcessStatusUpdateReqDto.class)))
+        given(processService.updateProcessStatus(eq(projectId), eq(userId), eq(processId), any(ProcessStatusUpdateReqDto.class)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/status", projectId, processId)
+                        .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -608,7 +706,7 @@ class ProcessControllerTest {
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
                                         )
                                         .requestHeaders(
-                                                headerWithName(AUTH_HEADER).optional().description("Bearer Access Token")
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
                                                 fieldWithPath("status").type(STRING).description("변경할 프로세스 상태")
@@ -617,18 +715,18 @@ class ProcessControllerTest {
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
                                                 fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().description("상세 설명"),
-
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.status").type(STRING).description("변경된 프로세스 상태"),
-                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시")
+                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)")
                                         )
                                         .build()
                         )
                 ));
 
+        verify(processService).updateProcessStatus(eq(projectId), eq(userId), eq(processId), any(ProcessStatusUpdateReqDto.class));
     }
 
 

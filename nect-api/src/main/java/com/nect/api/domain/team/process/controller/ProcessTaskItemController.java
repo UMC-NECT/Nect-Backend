@@ -7,7 +7,9 @@ import com.nect.api.domain.team.process.dto.res.ProcessTaskItemReorderResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.service.ProcessTaskItemService;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,9 +23,11 @@ public class ProcessTaskItemController {
     public ApiResponse<ProcessTaskItemResDto> createTaskItem(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessTaskItemUpsertReqDto request
     ) {
-        ProcessTaskItemResDto res = taskItemService.create(projectId, processId, request);
+        Long userId = userDetails.getUserId();
+        ProcessTaskItemResDto res = taskItemService.create(projectId, userId, processId, request);
         return ApiResponse.ok(res);
     }
 
@@ -33,20 +37,24 @@ public class ProcessTaskItemController {
             @PathVariable Long projectId,
             @PathVariable Long processId,
             @PathVariable Long taskItemId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessTaskItemUpsertReqDto request
     ) {
-        ProcessTaskItemResDto res = taskItemService.update(projectId, processId, taskItemId, request);
+        Long userId = userDetails.getUserId();
+        ProcessTaskItemResDto res = taskItemService.update(projectId, userId, processId, taskItemId, request);
         return ApiResponse.ok(res);
     }
 
-    // 압무 항목 삭제
+    // 업무 항목 삭제
     @DeleteMapping("/{taskItemId}")
     public ApiResponse<ProcessTaskItemDeleteResDto> deleteTaskItem(
             @PathVariable Long projectId,
             @PathVariable Long processId,
-            @PathVariable Long taskItemId
+            @PathVariable Long taskItemId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        taskItemService.delete(projectId, processId, taskItemId);
+        Long userId = userDetails.getUserId();
+        taskItemService.delete(projectId, userId, processId, taskItemId);
         return ApiResponse.ok(new ProcessTaskItemDeleteResDto(taskItemId));
     }
 
@@ -55,8 +63,10 @@ public class ProcessTaskItemController {
     public ApiResponse<ProcessTaskItemReorderResDto> reorderTaskItems(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessTaskItemReorderReqDto request
     ) {
-        return ApiResponse.ok(taskItemService.reorder(projectId, processId, request));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(taskItemService.reorder(projectId, userId, processId, request));
     }
 }

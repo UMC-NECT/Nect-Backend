@@ -13,15 +13,18 @@ import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
-import com.nect.core.entity.team.process.Link;
+import com.nect.core.entity.team.process.*;
 import com.nect.core.entity.team.process.Process;
-import com.nect.core.entity.team.process.ProcessMention;
-import com.nect.core.entity.team.process.ProcessTaskItem;
+import com.nect.core.entity.team.process.enums.AssignmentRole;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.ProcessMentionRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
+import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,60 +40,34 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProcessService {
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
     private final ProcessMentionRepository processMentionRepository;
+     private final UserRepository userRepository;
 
     private final NotificationFacade notificationFacade;
-
-    // TODO: Field 연동 시 주입
-    // private final FieldRepository fieldRepository;
-
-    // TODO: 담당자(assignee) 연동 시 주입
-    // private final UserRepository userRepository;
-
-    // TODO(인증/인가): Security/User 붙이면 CurrentUserProvider(또는 AuthFacade), ProjectUserRepository(멤버십 검증용) 주입 예정
 
     // TODO : 알림 기능 추가 예정
 
     private final ProjectHistoryPublisher historyPublisher;
 
-    /**
-     * [HISTORY EVENT 발행 정책 - TODO]
-     *
-     * 목표:
-     * - Process 도메인(CRUD/상태변경/정렬변경)은 "히스토리 저장"을 직접 하지 않고,
-     *   변경 사실을 ProjectHistoryEvent로만 발행한다. (느슨한 결합 / 모듈 분리)
-     *
-     * 이벤트 저장 책임:
-     * - history 모듈(ProjectHistoryEventHandler)이 @TransactionalEventListener(phase = AFTER_COMMIT)로 이벤트를 받아
-     *   project_history 테이블에 저장한다.
-     *   (트랜잭션이 성공적으로 커밋된 경우에만 히스토리가 남도록 보장)
-     *
-     * 발행 시점/조건 :
-     * - "요청이 들어옴"이 아니라 "실제로 값이 변경됨"을 기준으로 publish 한다.
-     *   - updateProcessBasic: before snapshot -> 변경 적용 -> after 비교 -> changed=true일 때만 publish
-     *   - updateProcessOrder: before snapshot(status/order/start/end) -> 변경 적용 -> after 비교 -> changed=true일 때만 publish
-     *   - updateProcessStatus: before != after 일 때만 publish
-     *   - deleteProcess: softDelete()로 deletedAt 세팅 후 publish
-     *
-     * metaJson 규격(권장):
-     * - action 별로 최소한의 before/after 또는 핵심 delta를 담는다.
-     *   - PROCESS_CREATED: {title, status, startAt, endAt}
-     *   - PROCESS_UPDATED: {changed:{...}, before:{...}, after:{...}}
-     *   - PROCESS_DELETED: {title?, status?, deletedAt}
-     *   - PROCESS_STATUS_CHANGED: {beforeStatus, afterStatus, source?}
-     *   - PROCESS_REORDERED: {before:{status,statusOrder,startAt,endAt}, after:{...}, orderedProcessIds, source?}
-     *
-     * actorUserId:
-     * - 현재는 임시(1L). 인증 도입 후 CurrentUserProvider/AuthFacade 등에서 userId를 가져와 event에 주입한다.
-     */
+    // 헬퍼 메서드
+    private void assertActiveProjectMember(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new ProcessException(
+                    ProcessErrorCode.FORBIDDEN,
+                    "프로젝트 멤버가 아닙니다. projectId=" + projectId + ", userId=" + userId
+            );
+        }
+    }
+
 
     // 프로세스 생성 서비스
     @Transactional
-    public Long createProcess(Long projectId, ProcessCreateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출 (UserDetails/JWT)
-        // TODO(인가): projectId에 현재 유저가 멤버인지 검증 (프로젝트 참여자만 생성 가능)
+    public Long createProcess(Long projectId, Long userId, ProcessCreateReqDto req) {
+
+        assertActiveProjectMember(projectId, userId);
 
         // 프로젝트 확인
         Project project = projectRepository.findById(projectId)
@@ -99,9 +76,16 @@ public class ProcessService {
                         "projectId = " + projectId
                 ));
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "userId = " + userId
+                ));
+
         // Process 기본 생성
         Process process = Process.builder()
                 .project(project)
+                .createdBy(user)
                 .title(req.processTitle())
                 .content(req.processContent())
                 .build();
@@ -137,7 +121,11 @@ public class ProcessService {
             process.addTaskItem(item);
         }
 
-        for (Long fileId : req.fileIds()) {
+        // files
+        List<Long> fileIds = Optional.ofNullable(req.fileIds()).orElse(List.of()).stream()
+                .filter(Objects::nonNull).distinct().toList();
+
+        for (Long fileId : fileIds) {
             SharedDocument doc = sharedDocumentRepository.findByIdAndProjectIdAndDeletedAtIsNull(fileId, projectId)
                     .orElseThrow(() -> new ProcessException(
                             ProcessErrorCode.SHARED_DOCUMENT_NOT_FOUND,
@@ -146,17 +134,74 @@ public class ProcessService {
             process.attachDocument(doc);
         }
 
-        for (String url : req.links()) {
-            if (url == null || url.isBlank()) continue;
+        // links
+        List<String> links = Optional.ofNullable(req.links()).orElse(List.of()).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+
+        for (String url : links) {
             Link link = Link.builder()
                     .process(process)
                     .url(url)
                     .build();
-
             process.addLink(link);
         }
 
-        // TODO: Field/Assignee 구조 확정되면 구현
+
+        // 필드(역할) CUSTOM쪽 검증
+        List<RoleField> roleFields = Optional.ofNullable(req.roleFields()).orElse(List.of())
+                .stream().filter(Objects::nonNull).distinct().toList();
+
+
+        if (roleFields.contains(RoleField.CUSTOM)) {
+            if (req.customFieldName() == null || req.customFieldName().isBlank()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "custom_field_name is required when role_fields contains CUSTOM"
+                );
+            }
+        }
+
+        for (RoleField rf : roleFields) {
+            if (rf == RoleField.CUSTOM) {
+                process.addField(RoleField.CUSTOM, req.customFieldName());
+            } else {
+                process.addField(rf, null);
+            }
+        }
+
+
+        List<Long> assigneeIds = Optional.ofNullable(req.assigneeIds()).orElse(List.of()).stream()
+                .filter(Objects::nonNull).distinct().toList();
+
+        if (!assigneeIds.isEmpty()) {
+            List<User> assignees = projectUserRepository.findAllUsersByProjectIdAndUserIds(projectId, assigneeIds);
+
+            if (assignees.size() != assigneeIds.size()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "assignee must be active project member. projectId=" + projectId
+                );
+            }
+
+            Map<Long, User> byId = assignees.stream()
+                    .collect(Collectors.toMap(User::getUserId, u -> u));
+
+            for (Long aid : assigneeIds) {
+                User assignee = byId.get(aid);
+
+                ProcessUser pu = ProcessUser.builder()
+                        .process(process)
+                        .user(assignee)
+                        .assignmentRole(AssignmentRole.ASSIGNEE)
+                        .build();
+
+                process.addProcessUser(pu);
+            }
+        }
 
         Process saved = processRepository.save(process);
 
@@ -178,9 +223,16 @@ public class ProcessService {
         meta.put("status", saved.getStatus());
         meta.put("startAt", saved.getStartAt());
         meta.put("endAt", saved.getEndAt());
+        meta.put("roleFields", roleFields);
+        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? req.customFieldName() : null);
+        meta.put("assigneeIds", assigneeIds);
+        meta.put("mentionUserIds", mentionIds);
+        meta.put("fileIds", fileIds);
+        meta.put("links", links);
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.PROCESS_CREATED,
                 HistoryTargetType.PROCESS,
                 saved.getId(),
@@ -193,9 +245,8 @@ public class ProcessService {
 
     // 프로세스 상세 보기
     @Transactional(readOnly = true)
-    public ProcessDetailResDto getProcessDetail(Long projectId, Long processId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 조회 가능)
+    public ProcessDetailResDto getProcessDetail(Long projectId, Long userId, Long processId) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new ProcessException(
@@ -221,13 +272,108 @@ public class ProcessService {
 
         List<Long> mentionUserIds = process.getMentions().stream()
                 .map(ProcessMention::getMentionedUserId)
+                .filter(Objects::nonNull)
+                .distinct()
                 .toList();
 
-        // ---- TODO: fieldIds / assignees / files / feedbacks 임시 ----
-        List<Long> fieldIds = List.of();             // TODO: ProcessField 연동되면 채우기
-        List<AssigneeResDto> assignees = List.of();  // TODO: ProcessUser + User 연동되면 채우기
-        List<FileResDto> files = List.of();          // TODO: SharedDocument 메타(이름/URL/타입) 연동되면 채우기
-        List<ProcessFeedbackCreateResDto> feedbacks = List.of(); // TODO: ProcessFeedback 조회 붙이면 채우기
+        List<RoleField> roleFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .map(ProcessField::getRoleField)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<String> customFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                .map(ProcessField::getCustomFieldName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+
+        List<AssigneeResDto> assignees = process.getProcessUsers().stream()
+                .filter(pu -> pu.getDeletedAt() == null)
+                .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                .map(pu -> {
+                    User u = pu.getUser();
+
+                    // TODO : 유저 프로필 넣기
+                    String userImage = null;
+
+                    return new AssigneeResDto(
+                            u.getUserId(),
+                            u.getName(),
+                            userImage
+                    );
+                })
+                .toList();
+
+        List<FileResDto> files = process.getSharedDocuments().stream()
+                .filter(psd -> psd.getDeletedAt() == null)
+                .map(ProcessSharedDocument::getDocument)
+                .filter(Objects::nonNull)
+                .map(doc -> new FileResDto(
+                        doc.getId(),
+                        doc.getFileName(),
+                        doc.getFileUrl(),
+                        doc.getFileExt(),
+                        doc.getFileSize()
+                ))
+                .toList();
+
+        // feedbacks 채우기
+        List<Long> feedbackCreatedByUserIds = process.getFeedbacks().stream()
+                .filter(f -> f.getDeletedAt() == null)
+                .map(f -> f.getCreatedBy() == null ? null : f.getCreatedBy().getUserId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, List<Long>> createdByFieldIdsMap = projectUserRepository
+                .findActiveUserFieldIdsByProjectIdAndUserIds(projectId, feedbackCreatedByUserIds)
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        ProjectUserRepository.UserFieldIdsRow::getUserId,
+                        java.util.stream.Collectors.mapping(
+                                r -> r.getFieldId(),
+                                java.util.stream.Collectors.collectingAndThen(
+                                        java.util.stream.Collectors.toList(),
+                                        list -> list.stream()
+                                                .filter(Objects::nonNull)
+                                                .distinct()
+                                                .toList()
+                                )
+                        )
+                ));
+
+        // feedbacks 채우기
+        List<ProcessFeedbackCreateResDto> feedbacks = process.getFeedbacks().stream()
+                .filter(f -> f.getDeletedAt() == null)
+                .map(f -> {
+                    User createdBy = f.getCreatedBy();
+
+                    Long createdById = (createdBy == null) ? null : createdBy.getUserId();
+                    List<Long> createdByFieldIds = (createdById == null)
+                            ? List.of()
+                            : createdByFieldIdsMap.getOrDefault(createdById, List.of());
+
+                    FeedbackCreatedByResDto createdByRes = new FeedbackCreatedByResDto(
+                            createdById,
+                            createdBy == null ? null : createdBy.getName(),
+                            createdByFieldIds
+                    );
+
+                    return new ProcessFeedbackCreateResDto(
+                            f.getId(),
+                            f.getContent(),
+                            f.getStatus(),
+                            createdByRes,
+                            f.getCreatedAt()
+                    );
+                })
+                .toList();
 
         return new ProcessDetailResDto(
                 process.getId(),
@@ -237,7 +383,8 @@ public class ProcessService {
                 process.getStartAt(),
                 process.getEndAt(),
                 process.getStatusOrder(),
-                fieldIds,
+                roleFields,
+                customFields,
                 assignees,
                 mentionUserIds,
                 files,
@@ -294,9 +441,8 @@ public class ProcessService {
 
     // 프로세스 기본 정보 수정
     @Transactional
-    public ProcessBasicUpdateResDto updateProcessBasic(Long projectId, Long processId, ProcessBasicUpdateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 수정 가능)
+    public ProcessBasicUpdateResDto updateProcessBasic(Long projectId, Long userId, Long processId, ProcessBasicUpdateReqDto req) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new ProcessException(
@@ -314,6 +460,34 @@ public class ProcessService {
         final List<Long> beforeMentionIds = processMentionRepository.findAllByProcessId(process.getId()).stream()
                 .filter(m -> !m.isDeleted())
                 .map(ProcessMention::getMentionedUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        final List<RoleField> beforeRoleFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .map(ProcessField::getRoleField)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted(Comparator.comparing(Enum::name))
+                .toList();
+
+        final List<String> beforeCustomFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                .map(ProcessField::getCustomFieldName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+
+        final List<Long> beforeAssigneeIds = process.getProcessUsers().stream()
+                .filter(pu -> pu.getDeletedAt() == null)
+                .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                .map(pu -> pu.getUser().getUserId())
                 .filter(Objects::nonNull)
                 .distinct()
                 .sorted()
@@ -357,16 +531,104 @@ public class ProcessService {
         // 멘션 교체
         List<Long> mentionIdsForRes = syncMentions(process, req.mentionUserIds());
 
-        // 7) TODO: field_ids 교체
-        if (req.fieldIds() != null) {
-            // TODO: process.getProcessFields().clear();
-            // TODO: for each fieldId -> add ProcessField
+        if (req.roleFields() != null || req.customFields() != null) {
+            //  기존 전부 soft delete
+            process.getProcessFields().forEach(pf -> {
+                if (pf.getDeletedAt() == null) pf.softDelete();
+            });
+
+            // roleFields 반영 (CUSTOM 제외)
+            List<RoleField> requestedRoleFields = (req.roleFields() == null) ? List.of() : req.roleFields();
+            for (RoleField rf : requestedRoleFields) {
+                if (rf == null) continue;
+                if (rf == RoleField.CUSTOM) continue;
+
+                // 기존에 같은 roleField가 삭제된 상태로 있으면 restore, 없으면 생성
+                ProcessField found = process.getProcessFields().stream()
+                        .filter(pf -> pf.getRoleField() == rf)
+                        .findFirst()
+                        .orElse(null);
+
+                if (found != null) {
+                    found.restore();
+                } else {
+                    ProcessField pf = ProcessField.builder()
+                            .process(process)
+                            .roleField(rf)
+                            .customFieldName(null)
+                            .build();
+                    process.getProcessFields().add(pf);
+                }
+            }
+
+            // customFields 반영 (CUSTOM은 이름 기반)
+            List<String> requestedCustomFields = (req.customFields() == null) ? List.of() : req.customFields();
+            for (String name : requestedCustomFields) {
+                if (name == null) continue;
+                String trimmed = name.trim();
+                if (trimmed.isBlank()) continue;
+
+                ProcessField found = process.getProcessFields().stream()
+                        .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                        .filter(pf -> trimmed.equals(pf.getCustomFieldName()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (found != null) {
+                    found.restore();
+                } else {
+                    ProcessField pf = ProcessField.builder()
+                            .process(process)
+                            .roleField(RoleField.CUSTOM)
+                            .customFieldName(trimmed)
+                            .build();
+                    process.getProcessFields().add(pf);
+                }
+            }
         }
 
-        // 8) TODO : assignee_ids 교체
+        // 요청이 null이면 변경 안 함
         if (req.assigneeIds() != null) {
-            // TODO: process.getProcessUsers().clear();
-            // TODO: for each userId -> add ProcessUser(role=ASSIGNEE)
+            List<Long> requestedAssigneeIds = req.assigneeIds().stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+            // 프로젝트 멤버인지 검증
+            List<User> assigneeUsers = projectUserRepository.findAllUsersByProjectIdAndUserIds(projectId, requestedAssigneeIds);
+            if (assigneeUsers.size() != requestedAssigneeIds.size()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "assignee_ids contains non-member user. projectId=" + projectId
+                );
+            }
+
+            // 기존 ASSIGNEE 전부 삭제
+            process.getProcessUsers().stream()
+                    .filter(pu -> pu.getDeletedAt() == null)
+                    .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                    .forEach(ProcessUser::delete);
+
+            // 요청 assignee 반영: restore or create
+            for (User u : assigneeUsers) {
+                ProcessUser found = process.getProcessUsers().stream()
+                        .filter(pu -> pu.getUser() != null && pu.getUser().getUserId().equals(u.getUserId()))
+                        .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                        .findFirst()
+                        .orElse(null);
+
+                if (found != null) {
+                    found.restore();
+                } else {
+                    ProcessUser pu = ProcessUser.builder()
+                            .process(process)
+                            .user(u)
+                            .assignmentRole(AssignmentRole.ASSIGNEE)
+                            .assignedAt(null)
+                            .build();
+                    process.getProcessUsers().add(pu);
+                }
+            }
         }
 
         // after 스냅샷
@@ -379,6 +641,34 @@ public class ProcessService {
         final List<Long> afterMentionIds = (mentionIdsForRes == null)
                 ? null   // 요청이 null이면 멘션 변경 안함
                 : mentionIdsForRes.stream().filter(Objects::nonNull).distinct().sorted().toList();
+
+        final List<RoleField> afterRoleFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .map(ProcessField::getRoleField)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted(Comparator.comparing(Enum::name))
+                .toList();
+
+        final List<String> afterCustomFields = process.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                .map(ProcessField::getCustomFieldName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+
+        final List<Long> afterAssigneeIds = process.getProcessUsers().stream()
+                .filter(pu -> pu.getDeletedAt() == null)
+                .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                .map(pu -> pu.getUser().getUserId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
 
         // Map 값 변경
         Map<String, Object> changed = new LinkedHashMap<>();
@@ -404,7 +694,18 @@ public class ProcessService {
             changed.put("mentions", Map.of("before", beforeMentionIds, "after", afterMentionIds));
         }
 
-        // fieldIds / assigneeIds는 아직 TODO지만, 요청이 들어오면 메타에 남길 수는 있음(나중에 실제 연동되면 before/after 비교로 교체)
+        // 요청이 들어온 경우에만 비교 (PATCH)
+        if ((req.roleFields() != null || req.customFields() != null) &&
+                (!Objects.equals(beforeRoleFields, afterRoleFields) || !Objects.equals(beforeCustomFields, afterCustomFields))) {
+            changed.put("fields", Map.of(
+                    "before", Map.of("roleFields", beforeRoleFields, "customFields", beforeCustomFields),
+                    "after", Map.of("roleFields", afterRoleFields, "customFields", afterCustomFields)
+            ));
+        }
+
+        if (req.assigneeIds() != null && !Objects.equals(beforeAssigneeIds, afterAssigneeIds)) {
+            changed.put("assignees", Map.of("before", beforeAssigneeIds, "after", afterAssigneeIds));
+        }
 
         /*
         * HISTORY: 실제 변경이 있는 경우에만 PROCESS_UPDATED 이벤트 발행
@@ -434,6 +735,7 @@ public class ProcessService {
 
             historyPublisher.publish(
                     projectId,
+                    userId,
                     HistoryAction.PROCESS_UPDATED,
                     HistoryTargetType.PROCESS,
                     process.getId(),
@@ -448,9 +750,10 @@ public class ProcessService {
                 process.getStatus(),
                 process.getStartAt(),
                 process.getEndAt(),
-                (req.fieldIds() != null) ? req.fieldIds() : null,         // TODO: 실제 연결되면 process에서 꺼내기
-                (req.assigneeIds() != null) ? req.assigneeIds() : null,   // TODO: 실제 연결되면 process에서 꺼내기
-                mentionIdsForRes,
+                afterRoleFields,
+                afterCustomFields,
+                afterAssigneeIds,
+                (afterMentionIds == null) ? beforeMentionIds : afterMentionIds,
                 process.getUpdatedAt()
         );
 
@@ -466,9 +769,8 @@ public class ProcessService {
      * @param processId 프로세스 ID
      */
     @Transactional
-    public void deleteProcess(Long projectId, Long processId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 삭제 가능)
+    public void deleteProcess(Long projectId, Long userId, Long processId) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new ProcessException(
@@ -481,8 +783,7 @@ public class ProcessService {
 
         process.softDeleteCascade();
 
-        processMentionRepository.findAllByProcessId(process.getId())
-                .forEach(ProcessMention::softDelete);
+        processMentionRepository.softDeleteAllByProcessId(process.getId(), java.time.LocalDateTime.now());
 
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("title", beforeTitle);
@@ -491,6 +792,7 @@ public class ProcessService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.PROCESS_DELETED,
                 HistoryTargetType.PROCESS,
                 process.getId(),
@@ -513,21 +815,34 @@ public class ProcessService {
 
         Integer leftDay = calcLeftDay(p.getEndAt());
 
-        /**
-         * TODO(Field 연동):
-         * - ProcessField(조인 테이블) 연동 후 fieldIds를 채운다.
-         * - 조회 성능을 위해 week 조회 쿼리에 processFields/field를 fetch join 하거나
-         *   processIds IN 으로 field 매핑을 한번에 조회하여 Map으로 합친다.
-         * - fieldIds가 비어있으면 "Team(공통)" 레인으로 분류된다.
-         */
-        List<Long> fieldIds = List.of(); // 임시
+        List<RoleField> roleFields = p.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .map(ProcessField::getRoleField)
+                .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM) // 커스텀은 별도 리스트로
+                .distinct()
+                .toList();
 
-        /**
-         * TODO(Assignee/User 연동):
-         * - ProcessUser + User 연동 후 assignees(프로필/이름 등)를 채운다.
-         * - 필요 시 ProcessUserRole(ASSIGNEE 등) 기준으로 필터링한다.
-         */
-        List<AssigneeResDto> assignees = List.of(); // 임시
+        List<String> customFields = p.getProcessFields().stream()
+                .filter(pf -> pf.getDeletedAt() == null)
+                .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                .map(ProcessField::getCustomFieldName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+
+        List<AssigneeResDto> assignees = p.getProcessUsers().stream()
+                .filter(pu -> pu.getDeletedAt() == null)
+                .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                .map(pu -> {
+                    User u = pu.getUser();
+                    String userImage = null; // TODO: 프로필 컬럼/연동되면 세팅
+                    return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
+                })
+                .toList();
+
 
         return new ProcessCardResDto(
                 p.getId(),
@@ -538,7 +853,8 @@ public class ProcessService {
                 p.getStartAt(),
                 p.getEndAt(),
                 leftDay,
-                fieldIds,
+                roleFields,
+                customFields,
                 assignees
         );
     }
@@ -552,38 +868,76 @@ public class ProcessService {
     // 주 DTO 만들기 레인 분리 포함
     private ProcessWeekResDto buildWeekDto(LocalDate weekStart, List<ProcessCardResDto> weekCards) {
 
-        /**
-         * 레인 분리 정책:
-         * - fieldIds empty: Team(공통) 위크미션 Task 레인
-         * - fieldIds not empty: 파트별 레인(Design/Backend/Frontend 등)
-         *
-         * TODO(Field 연동):
-         * - fieldIds가 실제로 채워지면 아래 분리가 정상적으로 동작한다.
-         */
-
+        // 공통 레인: roleFields/customFields 모두 비어있으면 Team
         List<ProcessCardResDto> commonLane = weekCards.stream()
-                .filter(c -> c.fieldIds() == null || c.fieldIds().isEmpty())
+                .filter(c ->
+                        (c.roleFields() == null || c.roleFields().isEmpty()) &&
+                                (c.customFields() == null || c.customFields().isEmpty())
+                )
                 .toList();
 
-        Map<Long, List<ProcessCardResDto>> byFieldMap = weekCards.stream()
-                .filter(c -> c.fieldIds() != null && !c.fieldIds().isEmpty())
-                .flatMap(c -> c.fieldIds().stream().map(fid -> new AbstractMap.SimpleEntry<>(fid, c)))
-                .collect(Collectors.groupingBy(
-                        Map.Entry::getKey,
-                        Collectors.mapping(Map.Entry::getValue, Collectors.toList())
-                ));
+        Map<String, List<ProcessCardResDto>> byLaneMap = new LinkedHashMap<>();
 
-        // TODO(FieldRepository 연동):
-        // - fieldName, fieldOrder를 실제 Field 데이터로 세팅
+        for (ProcessCardResDto c : weekCards) {
 
-        List<FieldGroupResDto> byField = byFieldMap.entrySet().stream()
-                .map(e -> new FieldGroupResDto(
-                        e.getKey(),
-                        null,
-                        Integer.MAX_VALUE,
-                        e.getValue()
-                ))
-                .sorted(Comparator.comparingInt(FieldGroupResDto::fieldOrder))
+            // 카드가 같은 lane에 중복으로 들어가는 걸 방지
+            java.util.Set<String> laneKeys = new java.util.LinkedHashSet<>();
+
+            // RoleField 레인 (CUSTOM은 customFields로만 처리)
+            if (c.roleFields() != null) {
+                for (RoleField rf : c.roleFields()) {
+                    if (rf == null) continue;
+                    if (rf == RoleField.CUSTOM) continue;
+                    laneKeys.add("ROLE:" + rf.name());
+                }
+            }
+
+            // Custom 레인
+            if (c.customFields() != null) {
+                for (String name : c.customFields()) {
+                    if (name == null) continue;
+                    String trimmed = name.trim();
+                    if (trimmed.isBlank()) continue;
+                    laneKeys.add("CUSTOM:" + trimmed);
+                }
+            }
+
+            for (String key : laneKeys) {
+                byLaneMap.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
+            }
+        }
+
+        // laneKey 기준으로 결정론적 정렬: ROLE 먼저, 그 다음 CUSTOM
+        List<FieldGroupResDto> byField = byLaneMap.entrySet().stream()
+                .map(e -> {
+                    String laneKey = e.getKey();
+
+                    String laneName;
+                    int laneTypeOrder; // ROLE=0, CUSTOM=1
+                    String laneSortKey; // 타입 내부 정렬 키
+
+                    if (laneKey.startsWith("ROLE:")) {
+                        laneTypeOrder = 0;
+                        laneName = laneKey.substring("ROLE:".length());   // enum name
+                        laneSortKey = laneName; // enum name 기준 오름차순
+                    } else {
+                        laneTypeOrder = 1;
+                        laneName = laneKey.substring("CUSTOM:".length()); // custom name
+                        laneSortKey = laneName; // custom name 기준 오름차순
+                    }
+
+                    // FieldGroupResDto가 lane DTO 역할이면 fieldOrder를 "정렬용 order"로 쓰면 됨
+                    // (혹은 fieldOrder 필드를 laneTypeOrder로 두고, laneName으로 2차 정렬)
+                    return new FieldGroupResDto(
+                            laneKey,
+                            laneName,
+                            laneTypeOrder,
+                            e.getValue()
+                    );
+                })
+                .sorted(java.util.Comparator
+                        .comparingInt(FieldGroupResDto::fieldOrder)   // ROLE(0) 먼저
+                        .thenComparing(FieldGroupResDto::fieldName))  // 이름 오름차순
                 .toList();
 
         return new ProcessWeekResDto(weekStart, commonLane, byField);
@@ -591,29 +945,80 @@ public class ProcessService {
 
     // 주차별 프로세스 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessWeekResDto getWeekProcesses(Long projectId, LocalDate startDate) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 조회 가능)
+    public ProcessWeekResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate) {
 
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROJECT_NOT_FOUND,
-                        "projectId = " + projectId
-                ));
+        assertActiveProjectMember(projectId, userId);
+
+        if (!projectRepository.existsById(projectId)) {
+            throw new ProcessException(
+                    ProcessErrorCode.PROJECT_NOT_FOUND,
+                    "projectId=" + projectId
+            );
+        }
 
 
         LocalDate weekStart = normalizeWeekStart(startDate);
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        // TODO(Field 연동 전): 현재는 기간 기반으로 프로세스만 조회
-        // Field 연동 후에는 카드 응답(fieldIds)에 따라 아래 레인 분리가 정상 동작함.
-        // TODO(성능/N+1):Field/User/TaskItem 연동 완료 후, week 조회 시 연관 컬렉션 접근으로 N+1이 발생할 수 있음. 최적화 시키기
-        // - ProcessRepository의 week 조회(findAllInRangeOrdered)를 fetch join 또는 @EntityGraph로 전환해서
-        //   필요한 연관(taskItems, processFields->field, processUsers->user 등)을 한번에 로딩하도록 최적화한다.
         List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd);
 
         List<ProcessCardResDto> cards = processes.stream()
-                .map(this::toProcessCardResDTO)
+                .map(p -> {
+                    int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
+                    int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
+                            .filter(ProcessTaskItem::isDone)
+                            .count();
+
+                    Integer leftDay = null;
+                    if (p.getEndAt() != null) {
+                        long diff = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), p.getEndAt());
+                        leftDay = (int) Math.max(diff, 0);
+                    }
+
+                    // roleFields / customFields
+                    List<RoleField> roleFields = p.getProcessFields().stream()
+                            .filter(pf -> pf.getDeletedAt() == null)
+                            .map(ProcessField::getRoleField)
+                            .filter(java.util.Objects::nonNull)
+                            .filter(rf -> rf != RoleField.CUSTOM)   // CUSTOM은 customFields로만
+                            .distinct()
+                            .toList();
+
+                    List<String> customFields = p.getProcessFields().stream()
+                            .filter(pf -> pf.getDeletedAt() == null)
+                            .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                            .map(ProcessField::getCustomFieldName)
+                            .filter(java.util.Objects::nonNull)
+                            .map(String::trim)
+                            .filter(s -> !s.isBlank())
+                            .distinct()
+                            .toList();
+
+                    // assignees
+                    List<AssigneeResDto> assignees = p.getProcessUsers().stream()
+                            .filter(pu -> pu.getDeletedAt() == null)
+                            .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                            .map(pu -> {
+                                User u = pu.getUser();
+                                String userImage = null; // TODO: 프로필 이미지 연결되면 세팅
+                                return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
+                            })
+                            .toList();
+
+                    return new ProcessCardResDto(
+                            p.getId(),
+                            p.getStatus(),
+                            p.getTitle(),
+                            done,
+                            whole,
+                            p.getStartAt(),
+                            p.getEndAt(),
+                            leftDay,
+                            roleFields,
+                            customFields,
+                            assignees
+                    );
+                })
                 .toList();
 
         return buildWeekDto(weekStart, cards);
@@ -627,37 +1032,90 @@ public class ProcessService {
                 .filter(c -> c.processStatus() == status)
                 .toList();
 
-        return new ProcessStatusGroupResDto(
-                status,
-                filtered.size(),
-                filtered
-        );
+        return new ProcessStatusGroupResDto(status, filtered.size(), filtered);
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.trim().isBlank();
+    }
+
+    private boolean isRoleLane(String laneKey) {
+        return laneKey != null && laneKey.startsWith("ROLE:");
+    }
+
+    private boolean isCustomLane(String laneKey) {
+        return laneKey != null && laneKey.startsWith("CUSTOM:");
+    }
+
+    private RoleField parseRoleField(String laneKey) {
+        // laneKey = "ROLE:BACKEND"
+        try {
+            String raw = laneKey.substring("ROLE:".length()).trim();
+            return RoleField.valueOf(raw);
+        } catch (Exception e) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "invalid lane_key(role). laneKey=" + laneKey
+            );
+        }
+    }
+
+    private String parseCustomName(String laneKey) {
+        // laneKey = "CUSTOM:영상편집"
+        String name = laneKey.substring("CUSTOM:".length()).trim();
+        if (name.isBlank()) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "invalid lane_key(custom). laneKey=" + laneKey
+            );
+        }
+        return name;
     }
 
     // 파트별 프로세스 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessPartResDto getPartProcesses(Long projectId, Long fieldId) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 조회 가능)
+    public ProcessPartResDto getPartProcesses(Long projectId, Long userId, String laneKey) {
 
-        projectRepository.findById(projectId)
-                .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROJECT_NOT_FOUND,
-                        "projectId = " + projectId
-                ));
+        assertActiveProjectMember(projectId, userId);
 
-        /** TODO :
-         * - Team 탭(fieldId == null): 모든 프로세스(필드/파트 무관) 조회
-         * - Part 탭(fieldId != null): 해당 fieldId에 매핑된 프로세스만 조회
+        if (!projectRepository.existsById(projectId)) {
+            throw new ProcessException(
+                    ProcessErrorCode.PROJECT_NOT_FOUND,
+                    "projectId=" + projectId
+            );
+        }
+
+
+        /**
+         * laneKey 정책
+         * - null or blank => Team 탭(전체)
+         * - "ROLE:XXX"    => RoleField 기반 필터
+         * - "CUSTOM:이름"  => customFieldName 기반 필터
          */
-        List<Process> processes = (fieldId == null)
-                ? processRepository.findAllForTeamBoard(projectId)     // 전체
-                : processRepository.findAllForPartBoard(projectId, fieldId); // field 필터
+        List<Process> processes;
+        if (isBlank(laneKey)) {
+            processes = processRepository.findAllForTeamBoard(projectId);
+            laneKey = null;
+        } else if (isRoleLane(laneKey)) {
+            RoleField rf = parseRoleField(laneKey);
+            if (rf == RoleField.CUSTOM) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "ROLE lane cannot be CUSTOM. laneKey=" + laneKey
+                );
+            }
+            processes = processRepository.findAllForRoleLaneBoard(projectId, rf);
+        } else if (isCustomLane(laneKey)) {
+            String customName = parseCustomName(laneKey);
+            processes = processRepository.findAllForCustomLaneBoard(projectId, customName);
+        } else {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "invalid lane_key prefix. laneKey=" + laneKey
+            );
+        }
 
 
-        // TODO(성능/N+1):
-        // - Field/User/TaskItem 연동 완료 후, toProcessCardResDTO에서 연관 컬렉션 접근으로 N+1 발생 가능
-        // - 레포지토리 쿼리를 fetch join 또는 @EntityGraph로 전환하여 필요한 연관을 한번에 로딩하도록 개선
         List<ProcessCardResDto> cards = processes.stream()
                 .map(this::toProcessCardResDTO)
                 .toList();
@@ -670,16 +1128,15 @@ public class ProcessService {
                 toGroup(ProcessStatus.BACKLOG, cards)
         );
 
-        return new ProcessPartResDto(fieldId, groups);
+
+        return new ProcessPartResDto(laneKey, groups);
     }
 
 
     // 프로세스 위치 상태 정렬 변경 서비스
     @Transactional
-    public ProcessOrderUpdateResDto updateProcessOrder(Long projectId, Long processId, ProcessOrderUpdateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 순서/상태 변경 가능)
-        // TODO(인가-추가): fieldId가 붙으면 "같은 field 레인 권한" 규칙도 여기서 확정
+    public ProcessOrderUpdateResDto updateProcessOrder(Long projectId, Long userId, Long processId, ProcessOrderUpdateReqDto req) {
+        assertActiveProjectMember(projectId, userId);
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new ProcessException(
@@ -718,6 +1175,10 @@ public class ProcessService {
 
         ProcessStatus laneStatus = (req.status() != null) ? req.status() : beforeStatus;
 
+        // laneKey(Team이면 null/blank)
+        String laneKey = req.laneKey();
+        String trimmedLaneKey = (laneKey == null) ? null : laneKey.trim();
+
         // 레인 내 표시순서 재정렬
         List<Long> orderedIds = req.orderedProcessIds();
         if (orderedIds != null && !orderedIds.isEmpty()) {
@@ -729,7 +1190,7 @@ public class ProcessService {
             }
 
             // 중복 방지
-            if (new java.util.HashSet<>(orderedIds).size() != orderedIds.size()) {
+            if (new HashSet<>(orderedIds).size() != orderedIds.size()) {
                 throw new ProcessException(
                         ProcessErrorCode.INVALID_REQUEST,
                         "ordered_process_ids contains duplicates"
@@ -754,19 +1215,100 @@ public class ProcessService {
                 );
             }
 
-            // TODO(Field 연동 후):
-            // - ProcessField 구조 확정 시 아래 검증 추가
-            //   Team 레인(공통) : field 매핑 없음
-            //   Part 레인 : fieldId 동일
-            // - req에 fieldId가 들어오면 targets가 전부 동일 fieldId인지 검증
+            int laneTotal;
 
-            // 전체 포함 정책: 해당 레인의 전체 개수와 orderedIds 개수가 같아야 함
-            // TODO(Field 연동 후): laneTotal은 (status + fieldId/Team) 기준으로 count 해야 함
-            int laneTotal = processRepository.countByProjectIdAndDeletedAtIsNullAndStatus(projectId, laneStatus);
+            // 팀레인
+            if (trimmedLaneKey == null || trimmedLaneKey.isBlank()) {
+
+                // Team lane은 "활성 ProcessField가 하나도 없는 프로세스"만 포함
+                boolean invalid = targets.stream().anyMatch(p ->
+                        p.getProcessFields() != null &&
+                                p.getProcessFields().stream().anyMatch(pf -> pf.getDeletedAt() == null)
+                );
+                if (invalid) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "ordered_process_ids contains non-team lane process"
+                    );
+                }
+
+                laneTotal = processRepository.countByProjectIdAndDeletedAtIsNullAndStatus(projectId, laneStatus);
+
+                // 분야 레인
+            } else if (trimmedLaneKey.startsWith("ROLE:")) {
+
+                String raw = trimmedLaneKey.substring("ROLE:".length()).trim();
+                RoleField rf;
+                try {
+                    rf = RoleField.valueOf(raw);
+                } catch (Exception e) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "invalid lane_key(role). laneKey=" + trimmedLaneKey
+                    );
+                }
+
+                if (rf == RoleField.CUSTOM) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "ROLE lane cannot be CUSTOM. laneKey=" + trimmedLaneKey
+                    );
+                }
+
+                // targets가 모두 해당 RoleField를 가져야 함
+                boolean invalid = targets.stream().anyMatch(p ->
+                        p.getProcessFields().stream().noneMatch(pf ->
+                                pf.getDeletedAt() == null && pf.getRoleField() == rf
+                        )
+                );
+                if (invalid) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "ordered_process_ids contains process not in role lane. laneKey=" + trimmedLaneKey
+                    );
+                }
+
+                laneTotal = processRepository.countRoleLaneTotal(projectId, laneStatus, rf);
+
+                // 커스텀 레인
+            } else if (trimmedLaneKey.startsWith("CUSTOM:")) {
+
+                String customName = trimmedLaneKey.substring("CUSTOM:".length()).trim();
+                if (customName.isBlank()) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "invalid lane_key(custom). laneKey=" + trimmedLaneKey
+                    );
+                }
+
+                boolean invalid = targets.stream().anyMatch(p ->
+                        p.getProcessFields().stream().noneMatch(pf ->
+                                pf.getDeletedAt() == null
+                                        && pf.getRoleField() == RoleField.CUSTOM
+                                        && customName.equals(pf.getCustomFieldName())
+                        )
+                );
+                if (invalid) {
+                    throw new ProcessException(
+                            ProcessErrorCode.INVALID_REQUEST,
+                            "ordered_process_ids contains process not in custom lane. laneKey=" + trimmedLaneKey
+                    );
+                }
+
+                laneTotal = processRepository.countCustomLaneTotal(projectId, laneStatus, customName);
+
+            } else {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "invalid lane_key prefix. laneKey=" + trimmedLaneKey
+                );
+            }
+
+            // 전체 포함 정책
             if (laneTotal != orderedIds.size()) {
                 throw new ProcessException(
                         ProcessErrorCode.INVALID_REQUEST,
-                        "ordered_process_ids must include all processes in the lane(status=" + laneStatus + ")"
+                        "ordered_process_ids must include all processes in the lane. status=" + laneStatus + ", laneKey=" + trimmedLaneKey
                 );
             }
 
@@ -808,10 +1350,12 @@ public class ProcessService {
                     "startAt", afterStart,
                     "endAt", afterEnd
             ));
+            meta.put("laneKey", (trimmedLaneKey == null || trimmedLaneKey.isBlank()) ? null : trimmedLaneKey);
             meta.put("orderedProcessIds", orderedIds);
 
             historyPublisher.publish(
                     projectId,
+                    userId,
                     HistoryAction.PROCESS_REORDERED,
                     HistoryTargetType.PROCESS,
                     process.getId(),
@@ -830,9 +1374,9 @@ public class ProcessService {
 
     // 프로세스 작업 상태 변경
     @Transactional
-    public ProcessStatusUpdateResDto updateProcessStatus(Long projectId, Long processId, ProcessStatusUpdateReqDto req) {
-        // TODO(인증): 현재 로그인 유저 userId 추출
-        // TODO(인가): projectId 멤버십 검증 (프로젝트 참여자만 상태 변경 가능)
+    public ProcessStatusUpdateResDto updateProcessStatus(Long projectId, Long userId, Long processId, ProcessStatusUpdateReqDto req) {
+        assertActiveProjectMember(projectId, userId);
+
 
         if (req == null || req.status() == null) {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "status is null");
@@ -864,6 +1408,7 @@ public class ProcessService {
 
         historyPublisher.publish(
                 projectId,
+                userId,
                 HistoryAction.PROCESS_STATUS_CHANGED,
                 HistoryTargetType.PROCESS,
                 process.getId(),

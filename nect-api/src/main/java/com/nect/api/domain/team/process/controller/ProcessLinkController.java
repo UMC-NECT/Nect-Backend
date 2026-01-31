@@ -4,7 +4,9 @@ import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,18 +20,22 @@ public class ProcessLinkController {
     public ApiResponse<ProcessLinkCreateResDto> create(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessLinkCreateReqDto req
     ) {
-        return ApiResponse.ok(processAttachmentService.createLink(projectId, processId, req));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processAttachmentService.createLink(projectId, userId, processId, req));
     }
 
     @DeleteMapping("/{linkId}")
     public ApiResponse<Void> delete(
             @PathVariable Long projectId,
             @PathVariable Long processId,
-            @PathVariable Long linkId
+            @PathVariable Long linkId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        processAttachmentService.deleteLink(projectId, processId, linkId);
+        Long userId = userDetails.getUserId();
+        processAttachmentService.deleteLink(projectId, userId, processId, linkId);
         return ApiResponse.ok(null);
     }
 }

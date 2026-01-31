@@ -10,6 +10,7 @@ import com.nect.api.domain.team.process.dto.res.ProcessFeedbackCreateResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFeedbackDeleteResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFeedbackUpdateResDto;
 import com.nect.api.domain.team.process.service.ProcessFeedbackService;
+import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,8 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,11 +37,12 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
 class ProcessFeedbackControllerTest {
@@ -55,29 +59,51 @@ class ProcessFeedbackControllerTest {
     @MockitoBean
     private ProcessFeedbackService processFeedbackService;
 
+    private Authentication authWithUser(Long userId) {
+        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_MEMBER"))
+                .build();
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+    }
+
     @Test
     @DisplayName("피드백 생성")
     void createFeedback() throws Exception {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
         ProcessFeedbackCreateReqDto request = new ProcessFeedbackCreateReqDto(
                 "피드백 내용입니다."
+        );
+
+        FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
+                userId,
+                "임시유저",
+                List.of()
         );
 
         ProcessFeedbackCreateResDto response = new ProcessFeedbackCreateResDto(
                 100L,
                 "피드백 내용입니다.",
                 ProcessFeedbackStatus.OPEN,
+                createdBy,
                 LocalDateTime.of(2026, 1, 25, 10, 0)
         );
 
-        given(processFeedbackService.createFeedback(eq(projectId), eq(processId), any(ProcessFeedbackCreateReqDto.class)))
+        given(processFeedbackService.createFeedback(eq(projectId), eq(userId), eq(processId), any(ProcessFeedbackCreateReqDto.class)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/feedbacks", projectId, processId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -110,13 +136,19 @@ class ProcessFeedbackControllerTest {
                                                 fieldWithPath("body.feedback_id").type(NUMBER).description("피드백 ID"),
                                                 fieldWithPath("body.content").type(STRING).description("피드백 내용"),
                                                 fieldWithPath("body.status").type(STRING).description("피드백 상태"),
+
+                                                fieldWithPath("body.created_by").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.created_by.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.created_by.field_ids").type(ARRAY).description("작성자 분야 ID 목록"),
+
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processFeedbackService).createFeedback(eq(projectId), eq(processId), any(ProcessFeedbackCreateReqDto.class));
+        verify(processFeedbackService).createFeedback(eq(projectId), eq(userId), eq(processId), any(ProcessFeedbackCreateReqDto.class));
     }
 
     @Test
@@ -126,6 +158,7 @@ class ProcessFeedbackControllerTest {
         long projectId = 1L;
         long processId = 10L;
         long feedbackId = 100L;
+        long userId = 1L;
 
         ProcessFeedbackUpdateReqDto request = new ProcessFeedbackUpdateReqDto(
                 "수정된 피드백 내용"
@@ -146,11 +179,12 @@ class ProcessFeedbackControllerTest {
                 LocalDateTime.of(2026, 1, 26, 11, 0)
         );
 
-        given(processFeedbackService.updateFeedback(eq(projectId), eq(processId), eq(feedbackId), any(ProcessFeedbackUpdateReqDto.class)))
+        given(processFeedbackService.updateFeedback(eq(projectId), eq(userId), eq(processId), eq(feedbackId), any(ProcessFeedbackUpdateReqDto.class)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/feedbacks/{feedbackId}", projectId, processId, feedbackId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -198,7 +232,7 @@ class ProcessFeedbackControllerTest {
                         )
                 ));
 
-        verify(processFeedbackService).updateFeedback(eq(projectId), eq(processId), eq(feedbackId), any(ProcessFeedbackUpdateReqDto.class));
+        verify(processFeedbackService).updateFeedback(eq(projectId), eq(userId), eq(processId), eq(feedbackId), any(ProcessFeedbackUpdateReqDto.class));
     }
 
     @Test
@@ -208,14 +242,16 @@ class ProcessFeedbackControllerTest {
         long projectId = 1L;
         long processId = 10L;
         long feedbackId = 100L;
+        long userId = 1L;
 
         ProcessFeedbackDeleteResDto response = new ProcessFeedbackDeleteResDto(feedbackId);
 
-        given(processFeedbackService.deleteFeedback(eq(projectId), eq(processId), eq(feedbackId)))
+        given(processFeedbackService.deleteFeedback(eq(projectId), eq(userId), eq(processId), eq(feedbackId)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/feedbacks/{feedbackId}", projectId, processId, feedbackId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -248,6 +284,6 @@ class ProcessFeedbackControllerTest {
                         )
                 ));
 
-        verify(processFeedbackService).deleteFeedback(eq(projectId), eq(processId), eq(feedbackId));
+        verify(processFeedbackService).deleteFeedback(eq(projectId), eq(userId), eq(processId), eq(feedbackId));
     }
 }

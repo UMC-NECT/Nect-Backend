@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.ProcessFileAttachReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFileAttachResDto;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
+import com.nect.api.global.security.UserDetailsImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,9 +14,13 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
@@ -28,11 +33,12 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
 class ProcessFileControllerTest {
@@ -49,21 +55,36 @@ class ProcessFileControllerTest {
     @MockitoBean
     private ProcessAttachmentService processAttachmentService;
 
+    private Authentication authWithUser(Long userId) {
+        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_MEMBER"))
+                .build();
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+    }
+
     @Test
     @DisplayName("프로세스 파일 첨부")
     void attachFile() throws Exception {
         // given
         long projectId = 1L;
         long processId = 10L;
+        long userId = 1L;
 
         ProcessFileAttachReqDto request = new ProcessFileAttachReqDto(999L);
         ProcessFileAttachResDto response = new ProcessFileAttachResDto(999L);
 
-        given(processAttachmentService.attachFile(eq(projectId), eq(processId), any(ProcessFileAttachReqDto.class)))
+        given(processAttachmentService.attachFile(eq(projectId), eq(userId), eq(processId), any(ProcessFileAttachReqDto.class)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/files", projectId, processId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -99,7 +120,7 @@ class ProcessFileControllerTest {
                         )
                 ));
 
-        verify(processAttachmentService).attachFile(eq(projectId), eq(processId), any(ProcessFileAttachReqDto.class));
+        verify(processAttachmentService).attachFile(eq(projectId), eq(userId), eq(processId), any(ProcessFileAttachReqDto.class));
     }
 
     @Test
@@ -109,11 +130,13 @@ class ProcessFileControllerTest {
         long projectId = 1L;
         long processId = 10L;
         long fileId = 999L;
+        long userId = 1L;
 
-        willDoNothing().given(processAttachmentService).detachFile(eq(projectId), eq(processId), eq(fileId));
+        willDoNothing().given(processAttachmentService).detachFile(eq(projectId), eq(userId), eq(processId), eq(fileId));
 
         // when, then
         mockMvc.perform(delete("/api/v1/projects/{projectId}/processes/{processId}/files/{fileId}", projectId, processId, fileId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -145,6 +168,6 @@ class ProcessFileControllerTest {
                         )
                 ));
 
-        verify(processAttachmentService).detachFile(eq(projectId), eq(processId), eq(fileId));
+        verify(processAttachmentService).detachFile(eq(projectId), eq(userId), eq(processId), eq(fileId));
     }
 }

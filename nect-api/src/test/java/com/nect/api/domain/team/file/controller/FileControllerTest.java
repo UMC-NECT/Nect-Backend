@@ -3,6 +3,7 @@ package com.nect.api.domain.team.file.controller;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.service.FileService;
+import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,9 +13,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
@@ -31,10 +36,11 @@ import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
 class FileControllerTest {
@@ -48,10 +54,25 @@ class FileControllerTest {
     @MockitoBean
     private FileService fileService;
 
+    private Authentication authWithUser(Long userId) {
+        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_MEMBER"))
+                .build();
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+    }
+
+
     @Test
     @DisplayName("프로젝트 파일 업로드")
     void uploadFile() throws Exception {
         long projectId = 1L;
+        long userId = 1L;
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -68,12 +89,13 @@ class FileControllerTest {
                 1024L
         );
 
-        given(fileService.upload(eq(projectId), any()))
+        given(fileService.upload(eq(projectId), eq(userId), any()))
                 .willReturn(res);
 
         mockMvc.perform(
                         multipart("/api/v1/projects/{projectId}/files/upload", projectId)
                                 .file(file)
+                                .with(authentication(authWithUser(userId)))
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                                 .contentType(MediaType.MULTIPART_FORM_DATA)
                                 .accept(MediaType.APPLICATION_JSON)

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryListResDto;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryResDto;
 import com.nect.api.domain.team.history.service.ProjectHistoryService;
+import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +15,8 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +36,12 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWit
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
 class ProjectHistoryControllerTest {
@@ -54,15 +58,30 @@ class ProjectHistoryControllerTest {
     @MockitoBean
     private ProjectHistoryService historyService;
 
+    private Authentication authWithUser(Long userId) {
+        UserDetailsImpl userDetails = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_MEMBER"))
+                .build();
+
+        return new UsernamePasswordAuthenticationToken(
+                userDetails,
+                null,
+                userDetails.getAuthorities()
+        );
+    }
+
+
     @Test
     @DisplayName("팀 히스토리 로그 조회(커서 기반, 최근 10개 고정)")
     void getHistories() throws Exception {
         // given
         long projectId = 1L;
+        long userId = 1L;
         Long cursor = 100L;
 
         ProjectHistoryListResDto response = new ProjectHistoryListResDto(
-                99L, // next_cursor (예시)
+                99L, // next_cursor
                 List.of(
                         new ProjectHistoryResDto(
                                 100L,                       // history_id
@@ -85,11 +104,12 @@ class ProjectHistoryControllerTest {
                 )
         );
 
-        given(historyService.getHistories(eq(projectId), eq(cursor)))
+        given(historyService.getHistories(eq(projectId), eq(userId), eq(cursor)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("cursor", String.valueOf(cursor))
                         .accept(MediaType.APPLICATION_JSON))
@@ -142,17 +162,19 @@ class ProjectHistoryControllerTest {
     void getHistories_withoutParams() throws Exception {
         // given
         long projectId = 1L;
+        long userId = 1L;
 
         ProjectHistoryListResDto response = new ProjectHistoryListResDto(
                 null,
                 List.of()
         );
 
-        given(historyService.getHistories(eq(projectId), eq(null)))
+        given(historyService.getHistories(eq(projectId), eq(userId), eq(null)))
                 .willReturn(response);
 
         // when, then
         mockMvc.perform(get("/api/v1/projects/{projectId}/histories", projectId)
+                        .with(authentication(authWithUser(userId)))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
