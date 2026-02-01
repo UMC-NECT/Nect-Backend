@@ -18,4 +18,9 @@ public class FileException extends CustomException {
         super(errorCode, message);
         this.errorCode = errorCode;
     }
+
+    public FileException(FileErrorCode errorCode, String message, Throwable cause) {
+        super(errorCode, message, cause);
+        this.errorCode = errorCode;
+    }
 }
