@@ -2,6 +2,7 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
