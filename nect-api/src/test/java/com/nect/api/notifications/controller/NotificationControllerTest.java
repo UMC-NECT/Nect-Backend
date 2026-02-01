@@ -97,7 +97,13 @@ class NotificationControllerTest {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("알림")
                                 .summary("알림 목록 조회")
-                                .description("사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.")
+                                .description("""
+                                        사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.
+                                        
+                                        노션 설계서 참고
+                                        https://www.notion.so/Platform-2faa3bc4d3fa80ccba96fc22e9af6ac6
+                                        
+                                """)
                                 .requestHeaders(
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )

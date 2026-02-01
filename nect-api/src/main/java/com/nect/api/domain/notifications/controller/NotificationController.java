@@ -41,11 +41,8 @@ public class NotificationController {
      * @return SseEmitter
      */
     @GetMapping(value = "/subscribe", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter subscribe() {
-
-        Long userId = 1L; // TODO: user 바꾸기
-
-        return dispatchService.subscribe(userId);
+    public SseEmitter subscribe(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return dispatchService.subscribe(userDetails.getUserId());
     }
 
     /**
