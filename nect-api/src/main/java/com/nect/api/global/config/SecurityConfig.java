@@ -45,7 +45,6 @@ public class SecurityConfig {
             "/api/v1/users/check", "/api/v1/users/signup", "/api/v1/users/login",
             "/api/v1/users/test-login", "/api/v1/users/refresh",
             "/api/v1/enums/**", "/api/v1/home/**",
-            "/notifications/subscribe", "/notifications",
             "/"
     );
 
