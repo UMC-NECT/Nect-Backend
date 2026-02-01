@@ -1,7 +1,7 @@
 package com.nect.api.domain.analysis.service;
 
-import com.nect.api.domain.analysis.converter.OpenAiRequestConverter;
-import com.nect.api.domain.analysis.converter.OpenAiResponseConverter;
+import com.nect.api.domain.analysis.converter.IdeaAnalysisRequestConverter;
+import com.nect.api.domain.analysis.converter.IdeaAnalysisResponseConverter;
 
 import com.nect.api.domain.analysis.dto.req.IdeaAnalysisRequestDto;
 import com.nect.api.domain.analysis.dto.res.IdeaAnalysisResponseDto;
@@ -20,8 +20,8 @@ import static com.nect.api.global.ai.enums.OpenAiExceptionCode.OPENAI_REQUEST_FA
 public class IdeaAnalysisService {
 
     private final OpenAiClient openAiClient;
-    private final OpenAiRequestConverter requestConverter;
-    private final OpenAiResponseConverter responseConverter;
+    private final IdeaAnalysisRequestConverter requestConverter;
+    private final IdeaAnalysisResponseConverter responseConverter;
 
     /**
      * 프로젝트 아이디어 분석

@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 @Component
-public class JsonSchemaBuilder {
+public class IdeaAnalysisSchemaBuilder {
 
     public Map<String, Object> buildIdeaAnalysisSchema() {
         Map<String, Object> schema = new HashMap<>();

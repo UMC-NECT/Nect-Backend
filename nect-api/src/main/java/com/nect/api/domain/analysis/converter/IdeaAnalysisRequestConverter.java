@@ -13,10 +13,10 @@ import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
-public class OpenAiRequestConverter {
+public class IdeaAnalysisRequestConverter {
 
     private final PromptLoader promptLoader;
-    private final JsonSchemaBuilder jsonSchemaBuilder;
+    private final IdeaAnalysisSchemaBuilder ideaAnalysisSchemaBuilder;
 
     private static final String PROMPT_PATH = "prompts/idea-analysis.txt";
 
@@ -26,7 +26,7 @@ public class OpenAiRequestConverter {
         String prompt = buildPrompt(dto);
 
         //  JSON Schema 생성
-        Map<String, Object> schema = jsonSchemaBuilder.buildIdeaAnalysisSchema();
+        Map<String, Object> schema = ideaAnalysisSchemaBuilder.buildIdeaAnalysisSchema();
 
         // OpenAiResponseFormat 생성
         OpenAiResponseFormat format = OpenAiResponseFormat.jsonSchema(
