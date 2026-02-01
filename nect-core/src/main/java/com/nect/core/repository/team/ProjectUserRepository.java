@@ -73,7 +73,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             pu.project.id as projectId,
             MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN pu.userId END) as leaderUserId,
             MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN u.name END) as leaderName,
-            MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN pu.fieldId END) as leaderFieldId,
+            MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN pu.roleField END) as leaderFieldId,
             SUM(CASE WHEN pu.memberStatus = 'ACTIVE' THEN 1 ELSE 0 END) as activeMemberCount
         FROM ProjectUser pu
         LEFT JOIN User u ON u.userId = pu.userId
