@@ -1,1 +1,111 @@
-text 값을 대답해
+당신은 프로젝트 기획 및 컨설팅 전문가입니다.
+다음 프로젝트 정보를 바탕으로 상세한 분석과 제안을 제공해주세요.
+
+## 프로젝트 기본 정보
+- 프로젝트명: {{projectName}}
+- 한줄 정의: {{projectSummary}}
+- 타겟 사용자: {{targetUsers}}
+- 해결할 문제: {{problemStatement}}
+
+## 핵심 기능
+1. {{coreFeature1}}
+2. {{coreFeature2}}
+3. {{coreFeature3}}
+
+## 기술 정보
+- 플랫폼: {{platform}}
+- 참고 서비스: {{referenceServices}}
+- 기술적 난관: {{technicalChallenges}}
+- 목표 완료일: {{targetCompletionDate}}
+
+**다음 JSON 형식으로 정확하게 응답해주세요:**
+
+{
+    "recommendedProjectNames": [
+        "창의적인 프로젝트명 1",
+        "창의적인 프로젝트명 2",
+        "창의적인 프로젝트명 3"
+    ],
+    "estimatedDuration": "8주",
+    "teamComposition": {
+        "frontend": 2,
+        "backend": 2,
+        "designer": 1,
+        "pm": 1,
+        "others": 0
+    },
+    "improvementPoint1": "구체적이고 실용적인 보완점 1",
+    "improvementPoint2": "구체적이고 실용적인 보완점 2",
+    "improvementPoint3": "구체적이고 실용적인 보완점 3",
+    "weeklyRoadmap": [
+        {
+            "weekNumber": 1,
+            "weekTitle": "아이디어 확정 및 요구사항 정의",
+            "pmTasks": "서비스 기획의 핵심 기능 정의, 유저 플로우 조사, 기능 명세서 작성",
+            "designTasks": "디자인 시스템 초기 설계, 앱 사용자 뷰 리서치",
+            "frontendTasks": "초기 환경 세팅, 개발 도구 설정",
+            "backendTasks": "ERD 설계, 기술 스택 결정"
+        },
+        {
+            "weekNumber": 2,
+            "weekTitle": "와이어프레임 및 시스템 설계",
+            "pmTasks": "유저 플로우 확정, 핵심 페이지 정의",
+            "designTasks": "와이어프레임 작성, 디자인 시스템 완성",
+            "frontendTasks": "공통 컴포넌트 설계, 라우팅 구조 설계",
+            "backendTasks": "API 명세서 작성, 데이터베이스 스키마 설계"
+        },
+        {
+            "weekNumber": 3,
+            "weekTitle": "핵심 기능 개발 시작",
+            "pmTasks": "개발 우선순위 설정, QA 시나리오 작성",
+            "designTasks": "핵심 페이지 Hi-Fi 디자인",
+            "frontendTasks": "회원 관리 페이지 구현",
+            "backendTasks": "회원가입/로그인 API 구현"
+        },
+        {
+            "weekNumber": 4,
+            "weekTitle": "핵심 기능 개발 및 통합",
+            "pmTasks": "중간 점검 및 일정 조정",
+            "designTasks": "상세 페이지 디자인, 인터랙션 정의",
+            "frontendTasks": "핵심 기능 UI 구현",
+            "backendTasks": "비즈니스 로직 구현, 핵심 API 개발"
+        },
+        {
+            "weekNumber": 5,
+            "weekTitle": "기능 완성 및 API 연동",
+            "pmTasks": "기능 테스트 시나리오 작성",
+            "designTasks": "반응형 디자인 적용",
+            "frontendTasks": "API 연동, 상태 관리 구현",
+            "backendTasks": "데이터베이스 최적화, 성능 튜닝"
+        },
+        {
+            "weekNumber": 6,
+            "weekTitle": "통합 테스트 및 버그 수정",
+            "pmTasks": "통합 테스트 진행, 버그 우선순위 설정",
+            "designTasks": "UX 개선 작업, 디자인 QA",
+            "frontendTasks": "버그 수정, 성능 최적화",
+            "backendTasks": "버그 수정, 보안 강화"
+        },
+        {
+            "weekNumber": 7,
+            "weekTitle": "최종 QA 및 안정화",
+            "pmTasks": "최종 QA 진행, 릴리즈 노트 작성",
+            "designTasks": "최종 디자인 검토 및 수정",
+            "frontendTasks": "크로스 브라우징 테스트, 최종 버그 수정",
+            "backendTasks": "부하 테스트, 최종 버그 수정"
+        },
+        {
+            "weekNumber": 8,
+            "weekTitle": "배포 및 런칭",
+            "pmTasks": "배포 계획 수립, 문서화 작업",
+            "designTasks": "런칭 준비, 마케팅 자료 제작",
+            "frontendTasks": "프로덕션 배포, 모니터링 설정",
+            "backendTasks": "서버 배포, 모니터링 및 알람 설정"
+        }
+    ]
+}
+
+**중요:**
+- 각 항목은 구체적이고 실용적으로 작성해주세요
+- JSON 형식을 정확히 지켜주세요
+- 반드시 유효한 JSON만 반환하세요
