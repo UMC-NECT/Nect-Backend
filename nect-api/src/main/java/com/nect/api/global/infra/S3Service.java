@@ -1,6 +1,8 @@
 package com.nect.api.global.infra;
 
+import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,34 +10,57 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URL;
+import java.util.Date;
 import java.util.UUID;
 
 @Service
 public class S3Service {
+    private static final long PRESIGNED_EXPIRE_MILLIS = 5 * 60 * 1000; // 5분
     private final AmazonS3 amazonS3;
-
-    @Value("${spring.cloud.aws.s3.bucket}")
+    @Value("${spring.cloud.cloud-flare.r2.bucket}")
     private String bucket;
 
     public S3Service(AmazonS3 amazonS3) {
         this.amazonS3 = amazonS3;
     }
 
-    public String uploadImage(MultipartFile image) throws IOException {
-        String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename(); // 고유한 파일 이름 생성
+    public String uploadFile(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어있습니다.");
+        }
+
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename(); // 고유한 파일 이름 생성
 
         ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentType(image.getContentType());
-        metadata.setContentLength(image.getSize());
+        metadata.setContentType(file.getContentType());
+        metadata.setContentLength(file.getSize());
 
-        PutObjectRequest putObjectRequest = new PutObjectRequest(bucket, fileName, image.getInputStream(), metadata);
+        PutObjectRequest putObjectRequest = new PutObjectRequest(bucket, fileName, file.getInputStream(), metadata);
 
         amazonS3.putObject(putObjectRequest);
 
-        return getPublicUrl(fileName);
+        return fileName; // DB 저장 값 (Key)
     }
 
-    private String getPublicUrl(String fileName) {
-        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, amazonS3.getRegionName(), fileName);
+    // 다운로드, 조회 전용
+    public String getPresignedGetUrl(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("파일이름이 비어있습니다.");
+        }
+
+        Date expiration = new Date(System.currentTimeMillis() + PRESIGNED_EXPIRE_MILLIS);
+
+        GeneratePresignedUrlRequest request =
+                new GeneratePresignedUrlRequest(bucket, fileName)
+                        .withMethod(HttpMethod.GET)
+                        .withExpiration(expiration);
+
+        URL url = amazonS3.generatePresignedUrl(request);
+        return url.toString();
+    }
+
+    public void deleteByFileName(String fileName){
+        amazonS3.deleteObject(bucket, fileName);
     }
 }
