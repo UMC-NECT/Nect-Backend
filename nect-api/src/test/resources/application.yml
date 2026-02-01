@@ -6,14 +6,15 @@ spring:
       host: localhost
       port: 6379
   cloud:
-    aws:
+    cloud-flare:
       credentials:
         access-key: test-access-key
         secret-key: test-secret-key
       region:
         static: ap-northeast-2
-      s3:
+      r2:
         bucket: test-bucket
+        endpoint: https://accountid.r2.cloudflarestorage.com
   security:
     oauth2:
       client:
