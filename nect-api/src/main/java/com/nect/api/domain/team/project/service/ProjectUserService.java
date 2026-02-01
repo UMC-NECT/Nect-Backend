@@ -5,6 +5,7 @@ import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,11 @@ public class ProjectUserService {
 
     private final ProjectUserRepository projectUserRepository;
 
-    public ProjectUser addProjectUser(Long userId, Project project, Long fieldId){
+    public ProjectUser addProjectUser(Long userId, Project project, RoleField fieldId){
         ProjectUser projectUser = ProjectUser.builder()
                 .project(project)
                 .userId(userId)
-                .fieldId(fieldId)
+//                .fieldId(fieldId)
                 .build();
 
         projectUserRepository.save(projectUser);
