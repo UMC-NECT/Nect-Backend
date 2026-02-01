@@ -365,7 +365,7 @@ public class ProcessService {
         NotificationCommand command = new NotificationCommand(
                 NotificationType.WORKSPACE_MENTIONED,
                 NotificationClassification.WORK_STATUS,
-                NotificationScope.WORKSPACE_ONLY,
+                NotificationScope.WORKSPACE_GLOBAL,
                 targetProcessId,
                 new Object[]{ actor.getName() },
                 new Object[]{ content },
@@ -566,7 +566,7 @@ public class ProcessService {
         meta.put("startAt", saved.getStartAt());
         meta.put("endAt", saved.getEndAt());
         meta.put("roleFields", roleFields);
-        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? customName : null);
+        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? req.customFieldName() : null);
         meta.put("assigneeIds", assigneeIds);
         meta.put("mentionUserIds", mentionIds);
         meta.put("fileIds", fileIds);
@@ -1858,6 +1858,7 @@ public class ProcessService {
         if (total == 0) return 0;
         return (int) Math.round(part * 100.0 / total);
     }
+
 
     // 프로세스 위치 상태 정렬 변경 서비스
     @Transactional
