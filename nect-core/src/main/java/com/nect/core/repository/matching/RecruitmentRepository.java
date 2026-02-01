@@ -12,15 +12,46 @@ import java.util.Optional;
 
 @Repository
 public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> {
+
     Optional<Recruitment> findRecruitmentByProjectAndFieldId(
             Project project,
             Long fieldId
     );
 
+
+    interface ProjectCapacityRow {
+        Long getProjectId();
+        Integer getCapacitySum();
+    }
+
+    interface ProjectRoleCapacityRow {
+        Long getProjectId();
+        String getRoleName();
+        Integer getCapacitySum();
+    }
+
     @Query("""
-        SELECT r
-        FROM Recruitment r
-        WHERE r.project.id IN :projectIds
+        select r.project.id as projectId, sum(r.capacity) as capacitySum
+        from Recruitment r
+        where r.project.id in :projectIds
+        group by r.project.id
     """)
-    List<Recruitment> findAllByProjectIds(@Param("projectIds") List<Long> projectIds);
+    List<ProjectCapacityRow> sumCapacityByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    // TODO: Recruitmnet Field 바뀌면 적용
+//    @Query("""
+//        select r.project.id as projectId,
+//               r.field.role.description as roleName,
+//               sum(r.capacity) as capacitySum
+//        from Recruitment r
+//        where r.project.id in :projectIds
+//          and r.field.role is not null
+//        group by r.project.id, r.field.role.description
+//    """)
+//    List<ProjectRoleCapacityRow> sumRoleCapacityByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    List<Recruitment> findByProject(Project project);
+
+
+
 }

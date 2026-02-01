@@ -1,13 +1,11 @@
 package com.nect.api.domain.home.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 import java.util.List;
 
 public record HomeRecruitingProjectResponse(
         Long projectId,
-        @JsonProperty("projectName")
-        String projectNameHomeRecruitingProjectResponse,
+        String projectName,
         String introduction,
         LocalDate startDate,
         LocalDate endDate,
