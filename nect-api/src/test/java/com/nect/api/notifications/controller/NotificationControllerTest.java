@@ -142,6 +142,8 @@ class NotificationControllerTest {
                                                 .description("다음 페이지 조회용 커서"),
                                         fieldWithPath("body.notifications[].type")
                                                 .description("알림 타입"),
+                                        fieldWithPath("body.notifications[].scope")
+                                                .description("알림이 가는 화면 대상"),
                                         fieldWithPath("body.nextCursor")
                                                 .description("다음 페이지 조회용 커서")
                                 )
@@ -162,6 +164,7 @@ class NotificationControllerTest {
                                 "25.01.20",
                                 NotificationClassification.MESSAGE.getClassifyKr(),
                                 NotificationType.CHAT_MESSAGE_RECEIVED.name(),
+                                NotificationScope.MAIN_HOME.name(),
                                 true
                         ),
                         new NotificationResponse(
@@ -173,6 +176,7 @@ class NotificationControllerTest {
                                 "25.01.19",
                                 NotificationClassification.WORK_SPACE.getClassifyKr(),
                                 NotificationType.WORKSPACE_MEMBER_JOINED.name(),
+                                NotificationScope.WORKSPACE_ONLY.name(),
                                 false
                         )
                 ))
