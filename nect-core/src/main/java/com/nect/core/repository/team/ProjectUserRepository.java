@@ -2,7 +2,6 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
@@ -17,22 +16,21 @@ import java.util.Optional;
 @Repository
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> {
 
-    interface ProjectHomeStat {
+    interface UserFieldIdsRow {
+        Long getUserId();
+        Long getFieldId();
+    }
+
+
+    interface ProjectLeaderRow {
         Long getProjectId();
         Long getLeaderUserId();
-        String getLeaderName();
-        Long getLeaderFieldId();
-        Long getActiveMemberCount();
     }
 
-    interface ProjectMemberInfo {
-        Long getUserId();
-        String getName();
-        Long getFieldId();
-        ProjectMemberType getMemberType();
-        ProjectMemberStatus getMemberStatus();
+    interface ProjectActiveCountRow {
+        Long getProjectId();
+        Long getActiveCount();
     }
-
     interface UserRoleFieldsRow {
         Long getUserId();
         RoleField getRoleField();
@@ -67,22 +65,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             "AND pu.memberStatus = 'ACTIVE'")
     boolean existsByProjectIdAndUserId(@Param("projectId") Long projectId, @Param("userId") Long userId);
 
-
-    @Query("""
-        SELECT
-            pu.project.id as projectId,
-            MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN pu.userId END) as leaderUserId,
-            MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN u.name END) as leaderName,
-            MAX(CASE WHEN pu.memberType = 'LEADER' AND pu.memberStatus = 'ACTIVE' THEN pu.roleField END) as leaderFieldId,
-            SUM(CASE WHEN pu.memberStatus = 'ACTIVE' THEN 1 ELSE 0 END) as activeMemberCount
-        FROM ProjectUser pu
-        LEFT JOIN User u ON u.userId = pu.userId
-        WHERE pu.project.id IN :projectIds
-        GROUP BY pu.project.id
-    """)
-    List<ProjectHomeStat> findProjectHomeStats(@Param("projectIds") List<Long> projectIds);
-
-
     @Query("""
         select
           pu.userId as userId,
@@ -101,18 +83,23 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     long countByProject_IdAndUserIdIn(Long projectId, List<Long> userIds);
 
     @Query("""
-        SELECT
-            pu.userId as userId,
-            u.name as name,
-            pu.roleField as fieldId,
-            pu.memberType as memberType,
-            pu.memberStatus as memberStatus
-        FROM ProjectUser pu
-        JOIN User u ON u.userId = pu.userId
-        WHERE pu.project.id = :projectId
-        AND pu.memberStatus = 'ACTIVE'
+        select pu.project.id as projectId, pu.userId as leaderUserId
+        from ProjectUser pu
+        where pu.project.id in :projectIds
+          and pu.memberType = 'LEADER'
     """)
-    List<ProjectMemberInfo> findProjectMemberInfos(@Param("projectId") Long projectId);
+    List<ProjectLeaderRow> findLeadersByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    @Query("""
+        select pu.project.id as projectId, count(pu) as activeCount
+        from ProjectUser pu
+        where pu.project.id in :projectIds
+          and pu.memberStatus = 'ACTIVE'
+        group by pu.project.id
+    """)
+    List<ProjectActiveCountRow> countActiveMembersByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    List<ProjectUser> findByProject(Project Project);
 
     @Query("""
         SELECT COUNT(pu) > 0

@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
  * @param createdDate 생성일
  * @param classification 분류명
  * @param type 알림 유형 - 알림 메시지 포맷을 담습니다.
+ * @param scope 알림 대상 - 알림 받는 화면입니다.
  *
  */
 public record NotificationResponse(
@@ -27,6 +28,7 @@ public record NotificationResponse(
         String createdDate,
         String classification,
         String type,
+        String scope,
         Boolean isRead
 
 ) {
@@ -41,6 +43,7 @@ public record NotificationResponse(
                 notification.getCreatedAt().format(FORMATTER),
                 notification.getClassification().getClassifyKr(),
                 notification.getType().name(),
+                notification.getScope().name(),
                 notification.getIsRead()
         );
     }

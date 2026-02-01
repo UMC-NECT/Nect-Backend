@@ -97,7 +97,13 @@ class NotificationControllerTest {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("알림")
                                 .summary("알림 목록 조회")
-                                .description("사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.")
+                                .description("""
+                                        사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.
+                                        
+                                        노션 설계서 참고
+                                        https://www.notion.so/Platform-2faa3bc4d3fa80ccba96fc22e9af6ac6
+                                        
+                                """)
                                 .requestHeaders(
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
@@ -142,6 +148,8 @@ class NotificationControllerTest {
                                                 .description("다음 페이지 조회용 커서"),
                                         fieldWithPath("body.notifications[].type")
                                                 .description("알림 타입"),
+                                        fieldWithPath("body.notifications[].scope")
+                                                .description("알림이 가는 화면 대상"),
                                         fieldWithPath("body.nextCursor")
                                                 .description("다음 페이지 조회용 커서")
                                 )
@@ -162,6 +170,7 @@ class NotificationControllerTest {
                                 "25.01.20",
                                 NotificationClassification.MESSAGE.getClassifyKr(),
                                 NotificationType.CHAT_MESSAGE_RECEIVED.name(),
+                                NotificationScope.MAIN_HOME.name(),
                                 true
                         ),
                         new NotificationResponse(
@@ -173,6 +182,7 @@ class NotificationControllerTest {
                                 "25.01.19",
                                 NotificationClassification.WORK_SPACE.getClassifyKr(),
                                 NotificationType.WORKSPACE_MEMBER_JOINED.name(),
+                                NotificationScope.WORKSPACE_ONLY.name(),
                                 false
                         )
                 ))
