@@ -41,14 +41,15 @@ spring:
             user-name-attribute: id
 
   cloud:
-    aws:
+    cloud-flare:
       credentials:
-        access-key: ${S3_ACCESS_KEY:testS3}
-        secret-key: ${S3_SECRET_KEY:testS3}
+        access-key: ${R2_ACCESS_KEY:testS3}
+        secret-key: ${R2_SECRET_KEY:testS3}
       region:
-        static: ${S3_REGION:ap-northeast-2}
-      s3:
+        static: ${R2_REGION:us-east-1}
+      r2:
         bucket: ${BUCKET_NAME:test-bucket}
+        endpoint: ${R2_END_POINT:https://accountid.r2.cloudflarestorage.com}
 
   logging:
     level:
