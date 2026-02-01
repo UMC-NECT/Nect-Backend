@@ -5,6 +5,7 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
@@ -736,4 +737,88 @@ class ProcessControllerTest {
 
         verify(processService).updateProcessStatus(eq(projectId), eq(userId), eq(processId), any(ProcessStatusUpdateReqDto.class));
     }
+
+    @Test
+    @DisplayName("파트별 작업 진행률 요약 조회")
+    void getPartProgressSummary() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        ProcessProgressSummaryResDto response = new ProcessProgressSummaryResDto(
+                List.of(
+                        new LaneProgressResDto(
+                                "ROLE:PM",
+                                LaneType.ROLE,
+                                "PM",
+                                6L, 3L, 2L, 11L,
+                                55, 27, 18
+                        ),
+                        new LaneProgressResDto(
+                                "ROLE:BACKEND",
+                                LaneType.ROLE,
+                                "BACKEND",
+                                1L, 4L, 7L, 12L,
+                                8, 33, 59
+                        ),
+                        new LaneProgressResDto(
+                                "CUSTOM:영상편집",
+                                LaneType.CUSTOM,
+                                "영상편집",
+                                2L, 2L, 0L, 4L,
+                                50, 50, 0
+                        )
+                )
+        );
+
+        given(processService.getPartProgressSummary(eq(projectId), eq(userId)))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/v1/projects/{projectId}/processes/parts/progress-summary", projectId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("process-part-progress-summary",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("파트별 작업 진행률 요약 조회")
+                                        .description("프로젝트의 ROLE/CUSTOM 레인별 프로세스 상태 진행률(PLANNING/IN_PROGRESS/DONE)을 요약 조회합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.lanes").type(ARRAY).description("레인별 진행률 목록"),
+
+                                                fieldWithPath("body.lanes[].lane_key").type(STRING).description("레인 키(ROLE:XXX / CUSTOM:이름)"),
+                                                fieldWithPath("body.lanes[].lane_type").type(STRING).description("레인 타입(ROLE/CUSTOM)"),
+                                                fieldWithPath("body.lanes[].lane_name").type(STRING).description("레인 이름(ROLE enum name 또는 CUSTOM 이름)"),
+
+                                                fieldWithPath("body.lanes[].planning").type(NUMBER).description("계획(PLANNING) 프로세스 개수"),
+                                                fieldWithPath("body.lanes[].in_progress").type(NUMBER).description("진행 중(IN_PROGRESS) 프로세스 개수"),
+                                                fieldWithPath("body.lanes[].done").type(NUMBER).description("완료(DONE) 프로세스 개수"),
+                                                fieldWithPath("body.lanes[].total").type(NUMBER).description("전체(PLANNING+IN_PROGRESS+DONE)"),
+
+                                                fieldWithPath("body.lanes[].planning_rate").type(NUMBER).description("계획 비율(0~100)"),
+                                                fieldWithPath("body.lanes[].in_progress_rate").type(NUMBER).description("진행중 비율(0~100)"),
+                                                fieldWithPath("body.lanes[].done_rate").type(NUMBER).description("완료 비율(0~100, 합 100 보정)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(processService).getPartProgressSummary(eq(projectId), eq(userId));
+    }
+
 }
