@@ -6,6 +6,7 @@ import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessOrderUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
@@ -1133,6 +1134,107 @@ public class ProcessService {
 
 
         return new ProcessPartResDto(laneKey, groups);
+    }
+
+    // 파트별 작업 진행률 조회 서비스
+    @Transactional(readOnly = true)
+    public ProcessProgressSummaryResDto  getPartProgressSummary(Long projectId, Long userId) {
+        assertActiveProjectMember(projectId, userId);
+
+        if (!projectRepository.existsById(projectId)) {
+            throw new ProcessException(ProcessErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId);
+        }
+
+        List<ProcessStatus> statuses = List.of(
+                ProcessStatus.PLANNING,
+                ProcessStatus.IN_PROGRESS,
+                ProcessStatus.DONE
+        );
+
+        RoleField custom = RoleField.CUSTOM;
+
+        List<ProcessRepository.LaneStatusCountRow> roleRows =
+                processRepository.countRoleLaneStatusForProgressSummary(projectId, custom, statuses);
+
+        List<ProcessRepository.LaneStatusCountRow> customRows =
+                processRepository.countCustomLaneStatusForProgressSummary(projectId, custom, statuses);
+
+        // laneKey -> status -> count
+        Map<String, EnumMap<ProcessStatus, Long>> laneCounts = new LinkedHashMap<>();
+
+        // ROLE lanes
+        for (var r : roleRows) {
+            RoleField rf = r.getRoleField();
+            if (rf == null) continue;
+
+            String laneKey = "ROLE:" + rf.name();
+            laneCounts.computeIfAbsent(laneKey, k -> new EnumMap<>(ProcessStatus.class))
+                    .put(r.getStatus(), r.getCnt());
+        }
+
+        // CUSTOM lanes
+        for (var r : customRows) {
+            String name = r.getCustomName();
+            if (name == null) continue;
+
+            String trimmed = name.trim();
+            if (trimmed.isBlank()) continue;
+
+            String laneKey = "CUSTOM:" + trimmed;
+            laneCounts.computeIfAbsent(laneKey, k -> new EnumMap<>(ProcessStatus.class))
+                    .put(r.getStatus(), r.getCnt());
+        }
+
+
+        // 정렬 : ROLE 먼저, CUSTOM 다음, 이름 오름차순으로
+        List<String> sortedKeys = laneCounts.keySet().stream()
+                .sorted((a, b) -> {
+                    int ta = a.startsWith("ROLE:") ? 0 : 1;
+                    int tb = b.startsWith("CUSTOM:") ? 0 : 1;
+                    if(ta != tb) return Integer.compare(ta, tb);
+                    return a.compareTo(b);
+                })
+                .toList();
+
+        List<LaneProgressResDto> lanes = sortedKeys.stream()
+                .map(laneKey -> {
+                    EnumMap<ProcessStatus, Long> m = laneCounts.get(laneKey);
+
+                    long planning = m.getOrDefault(ProcessStatus.PLANNING, 0L);
+                    long inProgress = m.getOrDefault(ProcessStatus.IN_PROGRESS, 0L);
+                    long done = m.getOrDefault(ProcessStatus.DONE, 0L);
+                    long total = planning + inProgress + done;
+
+                    int planningRate = rate(planning, total);
+                    int inProgressRate = rate(inProgress, total);
+                    int doneRate = (total == 0) ? 0 : Math.max(0, 100 - planningRate - inProgressRate);
+
+                    LaneType laneType = laneKey.startsWith("ROLE:") ? LaneType.ROLE : LaneType.CUSTOM;
+                    String laneName = laneType == LaneType.ROLE
+                            ? laneKey.substring("ROLE:".length())
+                            : laneKey.substring("CUSTOM:".length());
+
+                    return new LaneProgressResDto(
+                            laneKey,
+                            laneType,
+                            laneName,
+                            planning,
+                            inProgress,
+                            done,
+                            total,
+                            planningRate,
+                            inProgressRate,
+                            doneRate
+                    );
+                })
+                .toList();
+
+        return new ProcessProgressSummaryResDto(lanes);
+    }
+
+    private int rate(long part, long total) {
+        if (total == 0) return 0;
+        return (int) Math.round(part * 100.0 / total);
     }
 
 

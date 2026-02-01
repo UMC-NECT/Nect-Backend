@@ -205,5 +205,60 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         GROUP BY pu.user.userId, p.status
         """)
     List<MemberProcessCountRow> aggregateMemberProcessCounts(@Param("projectId") Long projectId);
+
+
+    interface LaneStatusCountRow {
+        RoleField getRoleField();
+        String getCustomName();
+        ProcessStatus getStatus();
+        long getCnt();
+    }
+
+    // ROLE 레인 집계 (CUSTOM 제외)
+    @Query("""
+        select
+            pf.roleField as roleField,
+            null as customName,
+            p.status as status,
+            count(distinct p.id) as cnt
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField is not null
+          and pf.roleField <> :custom
+          and p.status in :statuses
+        group by pf.roleField, p.status
+    """)
+    List<LaneStatusCountRow> countRoleLaneStatusForProgressSummary(
+            @Param("projectId") Long projectId,
+            @Param("custom") RoleField custom,
+            @Param("statuses") List<ProcessStatus> statuses
+    );
+
+    // CUSTOM 레인 집계 (customFieldName별)
+    @Query("""
+        select
+            :custom as roleField,
+            trim(pf.customFieldName) as customName,
+            p.status as status,
+            count(distinct p.id) as cnt
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField = :custom
+          and pf.customFieldName is not null
+          and trim(pf.customFieldName) <> ''
+          and p.status in :statuses
+        group by trim(pf.customFieldName), p.status
+    """)
+    List<LaneStatusCountRow> countCustomLaneStatusForProgressSummary(
+            @Param("projectId") Long projectId,
+            @Param("custom") RoleField custom,
+            @Param("statuses") List<ProcessStatus> statuses
+    );
 }
 

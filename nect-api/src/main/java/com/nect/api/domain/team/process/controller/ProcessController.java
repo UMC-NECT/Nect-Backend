@@ -118,4 +118,13 @@ public class ProcessController {
         return ApiResponse.ok(processService.updateProcessStatus(projectId, userId, processId, request));
     }
 
+    // 프로세스 작업 진행률 조회
+    @GetMapping("/parts/progress-summary")
+    public ApiResponse<ProcessProgressSummaryResDto> getProcessProgressSummary(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.getPartProgressSummary(projectId, userId));
+    }
 }
