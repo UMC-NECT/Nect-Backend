@@ -13,6 +13,9 @@ public record ProcessOrderUpdateReqDto(
         @JsonProperty("ordered_process_ids")
         List<Long> orderedProcessIds,
 
+        @JsonProperty("lane_key")
+        String laneKey,
+
         @JsonProperty("start_date")
         LocalDate startDate,
 

@@ -1,16 +1,18 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
-import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDTO;
-import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
+import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.chat.ChatRoomUserRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
@@ -34,8 +36,9 @@ public class TeamChatService {
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
+    private final ProjectRepository projectRepository;
 
-    public List<ProjectMemberResponseDTO> getProjectMembers(Long projectId) {
+    public List<ProjectMemberResponseDto> getProjectMembers(Long projectId) {
         List<User> members = projectUserRepository.findAllUsersByProjectId(projectId);
         return ChatConverter.toProjectMemberResponseDTOList(members);
     }
@@ -43,7 +46,7 @@ public class TeamChatService {
 
     // 1:1 채팅방 생성
     @Transactional
-    public ChatRoomResponseDTO createOneOnOneChatRoom(Long currentUserId, ChatRoomCreateRequestDTO request) {
+    public ChatRoomResponseDto createOneOnOneChatRoom(Long currentUserId, ChatRoomCreateRequestDto request) {
 
 
         boolean isMeInProject = projectUserRepository.existsByProjectIdAndUserId(request.getProject_id(), currentUserId);
@@ -52,6 +55,9 @@ public class TeamChatService {
         if (!isMeInProject || !isTargetInProject) {
             throw new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND, "서로 같은 팀원이 아닙니다.");
         }
+
+        Project project = projectRepository.findById(request.getProject_id())
+                .orElseThrow(() -> new RuntimeException("프로젝트를 찾을 수 없습니다."));
 
         User me = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND, "현재 사용자를 찾을 수 없습니다."));
@@ -75,7 +81,7 @@ public class TeamChatService {
 
 
         ChatRoom chatRoom = ChatConverter.toChatRoomEntity(
-                request.getProject_id(),
+                project,
                 null,
                 ChatRoomType.DIRECT
         );
@@ -92,13 +98,14 @@ public class TeamChatService {
 
     // 팀 채팅방 생성
     @Transactional
-    public ChatRoomResponseDTO createGroupChatRoom(Long currentUserId, GroupChatRoomCreateRequestDTO request) {
+    public ChatRoomResponseDto createGroupChatRoom(Long currentUserId, GroupChatRoomCreateRequestDto request) {
 
     
         if (!StringUtils.hasText(request.getRoomName())) {
             throw new ChatException(ChatErrorCode.CHAT_ROOM_ALREADY_EXISTS, "채팅방 이름을 입력해야 합니다.");
         }
-        
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new RuntimeException("프로젝트를 찾을 수 없습니다."));
         
         boolean isCreatorInProject = projectUserRepository.existsByProjectIdAndUserId(request.getProjectId(), currentUserId);
         if (!isCreatorInProject) {
@@ -120,7 +127,7 @@ public class TeamChatService {
 
      
         ChatRoom chatRoom = ChatConverter.toChatRoomEntity(
-                request.getProjectId(),
+                project,
                 request.getRoomName(),
                 ChatRoomType.GROUP
         );

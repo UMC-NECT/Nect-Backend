@@ -24,6 +24,9 @@ public class ChatFile extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String fileUrl;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chat_room_id", nullable = false)
+    private ChatRoom chatRoom;
 
     private Long fileSize;
 

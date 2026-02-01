@@ -32,6 +32,9 @@ dependencies {
 	testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
 	testImplementation 'com.epages:restdocs-api-spec-mockmvc:0.18.2'
 
+	// JSON Schema generator
+	implementation 'com.github.victools:jsonschema-generator:4.36.0'
+
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
 	// S3
@@ -58,7 +61,10 @@ asciidoctor {
 
 openapi3 {
 	// QUESTION : 500번대 포트연결 에러가 뜨길래 넣어서 해결했는데 넣어야 하는지 궁금합니다.
-	servers = [{ url = 'http://localhost:8080' }]
+	servers = [
+		{ url = 'http://localhost:8080' },
+		{ url = 'https://getnect.tech' }
+	]
 	title = 'Nect API Document'
 	description = 'Nect Application API Document'
 	version = '0.0.1'

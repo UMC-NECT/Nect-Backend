@@ -2,6 +2,7 @@ package com.nect.core.entity.team;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.enums.FileExt;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -19,10 +20,9 @@ public class SharedDocument extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "created_by", nullable = false)
-//    private User createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
@@ -53,9 +53,10 @@ public class SharedDocument extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // TODO : 매개변수 User createdBy 추가
     @Builder
     private SharedDocument(
+            User createdBy,
+            Project project,
             boolean isPinned,
             String title,
             String description,
@@ -63,7 +64,8 @@ public class SharedDocument extends BaseEntity {
             FileExt fileExt,
             String fileUrl,
             Long fileSize) {
-//        this.createdBy = createdBy;
+        this.createdBy = createdBy;
+        this.project = project;
         this.isPinned = isPinned;
         this.title = title;
         this.description = description;

@@ -1,12 +1,17 @@
 package com.nect.api.notifications.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.nect.api.notifications.dto.NotificationListResponse;
-import com.nect.api.notifications.dto.NotificationResponse;
-import com.nect.api.notifications.service.NotificationService;
+import com.nect.api.domain.notifications.dto.NotificationListResponse;
+import com.nect.api.domain.notifications.dto.NotificationResponse;
+import com.nect.api.domain.notifications.service.NotificationService;
+import com.nect.api.global.jwt.JwtUtil;
+import com.nect.api.global.jwt.service.TokenBlacklistService;
+import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,17 +19,19 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -43,8 +50,32 @@ class NotificationControllerTest {
     @MockitoBean
     private NotificationService notificationService;
 
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
+
+    @BeforeEach
+    void setUpAuth() {
+        doNothing().when(jwtUtil).validateToken(anyString());
+        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
+        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
+        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
+                UserDetailsImpl.builder()
+                        .userId(1L)
+                        .roles(List.of("ROLE_USER"))
+                        .build()
+        );
+    }
+
     @Test
-    @WithMockUser
     @DisplayName("알림 목록 조회 API")
     void 알림_목록_조회_API() throws Exception {
 
@@ -55,7 +86,8 @@ class NotificationControllerTest {
                 eq(20)
         )).willReturn(mockResponse());
 
-        mockMvc.perform(get("/notifications")
+        mockMvc.perform(get("/api/v1/notifications")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("scope", "MAIN_HOME")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON)
@@ -66,6 +98,9 @@ class NotificationControllerTest {
                                 .tag("알림")
                                 .summary("알림 목록 조회")
                                 .description("사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
                                 .queryParameters(
                                         parameterWithName("scope")
                                                 .description("알림 범위 (MAIN_HOME, WORKSPACE_ONLY, WORKSPACE_GLOBAL)"),

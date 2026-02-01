@@ -2,6 +2,7 @@ package com.nect.api.domain.team.process.dto.req;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,8 +22,11 @@ public record ProcessCreateReqDto(
         @JsonProperty("assignee_ids")
         List<Long> assigneeIds,
 
-        @JsonProperty("field_ids")
-        List<Long> fieldIds,
+        @JsonProperty("role_fields")
+        List<RoleField> roleFields,
+
+        @JsonProperty("custom_field_name")
+        String customFieldName,
 
         @JsonProperty("start_date")
         LocalDate startDate,
@@ -46,7 +50,7 @@ public record ProcessCreateReqDto(
 ) {
     public ProcessCreateReqDto {
         assigneeIds = (assigneeIds == null) ? List.of() : assigneeIds;
-        fieldIds = (fieldIds == null) ? List.of() : fieldIds;
+        roleFields = (roleFields == null) ? List.of() : roleFields;
         mentionUserIds = (mentionUserIds == null) ? List.of() : mentionUserIds;
         fileIds = (fileIds == null) ? List.of() : fileIds;
         links = (links == null) ? List.of() : links;

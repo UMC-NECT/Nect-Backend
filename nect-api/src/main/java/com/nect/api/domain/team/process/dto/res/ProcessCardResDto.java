@@ -2,6 +2,7 @@ package com.nect.api.domain.team.process.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,8 +31,11 @@ public record ProcessCardResDto(
         @JsonProperty("left_day")
         Integer leftDay,
 
-        @JsonProperty("field_ids")
-        List<Long> fieldIds,
+        @JsonProperty("role_fields")
+        List<RoleField> roleFields,
+
+        @JsonProperty("custom_fields")
+        List<String> customFields,
 
         @JsonProperty("assignee")
         List<AssigneeResDto> assignee

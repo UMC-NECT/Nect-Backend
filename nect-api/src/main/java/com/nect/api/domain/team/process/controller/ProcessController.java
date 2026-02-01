@@ -7,15 +7,18 @@ import com.nect.api.domain.team.process.dto.req.ProcessStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.api.global.response.ApiResponse;
+import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.core.entity.user.enums.RoleField;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 
 @RestController
-@RequestMapping("/projects/{projectId}/processes")
+@RequestMapping("/api/v1/projects/{projectId}/processes")
 @RequiredArgsConstructor
 public class ProcessController {
 
@@ -25,10 +28,11 @@ public class ProcessController {
     @PostMapping
     public ApiResponse<ProcessCreateResDto> createProcess(
             @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessCreateReqDto request
     ) {
-        Long processId = processService.createProcess(projectId, request);
-
+        Long userId = userDetails.getUserId();
+        Long processId = processService.createProcess(projectId, userId, request);
         return ApiResponse.ok(new ProcessCreateResDto(processId));
     }
 
@@ -36,10 +40,11 @@ public class ProcessController {
     @GetMapping("/{processId}")
     public ApiResponse<ProcessDetailResDto> getProcessDetail(
             @PathVariable Long projectId,
-            @PathVariable Long processId
+            @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        ProcessDetailResDto res = processService.getProcessDetail(projectId, processId);
-        return ApiResponse.ok(res);
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.getProcessDetail(projectId, userId, processId));
     }
 
     // 프로세스 기본 정보 수정
@@ -47,19 +52,22 @@ public class ProcessController {
     public ApiResponse<ProcessBasicUpdateResDto> updateProcessBasic(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessBasicUpdateReqDto request
     ) {
-        ProcessBasicUpdateResDto res = processService.updateProcessBasic(projectId, processId, request);
-        return ApiResponse.ok(res);
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.updateProcessBasic(projectId, userId, processId, request));
     }
 
     // 프로세스 삭제
     @DeleteMapping("/{processId}")
     public ApiResponse<Void> deleteProcess(
             @PathVariable Long projectId,
-            @PathVariable Long processId
+            @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ){
-        processService.deleteProcess(projectId, processId);
+        Long userId = userDetails.getUserId();
+        processService.deleteProcess(projectId, userId, processId);
         return ApiResponse.ok(null);
     }
 
@@ -67,31 +75,35 @@ public class ProcessController {
     @GetMapping("/week")
     public ApiResponse<ProcessWeekResDto> getWeekProcesses(
             @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(name = "start_date", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-            LocalDate startDate
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate
     ) {
-        return ApiResponse.ok(processService.getWeekProcesses(projectId, startDate));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.getWeekProcesses(projectId, userId, startDate));
     }
 
     // 파트별 작업 현황 조회
     @GetMapping("/part")
     public ApiResponse<ProcessPartResDto> getPartProcesses(
             @PathVariable Long projectId,
-            @RequestParam(name = "field_id", required = false) Long fieldId // Team 탭이면 null
+            @RequestParam(name = "lane_key", required = false) String laneKey,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        return ApiResponse.ok(processService.getPartProcesses(projectId, fieldId));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.getPartProcesses(projectId, userId, laneKey));
     }
-
 
     // 프로세스 위치 상태 변경
     @PatchMapping("/{processId}/order")
     public ApiResponse<ProcessOrderUpdateResDto> updateProcessOrder(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessOrderUpdateReqDto request
     ) {
-        return ApiResponse.ok(processService.updateProcessOrder(projectId, processId, request));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.updateProcessOrder(projectId, userId, processId, request));
     }
 
     // 프로세스 작업 상태 변경
@@ -99,9 +111,11 @@ public class ProcessController {
     public ApiResponse<ProcessStatusUpdateResDto> updateProcessStatus(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessStatusUpdateReqDto request
     ) {
-        return ApiResponse.ok(processService.updateProcessStatus(projectId, processId, request));
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(processService.updateProcessStatus(projectId, userId, processId, request));
     }
 
 }

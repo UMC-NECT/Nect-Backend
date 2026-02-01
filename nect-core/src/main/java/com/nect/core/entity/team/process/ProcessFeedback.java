@@ -2,6 +2,7 @@ package com.nect.core.entity.team.process;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -23,10 +24,9 @@ public class ProcessFeedback extends BaseEntity {
     @JoinColumn(name="process_id", nullable=false)
     private Process process;
 
-    // TODO
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "created_by", nullable = false)
-//    private User createdBy;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
@@ -38,13 +38,19 @@ public class ProcessFeedback extends BaseEntity {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
-    // TODO : User createdBy 추가하기
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @Builder
-    private ProcessFeedback(Process process, String content) {
+    private ProcessFeedback(Process process, String content, User createdBy) {
         this.process = process;
-//        this.createdBy = createdBy;
         this.content = content;
+        this.createdBy = createdBy;
         this.status = ProcessFeedbackStatus.OPEN;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
     }
 
     void setProcess(Process process) {
@@ -59,5 +65,15 @@ public class ProcessFeedback extends BaseEntity {
     public void reopen() {
         this.status = ProcessFeedbackStatus.OPEN;
         this.resolvedAt = null;
+    }
+
+
+    public void softDelete() {
+        if (this.deletedAt != null) return;
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    public boolean isDeleted() {
+        return this.deletedAt != null;
     }
 }

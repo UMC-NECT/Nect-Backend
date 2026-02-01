@@ -1,7 +1,9 @@
 package com.nect.api.domain.team.chat.service;
 import com.nect.api.domain.team.chat.converter.FileConverter;
-import com.nect.api.domain.team.chat.dto.req.ChatMessageDTO;
-import com.nect.api.domain.team.chat.dto.res.ChatFileUploadResponseDTO;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
+import com.nect.api.domain.team.chat.dto.res.ChatFileResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatFileUploadResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomAlbumResponseDto;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -18,10 +20,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import java.time.LocalDateTime;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,11 +45,14 @@ public class ChatFileService {
     private String uploadDir;
 
     @Transactional
-    public ChatFileUploadResponseDTO uploadFile(MultipartFile file) {
+    public ChatFileUploadResponseDto uploadFile(Long roomId,MultipartFile file) {
 
         if (file.isEmpty()) {
             throw new RuntimeException("업로드할 파일이 존재하지 않습니다.");
         }
+
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 채팅방입니다. ID: " + roomId));
 
         try{
             // 원본 파일명
@@ -59,7 +67,6 @@ public class ChatFileService {
                 //uploads 폴더 없을 때 생성 //TODO 파일경로 수정필요
                 boolean created = directory.mkdirs(); // 폴더가 없으면 자동 생성
                 if (!created) {
-
                 }
             }
 
@@ -74,8 +81,10 @@ public class ChatFileService {
                     originalFilename,
                     fileUrl,
                     file.getSize(),
-                    file.getContentType()
+                    file.getContentType(),
+                    chatRoom
             );
+
             chatFileRepository.save(chatFile);
             return FileConverter.toFileUploadResponseDTO(chatFile);
         }catch(IOException e){
@@ -85,7 +94,7 @@ public class ChatFileService {
     }
 
     @Transactional
-    public ChatMessageDTO sendFileMessage(Long roomId, Long userId, Long fileId) {
+    public ChatMessageDto sendFileMessage(Long roomId, Long userId, Long fileId) {
 
 
         ChatRoomUser chatRoomUser = chatRoomUserRepository.findMemberInRoom(roomId, userId)
@@ -107,7 +116,7 @@ public class ChatFileService {
 
         // 파일과 메시지 연결
         chatFile.setChatMessage(message);
-        ChatMessageDTO messageDto = FileConverter.toFileMessageDto(message, chatFile);
+        ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
        
         //Redis 발행
         String channel = "chatroom:" + roomId;
@@ -132,4 +141,51 @@ public class ChatFileService {
         if (pos == -1) return "";
         return originalFilename.substring(pos + 1);
     }
+
+    //  채팅방 파일 조회
+    @Transactional(readOnly = true)
+    public List<ChatRoomAlbumResponseDto> getChatAlbum(Long projectId) {
+        LocalDateTime fifteenDaysAgo = LocalDateTime.now().minusDays(15);
+
+        List<ChatRoom> chatRooms = chatRoomRepository.findAllByProject_Id(projectId);
+
+        return chatRooms.stream()
+                .map(room -> {
+                    List<ChatFile> chatFiles = chatFileRepository
+                            .findAllByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(room.getId(), fifteenDaysAgo);
+
+                    return FileConverter.toChatRoomAlbumDto(room, chatFiles);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // 만료된 파일 물리 삭제 롤직
+    @Transactional
+    public void cleanupExpiredFiles() {
+        LocalDateTime threshold = LocalDateTime.now().minusDays(15);
+        List<ChatFile> expiredFiles = chatFileRepository.findAllByCreatedAtBefore(threshold);
+
+        for (ChatFile file : expiredFiles) {
+            try {
+                // TODO: Cloudflare R2 실제 파일 삭제 로직 연결
+                // s3Client.deleteObject(bucketName, file.getFileName());
+
+                chatFileRepository.delete(file);
+                log.info("만료 파일 삭제 완료: {}", file.getFileName());
+            } catch (Exception e) {
+                log.error("파일 삭제 실패: {}", file.getFileName(), e);
+            }
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatFileResponseDto> getChatRoomDetailAlbum(Long roomId) {
+        LocalDateTime fifteenDaysAgo = LocalDateTime.now().minusDays(15);
+
+        List<ChatFile> chatFiles = chatFileRepository
+                .findAllByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(roomId, fifteenDaysAgo);
+
+        return FileConverter.toFileResponseDtoList(chatFiles);
+    }
+
 }

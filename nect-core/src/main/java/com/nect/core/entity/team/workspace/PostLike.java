@@ -1,6 +1,7 @@
 package com.nect.core.entity.team.workspace;
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.user.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -10,10 +11,10 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "post_comment_like",
+        name = "post_like",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_post_comment_like_comment_member",
+                        name = "uk_post_like_post_user",
                         columnNames = {"post_id", "user_id"}
                 )
         }
@@ -28,13 +29,18 @@ public class PostLike extends BaseEntity {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
-    // TODO
 //    // 누가 좋아요 했는지
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "user_id", nullable = false)
-//    private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     void setPost(Post post) { this.post = post; }
-//    void setMember(User member) { this.member = member; }
+    void setUser(User user) { this.user = user; }
 
+    public static PostLike of(Post post, User user) {
+        PostLike pl = new PostLike();
+        pl.post = post;
+        pl.user = user;
+        return pl;
+    }
 }
