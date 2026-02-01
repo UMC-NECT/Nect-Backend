@@ -3,6 +3,7 @@ package com.nect.api.domain.team.file.service;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.enums.FileErrorCode;
 import com.nect.api.domain.team.file.exception.FileException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.enums.FileExt;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Set;
@@ -34,6 +36,7 @@ public class FileService {
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
+    private final S3Service s3Service;
 
     private void assertActiveProjectMember(Long projectId, Long userId) {
         if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
@@ -68,9 +71,17 @@ public class FileService {
 
         validateSizeOrThrow(ext, fileSize);
 
-        // TODO: 실제 스토리지 업로드(S3/R2 등) 후 URL 받아오기
-        String fileUrl = "https://cdn.example.com/projects/" + project.getId()
-                + "/files/" + System.currentTimeMillis() + "_" + originalName;
+        // S3 업로드
+        String fileUrl;
+        try {
+            fileUrl = s3Service.uploadImage(file);
+        } catch (IOException e) {
+            throw new FileException(
+                    FileErrorCode.FILE_UPLOAD_FAILED,
+                    "S3 upload failed. projectId=" + projectId + ", originalName=" + originalName,
+                    e
+            );
+        }
 
         SharedDocument doc = SharedDocument.builder()
                 .project(project)

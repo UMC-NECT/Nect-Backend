@@ -10,7 +10,7 @@ public class ProjectUserConverter {
                 .id(projectUser.getId())
                 .userId(projectUser.getUserId())
                 .projectId(projectUser.getProject().getId())
-                .fieldId(projectUser.getFieldId())
+//                .fieldId(projectUser.getFieldId())
                 .memberType(projectUser.getMemberType())
                 .memberStatus(projectUser.getMemberStatus())
                 .build();

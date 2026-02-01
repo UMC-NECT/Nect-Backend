@@ -6,6 +6,7 @@ import com.nect.core.entity.team.enums.RecruitmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +46,13 @@ public class Project extends BaseEntity {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "planned_started_on")
+    private LocalDate plannedStartedOn;
+
+    @Column(name = "planned_ended_on")
+    private LocalDate plannedEndedOn;
+
+
 
     @Builder
     protected Project(String title,
@@ -65,5 +73,13 @@ public class Project extends BaseEntity {
         this.status = ProjectStatus.ENDED;
         this.recruitmentStatus = RecruitmentStatus.CLOSED;
         this.endedAt = LocalDateTime.now();
+    }
+
+    public void updateNoticeText(String noticeText) {
+        this.noticeText = noticeText;
+    }
+
+    public void updateRegularMeetingText(String regularMeetingText) {
+        this.regularMeetingText = regularMeetingText;
     }
 }

@@ -17,4 +17,9 @@ public class CustomException extends RuntimeException {
         super(message);
         this.responseCode = responseCode;
     }
+
+    public CustomException(ResponseCode responseCode, String message, Throwable cause) {
+        super(message, cause);
+        this.responseCode = responseCode;
+    }
 }
