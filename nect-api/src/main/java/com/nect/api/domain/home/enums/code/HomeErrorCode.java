@@ -9,7 +9,6 @@ import lombok.Getter;
 public enum HomeErrorCode implements ResponseCode {
 
     INVALID_HOME_COUNT("H400_1", "count는 1 이상이어야 합니다.");
-    ;
 
     private final String statusCode;
     private final String message;

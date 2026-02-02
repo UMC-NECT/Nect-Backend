@@ -1,4 +1,4 @@
-package com.nect.api.domain.team.project.service;
+package com.nect.api.domain.home.service;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.enums.RecruitmentStatus;

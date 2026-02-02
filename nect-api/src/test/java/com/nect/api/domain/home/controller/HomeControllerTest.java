@@ -1,15 +1,18 @@
 package com.nect.api.domain.home.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
+import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.repository.matching.RecruitmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +54,9 @@ class HomeControllerTest {
 
     @MockitoBean
     private MainHomeFacade mainHomeFacade;
+
+    @MockitoBean
+    private HomeMemberQueryService homeMemberQueryService;
 
     @MockitoBean
     private RecruitmentRepository recruitmentRepository;
@@ -196,6 +202,31 @@ class HomeControllerTest {
                 ));
     }
 
+    @Test
+    @DisplayName("홈화면 헤더 프로필 API")
+    void 홈화면_헤더_프로필_API() throws Exception {
+        given(homeMemberQueryService.getHeaderProfile(eq(1L)))
+                .willReturn(mockHeaderProfileResponse());
+
+        mockMvc.perform(get("/api/v1/home/profile")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("home-header-profile",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("홈")
+                                .summary("홈화면 헤더 프로필")
+                                .description("홈 화면 헤더에 표시할 프로필 정보를 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(headerProfileResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
     private HomeProjectResponse mockProjectResponse() {
         return new HomeProjectResponse(List.of(
                 new HomeProjectItem(
@@ -227,6 +258,16 @@ class HomeControllerTest {
                         Map.of("PM", 1, "Design", 1)
                 )
         ));
+    }
+
+    private HomeHeaderResponse mockHeaderProfileResponse() {
+        return HomeHeaderResponse.builder()
+                .userId(1L)
+                .imageUrl("https://example.com/profile/1.png")
+                .name("홍길동")
+                .email("honggildong@example.com")
+                .role(Role.DEVELOPER)
+                .build();
     }
 
     private HomeMembersResponse mockMembersResponse() {
@@ -294,6 +335,19 @@ class HomeControllerTest {
                 fieldWithPath("body.members[].status").description("상태"),
                 fieldWithPath("body.members[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.members[].roles").description("역할 목록")
+        );
+    }
+
+    private static List<FieldDescriptor> headerProfileResponseFields() {
+        return List.of(
+                fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                fieldWithPath("status.message").description("응답 메시지"),
+                fieldWithPath("status.description").optional().description("응답 상세 설명"),
+                fieldWithPath("body.userId").description("유저 ID"),
+                fieldWithPath("body.imageUrl").description("프로필 이미지 URL"),
+                fieldWithPath("body.name").description("이름"),
+                fieldWithPath("body.email").description("이메일"),
+                fieldWithPath("body.role").description("역할")
         );
     }
 

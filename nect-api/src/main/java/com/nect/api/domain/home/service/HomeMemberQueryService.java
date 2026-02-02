@@ -1,7 +1,10 @@
-package com.nect.api.domain.user.service;
+package com.nect.api.domain.home.service;
 
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
+import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserRole;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.user.UserRepository;
 import com.nect.core.repository.user.UserRoleRepository;
@@ -53,5 +56,26 @@ public class HomeMemberQueryService {
                 .distinct()
                 .toList();
     }
+
+    public HomeHeaderResponse getHeaderProfile(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("유저를 찾을 수 없습니다."));
+
+        // 역할들
+        List<UserRole> userRoles = userRoleRepository.findByUser(user);
+
+        // 역할 ( 개발자, 디자이너, 기획자 등 )
+        Role role = userRoles.getFirst().getRoleField().getRole();
+
+        return HomeHeaderResponse.builder()
+                .userId(user.getUserId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .imageUrl(null) // TODO: image URL 추가
+                .role(role)
+                .build();
+    }
+
 }
 

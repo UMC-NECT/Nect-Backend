@@ -1,8 +1,10 @@
 package com.nect.api.domain.home.controller;
 
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
+import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class HomeController {
 
     private final MainHomeFacade mainHomeFacade;
+    private final HomeMemberQueryService homeMemberQueryService;
 
     // 모집 중인 프로젝트 조회
     @GetMapping("/projects")
@@ -47,5 +50,14 @@ public class HomeController {
         HomeMembersResponse members = mainHomeFacade.getRecommendedMembers(userId, count);
         return ApiResponse.ok(members);
     }
+
+    // 홈화면 헤더 프로필
+    @GetMapping("/profile")
+    public ApiResponse<HomeHeaderResponse> headerProfile(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = (userDetails == null) ? null : userDetails.getUserId();
+        HomeHeaderResponse profileInfo = homeMemberQueryService.getHeaderProfile(userId);
+        return ApiResponse.ok(profileInfo);
+    }
+
 
 }
