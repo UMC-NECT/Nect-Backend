@@ -5,6 +5,8 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.nect.api.global.infra.exception.StorageErrorCode;
+import com.nect.api.global.infra.exception.StorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,7 +29,7 @@ public class S3Service {
 
     public String uploadFile(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("파일이 비어있습니다.");
+            throw new StorageException(StorageErrorCode.EMPTY_FILE);
         }
 
         String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename(); // 고유한 파일 이름 생성
@@ -46,7 +48,7 @@ public class S3Service {
     // 다운로드, 조회 전용
     public String getPresignedGetUrl(String fileName) {
         if (fileName == null || fileName.isBlank()) {
-            throw new IllegalArgumentException("파일이름이 비어있습니다.");
+            throw new StorageException(StorageErrorCode.EMPTY_FILE_NAME);
         }
 
         Date expiration = new Date(System.currentTimeMillis() + PRESIGNED_EXPIRE_MILLIS);
