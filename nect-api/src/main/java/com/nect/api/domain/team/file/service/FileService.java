@@ -74,7 +74,7 @@ public class FileService {
         // S3 업로드
         String fileUrl;
         try {
-            fileUrl = s3Service.uploadImage(file);
+            fileUrl = s3Service.uploadFile(file);
         } catch (IOException e) {
             throw new FileException(
                     FileErrorCode.FILE_UPLOAD_FAILED,
