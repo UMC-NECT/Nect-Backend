@@ -23,5 +23,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 	List<User> findByUserIdNot(Long userId, Pageable pageable);
 
-	List<User> findByUserIdNot(Long userId);
+	List<User> findByUserIdIn(List<Long> userIds);
+
 }

@@ -162,5 +162,48 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("status") ProcessStatus status,
             @Param("customName") String customName
     );
+
+    interface MissionProgressRow {
+        RoleField getRoleField();
+        String getCustomFieldName(); // roleField == CUSTOM 일 때 값
+        Long getTotalCount();
+        Long getCompletedCount();
+    }
+
+    @Query("""
+        SELECT
+            pf.roleField AS roleField,
+            pf.customFieldName AS customFieldName,
+            COUNT(DISTINCT p.id) AS totalCount,
+            SUM(CASE WHEN p.status = com.nect.core.entity.team.process.enums.ProcessStatus.DONE THEN 1 ELSE 0 END) AS completedCount
+        FROM Process p
+        JOIN p.processFields pf
+        WHERE p.project.id = :projectId
+          AND p.deletedAt IS NULL
+          AND pf.deletedAt IS NULL
+        GROUP BY pf.roleField, pf.customFieldName
+    """)
+    List<MissionProgressRow> aggregateMissionProgress(@Param("projectId") Long projectId);
+
+    interface MemberProcessCountRow {
+        Long getUserId();
+        ProcessStatus getStatus();
+        Long getCnt();
+    }
+
+
+    @Query("""
+        SELECT
+          pu.user.userId AS userId,
+          p.status AS status,
+          COUNT(DISTINCT p.id) AS cnt
+        FROM Process p
+        JOIN p.processUsers pu
+        WHERE p.project.id = :projectId
+          AND p.deletedAt IS NULL
+          AND pu.deletedAt IS NULL
+        GROUP BY pu.user.userId, p.status
+        """)
+    List<MemberProcessCountRow> aggregateMemberProcessCounts(@Param("projectId") Long projectId);
 }
 

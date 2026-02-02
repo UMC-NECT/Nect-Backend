@@ -63,11 +63,11 @@ public class MatchingFacade {
 
         recruitmentService.consumeIfAcceptable(matching, project);
         Matching acceptedMatching = matchingService.acceptMatching(matchingId, userId);
-        ProjectUser projectUser = projectUserService.addProjectUser(joinUserId, project, matching.getFieldId());
+//        ProjectUser projectUser = projectUserService.addProjectUser(joinUserId, project, matching.getFieldId());
 
         return MatchingResDto.MatchingAcceptResDto.builder()
                 .matching(MatchingConverter.toMatchingResDto(acceptedMatching))
-                .projectUser(ProjectUserConverter.toProjectUserResDto(projectUser))
+//                .projectUser(ProjectUserConverter.toProjectUserResDto(projectUser))
                 .build();
     }
 

@@ -109,7 +109,7 @@ public class NotificationDispatchService {
 
         NotificationType type = notification.getType();
         NotificationScope scope = notification.getScope();
-        String eventId = receiverId + "_" + scope.getEventName() + "_" + System.currentTimeMillis();
+        String eventId = receiverId + "_" + scope.name() + "_" + type.name() + System.currentTimeMillis();
 
         // ConcurrentModificationException 방지를 위해 복사본 사용
         for (SseEmitter emitter : new ArrayList<>(emitters)) {

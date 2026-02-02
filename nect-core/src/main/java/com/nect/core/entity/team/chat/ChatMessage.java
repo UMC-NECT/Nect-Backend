@@ -32,6 +32,7 @@ public class ChatMessage extends BaseEntity {
 
     // 공지사항 여부
     @Column(nullable = false)
+    @Builder.Default
     private Boolean isPinned = false;
 
     // TODO 발신자 (User 외래키)

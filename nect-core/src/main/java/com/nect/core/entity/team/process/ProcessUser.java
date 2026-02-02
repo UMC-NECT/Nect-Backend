@@ -49,7 +49,6 @@ public class ProcessUser extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    // TODO : user 추가
     @Builder
     public ProcessUser(Process process, User user, AssignmentRole assignmentRole, LocalDateTime assignedAt) {
         this.process = process;
