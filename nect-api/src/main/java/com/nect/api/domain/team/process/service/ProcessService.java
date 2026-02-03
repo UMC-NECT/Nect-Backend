@@ -1,15 +1,16 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
-import com.nect.api.domain.team.process.dto.req.ProcessBasicUpdateReqDto;
-import com.nect.api.domain.team.process.dto.req.ProcessCreateReqDto;
-import com.nect.api.domain.team.process.dto.req.ProcessOrderUpdateReqDto;
-import com.nect.api.domain.team.process.dto.req.ProcessStatusUpdateReqDto;
+import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
+import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
@@ -23,6 +24,7 @@ import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
+import com.nect.core.repository.team.process.ProcessLaneOrderRepository;
 import com.nect.core.repository.team.process.ProcessMentionRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;
@@ -45,12 +47,51 @@ public class ProcessService {
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
     private final ProcessMentionRepository processMentionRepository;
-     private final UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ProcessLaneOrderRepository processLaneOrderRepository;
+
+    private static final String TEAM_LANE_KEY = "TEAM";
+
+    private static final int MAX_TITLE_LENGTH = 50;
+    private static final int MAX_TASK_ITEMS = 30;
+
+
+    // 제목 검증
+    private void validateProcessTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "process_title is required");
+        }
+        if (title.length() > MAX_TITLE_LENGTH) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_PROCESS_TITLE_LENGTH,
+                    "process_title length=" + title.length() + ", max=" + MAX_TITLE_LENGTH
+            );
+        }
+    }
+
+    // taskItems 검증
+    private void validateTaskItems(List<ProcessTaskItemReqDto> taskItems) {
+        if (taskItems == null) return;
+
+        if (taskItems.size() > MAX_TASK_ITEMS) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "task_items size=" + taskItems.size() + ", max=" + MAX_TASK_ITEMS
+            );
+        }
+
+        for (int i = 0; i < taskItems.size(); i++) {
+            ProcessTaskItemReqDto t = taskItems.get(i);
+            if (t == null || t.content() == null || t.content().isBlank()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_TASK_ITEM_CONTENT,
+                        "task_items[" + i + "].content is blank"
+                );
+            }
+        }
+    }
 
     private final NotificationFacade notificationFacade;
-
-    // TODO : 알림 기능 추가 예정
-
     private final ProjectHistoryPublisher historyPublisher;
 
     // 헬퍼 메서드
@@ -63,12 +104,89 @@ public class ProcessService {
         }
     }
 
+    private String toDbLaneKey(String laneKey) {
+        if (laneKey == null) return TEAM_LANE_KEY;
+        String t = laneKey.trim();
+        return t.isBlank() ? TEAM_LANE_KEY : t;
+    }
+
+    private String toApiLaneKey(String dbLaneKey) {
+        if (dbLaneKey == null) return null;
+        return TEAM_LANE_KEY.equals(dbLaneKey) ? null : dbLaneKey;
+    }
+
+    private void ensureLaneOrderRowsExist(Long projectId, ProcessStatus status, String dbLaneKey, List<Process> laneProcesses) {
+        // 현재 laneProcesses에 포함된 애들에 대해 row가 없다면 tail로 생성
+        long base = processLaneOrderRepository.countLaneTotal(projectId, dbLaneKey, status);
+        int next = (int) base;
+
+        for (Process p : laneProcesses) {
+            var opt = processLaneOrderRepository.findByProjectIdAndProcessIdAndLaneKeyAndStatusAndDeletedAtIsNull(
+                    projectId, p.getId(), dbLaneKey, status
+            );
+            if (opt.isPresent()) continue;
+
+            ProcessLaneOrder row = ProcessLaneOrder.builder()
+                    .projectId(projectId)
+                    .process(p)
+                    .laneKey(dbLaneKey)
+                    .status(status)
+                    .sortOrder(next++)
+                    .build();
+
+            processLaneOrderRepository.save(row);
+        }
+    }
+
+
+    // 알림 관련 헬퍼 메서드
+    private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
+        if (mentionIds == null) return List.of();
+
+        List<Long> ids = mentionIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .filter(id -> !id.equals(actorId))
+                .toList();
+
+        if (ids.isEmpty()) return List.of();
+
+        // 프로젝트 멤버인지 검증 + 유저 로드
+        List<User> users = projectUserRepository.findAllUsersByProjectIdAndUserIds(projectId, ids);
+        if (users.size() != ids.size()) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "mention_user_ids contains non-member user. projectId=" + projectId
+            );
+        }
+        return users;
+    }
+
+    private void notifyWorkspaceMention(Project project, User actor, Long targetProcessId, List<User> receivers, String content) {
+        if (receivers == null || receivers.isEmpty()) return;
+
+        NotificationCommand command = new NotificationCommand(
+                NotificationType.WORKSPACE_MENTIONED,
+                NotificationClassification.WORK_STATUS,
+                NotificationScope.WORKSPACE_GLOBAL,
+                targetProcessId,
+                new Object[]{ actor.getName() },
+                new Object[]{ content },
+                project
+        );
+
+        notificationFacade.notify(receivers, command);
+    }
 
     // 프로세스 생성 서비스
     @Transactional
     public Long createProcess(Long projectId, Long userId, ProcessCreateReqDto req) {
 
         assertActiveProjectMember(projectId, userId);
+        validateProcessTitle(req.processTitle());
+
+        List<ProcessTaskItemReqDto> taskItems = req.taskItems();
+        validateTaskItems(taskItems);
 
         // 프로젝트 확인
         Project project = projectRepository.findById(projectId)
@@ -79,7 +197,7 @@ public class ProcessService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.INVALID_REQUEST,
+                        ProcessErrorCode.USER_NOT_FOUND,
                         "userId = " + userId
                 ));
 
@@ -110,7 +228,7 @@ public class ProcessService {
 
         int i = 0;
         // 업무 리스트 저장
-        for (var t : req.taskItems()) {
+        for (var t : taskItems) {
             Integer order = (t.sortOrder() != null) ? t.sortOrder() : i++;
             ProcessTaskItem item = ProcessTaskItem.builder()
                     .process(process)
@@ -210,15 +328,25 @@ public class ProcessService {
                 .orElse(List.of())
                 .stream().filter(Objects::nonNull).distinct().toList();
 
+        List<User> mentionReceivers = validateAndLoadMentionReceivers(projectId, userId, mentionIds);
+
         syncMentions(saved, mentionIds);
 
-        // TODO(NOTIFICATION)
+        // 멘션된 사람들에게 알림
+        notifyWorkspaceMention(
+                project,
+                user,
+                saved.getId(),
+                mentionReceivers,
+                saved.getTitle()
+        );
+
 
         /*
-        * HISTORY: Process 생성 완료 후 이벤트 발행
-        * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
-        * - metaJson에는 생성 시점 핵심 스냅샷(title/status/period)만 담는다.
-        * */
+         * HISTORY: Process 생성 완료 후 이벤트 발행
+         * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
+         * - metaJson에는 생성 시점 핵심 스냅샷(title/status/period)만 담는다.
+         * */
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("title", saved.getTitle());
         meta.put("status", saved.getStatus());
@@ -246,7 +374,7 @@ public class ProcessService {
 
     // 프로세스 상세 보기
     @Transactional(readOnly = true)
-    public ProcessDetailResDto getProcessDetail(Long projectId, Long userId, Long processId) {
+    public ProcessDetailResDto getProcessDetail(Long projectId, Long userId, Long processId, String laneKey) {
         assertActiveProjectMember(projectId, userId);
 
         Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
@@ -254,6 +382,20 @@ public class ProcessService {
                         ProcessErrorCode.PROCESS_NOT_FOUND,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
+
+        String dbLaneKey = toDbLaneKey(laneKey);
+
+        // lane 기준 정렬값(status_order) 조회
+        // - 없으면 null
+        Integer laneStatusOrder = processLaneOrderRepository
+                .findByProjectIdAndProcessIdAndLaneKeyAndStatusAndDeletedAtIsNull(
+                        projectId,
+                        processId,
+                        dbLaneKey,
+                        process.getStatus()
+                )
+                .map(ProcessLaneOrder::getSortOrder)
+                .orElse(null);
 
         List<ProcessTaskItemResDto> taskItems = process.getTaskItems().stream()
                 .sorted(Comparator.comparing(t -> t.getSortOrder() == null ? Integer.MAX_VALUE : t.getSortOrder()))
@@ -281,6 +423,7 @@ public class ProcessService {
                 .filter(pf -> pf.getDeletedAt() == null)
                 .map(ProcessField::getRoleField)
                 .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM)
                 .distinct()
                 .toList();
 
@@ -386,7 +529,7 @@ public class ProcessService {
                 process.getStatus(),
                 process.getStartAt(),
                 process.getEndAt(),
-                process.getStatusOrder(),
+                laneStatusOrder,
                 roleFields,
                 customFields,
                 assignees,
@@ -453,6 +596,7 @@ public class ProcessService {
                         ProcessErrorCode.PROCESS_NOT_FOUND,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
+
 
         // before 스냅샷
         final String beforeTitle = process.getTitle();
@@ -534,6 +678,32 @@ public class ProcessService {
 
         // 멘션 교체
         List<Long> mentionIdsForRes = syncMentions(process, req.mentionUserIds());
+
+        // 멘션 알림: 요청이 들어온 경우에만, 그리고 '새로 추가된 멘션'에게만 전송
+        if (req.mentionUserIds() != null) {
+            List<Long> afterIds = (mentionIdsForRes == null) ? List.of() : mentionIdsForRes.stream()
+                    .filter(Objects::nonNull).distinct().toList();
+
+            Set<Long> beforeSet = new HashSet<>(beforeMentionIds);
+            List<Long> addedMentionIds = afterIds.stream()
+                    .filter(id -> !beforeSet.contains(id))
+                    .toList();
+
+            if (!addedMentionIds.isEmpty()) {
+                User actor = userRepository.findById(userId)
+                        .orElseThrow(() -> new ProcessException(ProcessErrorCode.INVALID_REQUEST, "userId=" + userId));
+
+                List<User> receivers = validateAndLoadMentionReceivers(projectId, userId, addedMentionIds);
+
+                notifyWorkspaceMention(
+                        process.getProject(),
+                        actor,
+                        process.getId(),
+                        receivers,
+                        process.getTitle()
+                );
+            }
+        }
 
         if (req.roleFields() != null || req.customFields() != null) {
             //  기존 전부 soft delete
@@ -712,11 +882,11 @@ public class ProcessService {
         }
 
         /*
-        * HISTORY: 실제 변경이 있는 경우에만 PROCESS_UPDATED 이벤트 발행
-        * - 발행 조건: changed(변경된 필드 목록)가 비어있지 않을 때
-        * - metaJson: changed 요약 + before/after 스냅샷(디버깅/감사 추적용)
-        * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
-        * */
+         * HISTORY: 실제 변경이 있는 경우에만 PROCESS_UPDATED 이벤트 발행
+         * - 발행 조건: changed(변경된 필드 목록)가 비어있지 않을 때
+         * - metaJson: changed 요약 + before/after 스냅샷(디버깅/감사 추적용)
+         * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
+         * */
         if (!changed.isEmpty()) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("changed", changed);
@@ -1031,18 +1201,6 @@ public class ProcessService {
 
 
 
-    private ProcessStatusGroupResDto toGroup(ProcessStatus status, List<ProcessCardResDto> cards) {
-        List<ProcessCardResDto> filtered = cards.stream()
-                .filter(c -> c.processStatus() == status)
-                .toList();
-
-        return new ProcessStatusGroupResDto(status, filtered.size(), filtered);
-    }
-
-    private boolean isBlank(String s) {
-        return s == null || s.trim().isBlank();
-    }
-
     private boolean isRoleLane(String laneKey) {
         return laneKey != null && laneKey.startsWith("ROLE:");
     }
@@ -1089,6 +1247,8 @@ public class ProcessService {
             );
         }
 
+        // DB laneKey로 변환 (Team이면 TEAM)
+        String dbLaneKey = toDbLaneKey(laneKey);
 
         /**
          * laneKey 정책
@@ -1096,49 +1256,70 @@ public class ProcessService {
          * - "ROLE:XXX"    => RoleField 기반 필터
          * - "CUSTOM:이름"  => customFieldName 기반 필터
          */
-        List<Process> processes;
-        if (isBlank(laneKey)) {
-            processes = processRepository.findAllForTeamBoard(projectId);
-            laneKey = null;
-        } else if (isRoleLane(laneKey)) {
-            RoleField rf = parseRoleField(laneKey);
-            if (rf == RoleField.CUSTOM) {
-                throw new ProcessException(
-                        ProcessErrorCode.INVALID_REQUEST,
-                        "ROLE lane cannot be CUSTOM. laneKey=" + laneKey
-                );
+
+        // lane 대상 프로세스 목록 (멤버십/필터 검증 + row 생성용)
+        List<Process> laneProcesses = List.of();
+
+        if (TEAM_LANE_KEY.equals(dbLaneKey)) { // 팀(전체)
+            laneProcesses = processRepository.findAllForTeamBoard(projectId);
+        }else if (isRoleLane(dbLaneKey)) { // 역할
+            RoleField roleField = parseRoleField(dbLaneKey);
+            if (roleField == RoleField.CUSTOM) {
+                throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ROLE lane cannot be CUSTOM. laneKey=" + laneKey);
             }
-            processes = processRepository.findAllForRoleLaneBoard(projectId, rf);
-        } else if (isCustomLane(laneKey)) {
-            String customName = parseCustomName(laneKey);
-            processes = processRepository.findAllForCustomLaneBoard(projectId, customName);
+            laneProcesses = processRepository.findAllForRoleLaneBoard(projectId, roleField);
+        }else if (isCustomLane(dbLaneKey)) { // CUSTOM(직접 입력)
+            String customName = parseCustomName(dbLaneKey);
+            laneProcesses = processRepository.findAllForCustomLaneBoard(projectId, customName);
         } else {
-            throw new ProcessException(
-                    ProcessErrorCode.INVALID_REQUEST,
-                    "invalid lane_key prefix. laneKey=" + laneKey
-            );
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "invalid lane_key prefix. laneKey=" + laneKey);
         }
 
 
-        List<ProcessCardResDto> cards = processes.stream()
-                .map(this::toProcessCardResDTO)
-                .toList();
-
-        // 상태별 그룹핑 (UI 컬럼 순서 고정)
         List<ProcessStatusGroupResDto> groups = List.of(
-                toGroup(ProcessStatus.PLANNING, cards),
-                toGroup(ProcessStatus.IN_PROGRESS, cards),
-                toGroup(ProcessStatus.DONE, cards),
-                toGroup(ProcessStatus.BACKLOG, cards)
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.PLANNING, laneProcesses),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.IN_PROGRESS, laneProcesses),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.DONE, laneProcesses),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.BACKLOG, laneProcesses)
         );
 
+        return new ProcessPartResDto(toApiLaneKey(dbLaneKey), groups);
+    }
 
-        return new ProcessPartResDto(laneKey, groups);
+    private ProcessStatusGroupResDto buildStatusGroupOrdered(
+            Long projectId,
+            String laneKey,
+            ProcessStatus status,
+            List<Process> laneProcessesAll
+    ) {
+        // 해당 status인 프로세스만
+        List<Process> laneProcesses = laneProcessesAll.stream()
+                .filter(p -> p.getStatus() == status)
+                .toList();
+
+        // order row 없으면 생성 (tail 부여)
+        ensureLaneOrderRowsExist(projectId, status, laneKey, laneProcesses);
+
+        // order row 기준 processId 순서 확보
+        List<ProcessLaneOrder> orders = processLaneOrderRepository.findLaneOrders(projectId, laneKey, status);
+        List<Long> orderedIds = orders.stream().map(o -> o.getProcess().getId()).toList();
+
+        // 혹시라도 (order에는 있는데 laneProcesses에는 없는) 케이스 방어
+        // laneProcesses 기준으로 map
+        Map<Long, Process> map = laneProcesses.stream().collect(Collectors.toMap(Process::getId, p -> p));
+
+        List<ProcessCardResDto> cards = new ArrayList<>();
+        for (Long id : orderedIds) {
+            Process p = map.get(id);
+            if (p != null) cards.add(toProcessCardResDTO(p));
+        }
+
+        return new ProcessStatusGroupResDto(status, cards.size(), cards);
     }
 
     // 파트별 작업 진행률 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessProgressSummaryResDto  getPartProgressSummary(Long projectId, Long userId) {
+    public ProcessProgressSummaryResDto getPartProgressSummary(Long projectId, Long userId) {
         assertActiveProjectMember(projectId, userId);
 
         if (!projectRepository.existsById(projectId)) {
@@ -1249,9 +1430,17 @@ public class ProcessService {
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
+        // laneKey (Team이면 TEAM)
+        String dbLaneKey = toDbLaneKey(req.laneKey());
+        String apiLaneKeyForHistory = toApiLaneKey(dbLaneKey);
+
         // 변경 전 스냅샷
         ProcessStatus beforeStatus = process.getStatus();
-        Integer beforeOrder = process.getStatusOrder();
+        // beforeOrder: lane_order 기준 (없으면 null)
+        Integer beforeOrder = processLaneOrderRepository
+                .findByProjectIdAndProcessIdAndLaneKeyAndStatusAndDeletedAtIsNull(projectId, processId, dbLaneKey, beforeStatus)
+                .map(ProcessLaneOrder::getSortOrder)
+                .orElse(null);
         LocalDate beforeStart = process.getStartAt();
         LocalDate beforeEnd = process.getEndAt();
 
@@ -1278,11 +1467,8 @@ public class ProcessService {
             process.updateStatus(req.status());
         }
 
+        // 이번 요청이 적용될 status (정렬 검증/업데이트 기준)
         ProcessStatus laneStatus = (req.status() != null) ? req.status() : beforeStatus;
-
-        // laneKey(Team이면 null/blank)
-        String laneKey = req.laneKey();
-        String trimmedLaneKey = (laneKey == null) ? null : laneKey.trim();
 
         // 레인 내 표시순서 재정렬
         List<Long> orderedIds = req.orderedProcessIds();
@@ -1322,45 +1508,30 @@ public class ProcessService {
 
             int laneTotal;
 
-            // 팀레인
-            if (trimmedLaneKey == null || trimmedLaneKey.isBlank()) {
-
-                // Team lane은 "활성 ProcessField가 하나도 없는 프로세스"만 포함
-                boolean invalid = targets.stream().anyMatch(p ->
-                        p.getProcessFields() != null &&
-                                p.getProcessFields().stream().anyMatch(pf -> pf.getDeletedAt() == null)
-                );
-                if (invalid) {
-                    throw new ProcessException(
-                            ProcessErrorCode.INVALID_REQUEST,
-                            "ordered_process_ids contains non-team lane process"
-                    );
-                }
-
+            // Team(전체): 필드 없는 카드만 허용 검증 제거
+            if (TEAM_LANE_KEY.equals(dbLaneKey)) {
                 laneTotal = processRepository.countByProjectIdAndDeletedAtIsNullAndStatus(projectId, laneStatus);
 
-                // 분야 레인
-            } else if (trimmedLaneKey.startsWith("ROLE:")) {
+            } else if (dbLaneKey.startsWith("ROLE:")) {
 
-                String raw = trimmedLaneKey.substring("ROLE:".length()).trim();
+                String raw = dbLaneKey.substring("ROLE:".length()).trim();
                 RoleField rf;
                 try {
                     rf = RoleField.valueOf(raw);
                 } catch (Exception e) {
                     throw new ProcessException(
                             ProcessErrorCode.INVALID_REQUEST,
-                            "invalid lane_key(role). laneKey=" + trimmedLaneKey
+                            "invalid lane_key(role). laneKey=" + dbLaneKey
                     );
                 }
 
                 if (rf == RoleField.CUSTOM) {
                     throw new ProcessException(
                             ProcessErrorCode.INVALID_REQUEST,
-                            "ROLE lane cannot be CUSTOM. laneKey=" + trimmedLaneKey
+                            "ROLE lane cannot be CUSTOM. laneKey=" + dbLaneKey
                     );
                 }
 
-                // targets가 모두 해당 RoleField를 가져야 함
                 boolean invalid = targets.stream().anyMatch(p ->
                         p.getProcessFields().stream().noneMatch(pf ->
                                 pf.getDeletedAt() == null && pf.getRoleField() == rf
@@ -1369,20 +1540,19 @@ public class ProcessService {
                 if (invalid) {
                     throw new ProcessException(
                             ProcessErrorCode.INVALID_REQUEST,
-                            "ordered_process_ids contains process not in role lane. laneKey=" + trimmedLaneKey
+                            "ordered_process_ids contains process not in role lane. laneKey=" + dbLaneKey
                     );
                 }
 
                 laneTotal = processRepository.countRoleLaneTotal(projectId, laneStatus, rf);
 
-                // 커스텀 레인
-            } else if (trimmedLaneKey.startsWith("CUSTOM:")) {
+            } else if (dbLaneKey.startsWith("CUSTOM:")) {
 
-                String customName = trimmedLaneKey.substring("CUSTOM:".length()).trim();
+                String customName = dbLaneKey.substring("CUSTOM:".length()).trim();
                 if (customName.isBlank()) {
                     throw new ProcessException(
                             ProcessErrorCode.INVALID_REQUEST,
-                            "invalid lane_key(custom). laneKey=" + trimmedLaneKey
+                            "invalid lane_key(custom). laneKey=" + dbLaneKey
                     );
                 }
 
@@ -1396,7 +1566,7 @@ public class ProcessService {
                 if (invalid) {
                     throw new ProcessException(
                             ProcessErrorCode.INVALID_REQUEST,
-                            "ordered_process_ids contains process not in custom lane. laneKey=" + trimmedLaneKey
+                            "ordered_process_ids contains process not in custom lane. laneKey=" + dbLaneKey
                     );
                 }
 
@@ -1405,7 +1575,7 @@ public class ProcessService {
             } else {
                 throw new ProcessException(
                         ProcessErrorCode.INVALID_REQUEST,
-                        "invalid lane_key prefix. laneKey=" + trimmedLaneKey
+                        "invalid lane_key prefix. laneKey=" + dbLaneKey
                 );
             }
 
@@ -1413,25 +1583,56 @@ public class ProcessService {
             if (laneTotal != orderedIds.size()) {
                 throw new ProcessException(
                         ProcessErrorCode.INVALID_REQUEST,
-                        "ordered_process_ids must include all processes in the lane. status=" + laneStatus + ", laneKey=" + trimmedLaneKey
+                        "ordered_process_ids must include all processes in the lane. status=" + laneStatus + ", laneKey=" + apiLaneKeyForHistory
                 );
             }
 
-            // 요청 순서대로 statusOrder 재부여
-            Map<Long, Process> map = targets.stream()
-                    .collect(Collectors.toMap(Process::getId, p -> p));
+            // 여기부터 lane_order 갱신
+            // row 없으면 생성(정렬 대상 targets 기준)
+            ensureLaneOrderRowsExist(projectId, laneStatus, dbLaneKey, targets);
 
+            // 현재 lane+status에 해당하는 row들 조회
+            List<ProcessLaneOrder> rows =
+                    processLaneOrderRepository.findAllByLaneAndProcessIds(projectId, dbLaneKey, laneStatus, orderedIds);
+
+            Map<Long, ProcessLaneOrder> byPid = rows.stream()
+                    .collect(Collectors.toMap(r -> r.getProcess().getId(), r -> r));
+
+            // 요청 순서대로 statusOrder 재부여
             int order = 0;
             for (Long id : orderedIds) {
-                map.get(id).updateStatusOrder(order++);
-            }
+                ProcessLaneOrder row = byPid.get(id);
 
-            process = map.get(processId);
+                if (row == null) {
+                    // 방어적으로 생성
+                    Process p = targets.stream()
+                            .filter(t -> t.getId().equals(id))
+                            .findFirst()
+                            .orElseThrow();
+
+                    ProcessLaneOrder created = ProcessLaneOrder.builder()
+                            .projectId(projectId)
+                            .process(p)
+                            .laneKey(dbLaneKey)
+                            .status(laneStatus)
+                            .sortOrder(order)
+                            .build();
+
+                    processLaneOrderRepository.save(created);
+                } else {
+                    row.updateSortOrder(order);
+                }
+                order++;
+            }
         }
 
         // 변경 후 스냅샷
         ProcessStatus afterStatus = process.getStatus();
-        Integer afterOrder = process.getStatusOrder();
+        Integer afterOrder = processLaneOrderRepository
+                .findByProjectIdAndProcessIdAndLaneKeyAndStatusAndDeletedAtIsNull(projectId, processId, dbLaneKey, afterStatus)
+                .map(ProcessLaneOrder::getSortOrder)
+                .orElse(null);
+
         LocalDate afterStart = process.getStartAt();
         LocalDate afterEnd = process.getEndAt();
 
@@ -1455,7 +1656,7 @@ public class ProcessService {
                     "startAt", afterStart,
                     "endAt", afterEnd
             ));
-            meta.put("laneKey", (trimmedLaneKey == null || trimmedLaneKey.isBlank()) ? null : trimmedLaneKey);
+            meta.put("laneKey", apiLaneKeyForHistory); // TEAM이면 null
             meta.put("orderedProcessIds", orderedIds);
 
             historyPublisher.publish(
@@ -1463,17 +1664,17 @@ public class ProcessService {
                     userId,
                     HistoryAction.PROCESS_REORDERED,
                     HistoryTargetType.PROCESS,
-                    process.getId(),
+                    processId,
                     meta
             );
         }
 
         return new ProcessOrderUpdateResDto(
-                process.getId(),
-                process.getStatus(),
-                process.getStatusOrder(),
-                process.getStartAt(),
-                process.getEndAt()
+                processId,
+                afterStatus,
+                afterOrder,
+                afterStart,
+                afterEnd
         );
     }
 

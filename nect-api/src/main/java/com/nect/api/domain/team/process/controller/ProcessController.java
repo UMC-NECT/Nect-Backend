@@ -41,10 +41,11 @@ public class ProcessController {
     public ApiResponse<ProcessDetailResDto> getProcessDetail(
             @PathVariable Long projectId,
             @PathVariable Long processId,
+            @RequestParam(value = "laneKey", required = false) String laneKey,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
         Long userId = userDetails.getUserId();
-        return ApiResponse.ok(processService.getProcessDetail(projectId, userId, processId));
+        return ApiResponse.ok(processService.getProcessDetail(projectId, userId, processId, laneKey));
     }
 
     // 프로세스 기본 정보 수정

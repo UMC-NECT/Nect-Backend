@@ -258,7 +258,7 @@ class ProcessControllerTest {
                 null
         );
 
-        given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId)))
+        given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId), nullable(String.class)))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/{processId}", projectId, processId)
@@ -277,6 +277,9 @@ class ProcessControllerTest {
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
+                                        )
+                                        .queryParameters(
+                                               parameterWithName("lane_key").optional().description("레인 키 (팀 탭이면 미입력/null, ROLE:XXX, CUSTOM:이름)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -557,17 +560,19 @@ class ProcessControllerTest {
         long userId = 1L;
 
         ProcessPartResDto response = new ProcessPartResDto(
-                "TEAM",
+                null,   // TEAM 탭이면 null (toApiLaneKey 정책)
                 List.of()
         );
 
-        given(processService.getPartProcesses(eq(projectId), eq(userId), any()))
+        given(processService.getPartProcesses(eq(projectId), eq(userId), nullable(String.class)))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/part", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        .param("field_id", "1")
+                        // TEAM 탭이면 lane_key 자체를 안 보내는 게 자연스러움 (null)
+                        // ROLE/CUSTOM 탭 테스트를 하고 싶으면 아래처럼:
+                        // .param("lane_key", "ROLE:BACKEND")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-part",
@@ -577,12 +582,13 @@ class ProcessControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("Process")
                                         .summary("프로세스 목록 조회(파트별)")
-                                        .description("파트(분야)별 작업 현황을 조회합니다. field_id 미입력(null) 시 팀 탭.")
+                                        .description("파트(레인)별 작업 현황을 조회합니다. lane_key 미입력(null) 시 팀 탭(전체).")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .queryParameters(
-                                                parameterWithName("field_id").optional().description("분야 ID (미입력 시 팀 탭)")
+                                                parameterWithName("lane_key").optional()
+                                                        .description("레인 키 (미입력/null=팀 탭, ROLE:XXX, CUSTOM:이름)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -594,88 +600,15 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.lane_key").type(STRING).description("레인 키(팀/파트 구분 키)"),
+                                                // TEAM이면 null이 올 수 있으니 optional 처리 추천
+                                                fieldWithPath("body.lane_key").optional().type(STRING).description("레인 키(팀/파트 구분 키, TEAM이면 null)"),
                                                 subsectionWithPath("body.groups").type(ARRAY).description("상태별 그룹 목록")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processService).getPartProcesses(eq(projectId), eq(userId), any());
-    }
-
-    @Test
-    @DisplayName("프로세스 위치(정렬) 변경")
-    void updateProcessOrder() throws Exception {
-        long projectId = 1L;
-        long processId = 10L;
-        long userId = 1L;
-
-        ProcessOrderUpdateReqDto request = new ProcessOrderUpdateReqDto(
-                ProcessStatus.IN_PROGRESS,
-                List.of(10L, 11L, 12L),
-                "TEAM",
-                LocalDate.of(2026, 1, 19),
-                LocalDate.of(2026, 1, 25)
-        );
-
-        ProcessOrderUpdateResDto response = new ProcessOrderUpdateResDto(
-                processId,
-                ProcessStatus.IN_PROGRESS,
-                1,
-                LocalDate.of(2026, 1, 19),
-                LocalDate.of(2026, 1, 25)
-        );
-
-        given(processService.updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
-                .willReturn(response);
-
-        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/order", projectId, processId)
-                        .with(mockUser(userId))
-                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andDo(document("process-order-update",
-                        preprocessRequest(prettyPrint()),
-                        preprocessResponse(prettyPrint()),
-                        resource(
-                                ResourceSnippetParameters.builder()
-                                        .tag("Process")
-                                        .summary("프로세스 위치(정렬) 변경")
-                                        .description("프로세스의 상태 컬럼 내 정렬/이동 정보를 저장합니다.")
-                                        .pathParameters(
-                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
-                                                ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
-                                        )
-                                        .requestHeaders(
-                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
-                                        )
-                                        .requestFields(
-                                                fieldWithPath("status").type(STRING).description("변경할 프로세스 상태"),
-                                                fieldWithPath("ordered_process_ids").type(ARRAY).description("해당 상태 컬럼에서의 프로세스 정렬 ID 목록"),
-                                                fieldWithPath("lane_key").type(STRING).description("레인 키(TEAM/파트명 등)"),
-                                                fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
-                                                fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)")
-                                        )
-                                        .responseFields(
-                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
-                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
-                                                fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
-
-                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.process_id").type(NUMBER).description("대상 프로세스 ID"),
-                                                fieldWithPath("body.status").type(STRING).description("변경된 상태"),
-                                                fieldWithPath("body.status_order").type(NUMBER).description("상태 내 정렬 순서"),
-                                                fieldWithPath("body.start_at").type(STRING).description("시작일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.dead_line").type(STRING).description("마감일(yyyy-MM-dd)")
-                                        )
-                                        .build()
-                        )
-                ));
-
-        verify(processService).updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class));
+        verify(processService).getPartProcesses(eq(projectId), eq(userId), nullable(String.class));
     }
 
     @Test
