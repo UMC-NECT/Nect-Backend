@@ -1136,7 +1136,11 @@ public class ProcessService {
         LocalDate weekStart = normalizeWeekStart(startDate);
         LocalDate weekEnd = weekStart.plusDays(6);
 
-        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd);
+        // 백로그 제외
+        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd)
+                .stream()
+                .filter(p -> p.getStatus() != ProcessStatus.BACKLOG)
+                .toList();
 
         List<ProcessCardResDto> cards = processes.stream()
                 .map(p -> {
