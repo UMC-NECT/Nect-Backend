@@ -15,12 +15,27 @@ public interface ProcessLaneOrderRepository extends JpaRepository<ProcessLaneOrd
         select plo
         from ProcessLaneOrder plo
         where plo.projectId = :projectId
-          and plo.deletedAt is null
           and plo.laneKey = :laneKey
           and plo.status = :status
+          and plo.deletedAt is null
         order by plo.sortOrder asc, plo.id asc
     """)
     List<ProcessLaneOrder> findLaneOrders(
+            @Param("projectId") Long projectId,
+            @Param("laneKey") String laneKey,
+            @Param("status") ProcessStatus status
+    );
+
+    @Query("""
+        select plo.process.id
+        from ProcessLaneOrder plo
+        where plo.projectId = :projectId
+          and plo.laneKey = :laneKey
+          and plo.status = :status
+          and plo.deletedAt is null
+        order by plo.sortOrder asc, plo.id asc
+    """)
+    List<Long> findOrderedProcessIds(
             @Param("projectId") Long projectId,
             @Param("laneKey") String laneKey,
             @Param("status") ProcessStatus status
@@ -58,31 +73,5 @@ public interface ProcessLaneOrderRepository extends JpaRepository<ProcessLaneOrd
             @Param("laneKey") String laneKey,
             @Param("status") ProcessStatus status,
             @Param("processIds") List<Long> processIds
-    );
-
-    @Query("""
-        select plo
-        from ProcessLaneOrder plo
-        where plo.projectId = :projectId
-          and plo.deletedAt is null
-          and plo.process.id = :processId
-          and plo.laneKey = :laneKey
-    """)
-    List<ProcessLaneOrder> findAllActiveByLaneKey(
-            @Param("projectId") Long projectId,
-            @Param("processId") Long processId,
-            @Param("laneKey") String laneKey
-    );
-
-    @Query("""
-        select plo
-        from ProcessLaneOrder plo
-        where plo.projectId = :projectId
-          and plo.deletedAt is null
-          and plo.process.id = :processId
-    """)
-    List<ProcessLaneOrder> findAllActiveByProcess(
-            @Param("projectId") Long projectId,
-            @Param("processId") Long processId
     );
 }
