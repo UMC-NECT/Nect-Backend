@@ -1,5 +1,5 @@
-
 package com.nect.api.domain.analysis.dto.res;
+
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -17,38 +18,51 @@ import java.util.List;
 public class IdeaAnalysisResponseDto {
     private Long analysisId;
 
-    // 추천하는 프로젝트명
+
     private List<String> recommendedProjectNames;
 
-    // 예상 기간
-    private String estimatedDuration;
+    private ProjectDuration projectDuration;
 
-    // 프로젝트에 필요한 팀원
-    private TeamComposition teamComposition;
+    private List<TeamMember> teamComposition;
 
-    // 보완할 점 3가지
-    private String improvementPoint1;
-    private String improvementPoint2;
-    private String improvementPoint3;
+    private List<ImprovementPoint> improvementPoints;
 
-    //  예상 기간 바탕 주차별 로드맵
     private List<WeeklyRoadmap> weeklyRoadmap;
 
-    // 예상 팀원 수 내부 클래스
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public static class TeamComposition {
-        private Integer frontend;
-        private Integer backend;
-        private Integer designer;
-        private Integer pm;
-        private Integer others;
+    public static class ProjectDuration {
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer totalWeeks;
+        private String displayText;
     }
 
-    // 내부 클래스: 주차별 로드맵
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class TeamMember {
+        private String roleField;
+        private String roleFieldDisplayName;
+        private Integer requiredCount;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class ImprovementPoint {
+        private Integer order;
+        private String title;
+        private String description;
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -57,12 +71,21 @@ public class IdeaAnalysisResponseDto {
     public static class WeeklyRoadmap {
         private Integer weekNumber;
         private String weekTitle;
+        private LocalDate weekStartDate;
+        private LocalDate weekEndDate;
+        private String weekPeriod;
 
-        // 드롭다운 펼쳤을 때 보이는 내용
-        private String pmTasks;
-        private String designTasks;
-        private String frontendTasks;
-        private String backendTasks;
+        private List<RoleTask> roleTasks;
     }
 
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    public static class RoleTask {
+        private String roleField;
+        private String roleFieldDisplayName;
+        private String tasks;
+    }
 }

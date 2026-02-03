@@ -10,6 +10,8 @@ public enum ProjectErrorCode implements ResponseCode {
 
     PROJECT_NOT_FOUND("P400_1", "해당 프로젝트가 존재하지 않습니다."),
     PROJECT_USER_NOT_FOUND("P400_2", "해당 프로젝트 유저가 존재하지 않습니다."),
+    ANALYSIS_NOT_FOUND("P400_3", "해당 분석서가 존재하지 않습니다."),
+    INVALID_ANALYSIS_DATA("P400_4", "분석서 데이터가 유효하지 않습니다."),
 
     LEADER_ONLY_ACTION("P403_1", "리더만 할 수 있는 요청입니다."),
     ;

@@ -1,76 +1,104 @@
 package com.nect.api.domain.analysis.converter;
 
+import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 @Component
 public class IdeaAnalysisSchemaBuilder {
 
     public Map<String, Object> buildIdeaAnalysisSchema() {
-        Map<String, Object> schema = new HashMap<>();
-        schema.put("type", "object");
 
+        List<String> allRoleFields = Arrays.stream(RoleField.values())
+                .filter(rf -> rf != RoleField.CUSTOM)
+                .map(Enum::name)
+                .collect(Collectors.toList());
 
-        schema.put("required", Arrays.asList(
-                "recommended_project_names",
-                "estimated_duration",
-                "team_composition",
-                "improvement_point1",
-                "improvement_point2",
-                "improvement_point3",
-                "weekly_roadmap"
-        ));
-
-        Map<String, Object> properties = new HashMap<>();
-
-        properties.put("recommended_project_names", Map.of(
-                "type", "array",
-                "items", Map.of("type", "string")
-        ));
-
-        properties.put("estimated_duration", Map.of("type", "string"));
-
-        Map<String, Object> teamComposition = new HashMap<>();
-        teamComposition.put("type", "object");
-        teamComposition.put("required", Arrays.asList("frontend", "backend", "designer", "pm", "others"));
-        teamComposition.put("properties", Map.of(
-                "frontend", Map.of("type", "integer"),
-                "backend", Map.of("type", "integer"),
-                "designer", Map.of("type", "integer"),
-                "pm", Map.of("type", "integer"),
-                "others", Map.of("type", "integer")
-        ));
-        teamComposition.put("additionalProperties", false);
-        properties.put("team_composition", teamComposition);
-
-        properties.put("improvement_point1", Map.of("type", "string"));
-        properties.put("improvement_point2", Map.of("type", "string"));
-        properties.put("improvement_point3", Map.of("type", "string"));
-
-        Map<String, Object> roadmapItem = new HashMap<>();
-        roadmapItem.put("type", "object");
-        roadmapItem.put("required", Arrays.asList("week_number", "week_title", "pm_tasks",
-                "design_tasks", "frontend_tasks", "backend_tasks"));
-        roadmapItem.put("properties", Map.of(
-                "week_number", Map.of("type", "integer"),
-                "week_title", Map.of("type", "string"),
-                "pm_tasks", Map.of("type", "string"),
-                "design_tasks", Map.of("type", "string"),
-                "frontend_tasks", Map.of("type", "string"),
-                "backend_tasks", Map.of("type", "string")
-        ));
-        roadmapItem.put("additionalProperties", false);
-
-        properties.put("weekly_roadmap", Map.of(
-                "type", "array",
-                "items", roadmapItem
-        ));
-
-        schema.put("properties", properties);
-        schema.put("additionalProperties", false);
-
-        return schema;
+        return Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "recommended_project_names", Map.of(
+                                "type", "array",
+                                "items", Map.of("type", "string")
+                        ),
+                        "project_duration", Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "total_weeks", Map.of("type", "integer")
+                                ),
+                                "required", List.of("total_weeks"),
+                                "additionalProperties", false
+                        ),
+                        "team_composition", Map.of(
+                                "type", "array",
+                                "items", Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                                "role_field", Map.of(
+                                                        "type", "string",
+                                                        "enum", allRoleFields 
+                                                ),
+                                                "role_field_display_name", Map.of("type", "string"),
+                                                "count", Map.of("type", "integer")
+                                        ),
+                                        "required", List.of("role_field", "role_field_display_name", "count"),
+                                        "additionalProperties", false
+                                )
+                        ),
+                        "improvement_points", Map.of(
+                                "type", "array",
+                                "items", Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                                "order", Map.of("type", "integer"),
+                                                "title", Map.of("type", "string"),
+                                                "description", Map.of("type", "string")
+                                        ),
+                                        "required", List.of("order", "title", "description"),
+                                        "additionalProperties", false
+                                )
+                        ),
+                        "weekly_roadmap", Map.of(
+                                "type", "array",
+                                "items", Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                                "week_number", Map.of("type", "integer"),
+                                                "week_title", Map.of("type", "string"),
+                                                "role_tasks", Map.of(
+                                                        "type", "array",
+                                                        "items", Map.of(
+                                                                "type", "object",
+                                                                "properties", Map.of(
+                                                                        "role_field", Map.of(
+                                                                                "type", "string",
+                                                                                "enum", allRoleFields  
+                                                                        ),
+                                                                        "role_field_display_name", Map.of("type", "string"),
+                                                                        "tasks", Map.of("type", "string")
+                                                                ),
+                                                                "required", List.of("role_field", "role_field_display_name", "tasks"),
+                                                                "additionalProperties", false
+                                                        )
+                                                )
+                                        ),
+                                        "required", List.of("week_number", "week_title", "role_tasks"),
+                                        "additionalProperties", false
+                                )
+                        )
+                ),
+                "required", List.of(
+                        "recommended_project_names",
+                        "project_duration",
+                        "team_composition",
+                        "improvement_points",
+                        "weekly_roadmap"
+                ),
+                "additionalProperties", false
+        );
     }
 }
