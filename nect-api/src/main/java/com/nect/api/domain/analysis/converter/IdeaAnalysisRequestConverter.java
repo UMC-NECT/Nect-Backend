@@ -20,25 +20,20 @@ public class IdeaAnalysisRequestConverter {
 
     private static final String PROMPT_PATH = "prompts/idea-analysis.txt";
 
-     //IdeaAnalysisRequestDto → OpenAiResponseRequest
     public OpenAiResponseRequest toOpenAiRequest(IdeaAnalysisRequestDto dto) {
-        // 프롬프트 생성
+
         String prompt = buildPrompt(dto);
 
-        //  JSON Schema 생성
         Map<String, Object> schema = ideaAnalysisSchemaBuilder.buildIdeaAnalysisSchema();
 
-        // OpenAiResponseFormat 생성
         OpenAiResponseFormat format = OpenAiResponseFormat.jsonSchema(
                 "IdeaAnalysisResponse",
                 schema,
                 true
         );
 
-        // 4. OpenAiResponseText 생성
         OpenAiResponseText text = OpenAiResponseText.withFormat(format);
 
-        // 5. OpenAiResponseRequest 생성
         return OpenAiResponseRequest.builder()
                 .model("gpt-4o")
                 .input(prompt)
@@ -52,9 +47,7 @@ public class IdeaAnalysisRequestConverter {
                 .build();
     }
 
-    /**
-     * 프롬프트 빌드
-     */
+
     private String buildPrompt(IdeaAnalysisRequestDto dto) {
         Map<String, String> variables = new HashMap<>();
         variables.put("projectName", dto.getProjectName());

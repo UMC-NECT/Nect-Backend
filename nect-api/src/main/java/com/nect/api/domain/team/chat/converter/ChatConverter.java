@@ -3,6 +3,7 @@ package com.nect.api.domain.team.chat.converter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomDto;
 import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
+import com.nect.api.domain.team.chat.dto.res.ChatNotificationResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.core.entity.team.Project;
@@ -12,12 +13,13 @@ import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import com.nect.core.entity.team.chat.enums.MessageType;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
+@Component
 public class ChatConverter {
 
 
@@ -150,6 +152,23 @@ public class ChatConverter {
                 .build();
     }
 
+    public static ChatNotificationResponseDto toNotificationResponse(ChatRoomUser chatRoomUser) {
+        return ChatNotificationResponseDto.builder()
+                .roomId(chatRoomUser.getChatRoom().getId())
+                .isNotificationEnabled(chatRoomUser.getIsNotificationEnabled())
+                .build();
+    }
 
+    public static List<ChatRoomUser> toChatRoomUserList(ChatRoom chatRoom, List<User> users) {
+        return users.stream()
+                .map(user -> {
+                    ChatRoomUser chatRoomUser = new ChatRoomUser();
+                    chatRoomUser.setChatRoom(chatRoom);
+                    chatRoomUser.setUser(user);
+                    chatRoomUser.setIsNotificationEnabled(true); //TODO 알람 on/off 수정필요
+                    return chatRoomUser;
+                })
+                .toList();
+    }
 
 }

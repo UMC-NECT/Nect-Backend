@@ -1,5 +1,7 @@
 package com.nect.api.domain.team.chat.service;
 
+import com.nect.api.domain.team.chat.converter.ChatConverter;
+import com.nect.api.domain.team.chat.dto.res.ChatNotificationResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomListDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
@@ -34,7 +36,7 @@ public class ChatRoomService {
     private final ProjectUserRepository projectUserRepository;
     private final UserRepository userRepository;
     private final ChatService chatService;
-
+    private  final ChatConverter chatConverter;
 
     public List<ChatRoomListDto> getMyChatRooms(Long user_id) {
 
@@ -98,5 +100,18 @@ public class ChatRoomService {
                 .leftAt(LocalDateTime.now())
                 .build();
     }
+
+    @Transactional
+    public ChatNotificationResponseDto updateNotificationSettings(Long roomId, Long userId, Boolean isEnabled) {
+        ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomIdAndUserUserId(roomId, userId)
+                .orElseThrow(() -> new RuntimeException("해당 채팅방에 참여하고 있지 않은 사용자입니다."));
+
+        //TODO 채팅 알림은 어떻게 구현해야하는지 궁금합니다
+        //  알림 설정 변경 (도메인 엔티티 내부 메서드 활용)
+        chatRoomUser.updateNotification(isEnabled);
+
+        return chatConverter.toNotificationResponse(chatRoomUser);
+    }
+
 
 }

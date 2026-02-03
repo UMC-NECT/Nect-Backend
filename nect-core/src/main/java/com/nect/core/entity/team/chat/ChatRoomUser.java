@@ -31,6 +31,8 @@ public class ChatRoomUser extends BaseEntity {
     @JoinColumn(name = "chat_room_id", nullable = false)
     private ChatRoom chatRoom;
 
+    @Column(name = "is_notification_enabled", nullable = false)
+    private Boolean isNotificationEnabled = true;
 
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,4 +42,10 @@ public class ChatRoomUser extends BaseEntity {
     public void updateLastReadMessageId(Long messageId) {
         this.lastReadMessageId = messageId;
     }
+
+    // 알림 설정 업데이트 편의 메서드
+    public void updateNotification(Boolean isEnabled) {
+        this.isNotificationEnabled = isEnabled;
+    }
+
 }

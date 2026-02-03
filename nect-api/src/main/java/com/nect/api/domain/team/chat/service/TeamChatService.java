@@ -2,14 +2,18 @@ package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
+import com.nect.api.domain.team.chat.dto.req.ChatRoomInviteRequestDto;
 import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
+import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import com.nect.core.repository.team.ProjectRepository;
@@ -37,6 +41,7 @@ public class TeamChatService {
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
     private final ProjectRepository projectRepository;
+
 
     public List<ProjectMemberResponseDto> getProjectMembers(Long projectId) {
         List<User> members = projectUserRepository.findAllUsersByProjectId(projectId);
@@ -100,13 +105,13 @@ public class TeamChatService {
     @Transactional
     public ChatRoomResponseDto createGroupChatRoom(Long currentUserId, GroupChatRoomCreateRequestDto request) {
 
-    
+
         if (!StringUtils.hasText(request.getRoomName())) {
             throw new ChatException(ChatErrorCode.CHAT_ROOM_ALREADY_EXISTS, "채팅방 이름을 입력해야 합니다.");
         }
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new RuntimeException("프로젝트를 찾을 수 없습니다."));
-        
+
         boolean isCreatorInProject = projectUserRepository.existsByProjectIdAndUserId(request.getProjectId(), currentUserId);
         if (!isCreatorInProject) {
             throw new ChatException(ChatErrorCode.USER_NOT_FOUND, "현재 사용자는 해당 프로젝트의 멤버가 아닙니다.");
@@ -125,7 +130,7 @@ public class TeamChatService {
             throw new ChatException(ChatErrorCode.USER_NOT_FOUND, "유저가 프로젝트에 속하지 않습니다");
         }
 
-     
+
         ChatRoom chatRoom = ChatConverter.toChatRoomEntity(
                 project,
                 request.getRoomName(),
@@ -134,9 +139,9 @@ public class TeamChatService {
         chatRoomRepository.save(chatRoom);
 
         List<ChatRoomUser> members = new ArrayList<>();
-      
+
         members.add(ChatConverter.toChatRoomMemberEntity(chatRoom, me, LocalDateTime.now()));
-       
+
         for (User user : targetUsers) {
             members.add(ChatConverter.toChatRoomMemberEntity(chatRoom, user, null));
         }
@@ -145,4 +150,49 @@ public class TeamChatService {
 
         return ChatConverter.toResponseDTO(chatRoom, null);
     }
+
+    @Transactional
+    public void inviteMembers(Long roomId, Long currentUserId, ChatRoomInviteRequestDto request) {
+
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        Long projectId = chatRoom.getProject().getId();
+
+        // 권한 검증
+        validateInviter(projectId, currentUserId);
+
+        // 초대 대상 검증
+        List<User> targetUsers = getValidProjectUsers(projectId, request.getTargetUserIds());
+
+        //  중복 초대 방지
+        List<Long> joinedIds = chatRoomUserRepository.findAllByChatRoomId(roomId).stream()
+                .map(cru -> cru.getUser().getUserId()).toList();
+
+        List<User> invitees = targetUsers.stream()
+                .filter(user -> !joinedIds.contains(user.getUserId())).toList();
+
+
+        if (!invitees.isEmpty()) {
+            List<ChatRoomUser> newMembers = ChatConverter.toChatRoomUserList(chatRoom, invitees);
+            chatRoomUserRepository.saveAll(newMembers);
+        }
+    }
+
+    private void validateInviter(Long projectId, Long userId) {
+        if (!projectUserRepository.existsByProjectIdAndUserIdAndMemberStatus(
+                projectId, userId, ProjectMemberStatus.ACTIVE)) {
+            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED, "프로젝트 멤버만 초대 권한이 있습니다.");
+        }
+    }
+
+    private List<User> getValidProjectUsers(Long projectId, List<Long> ids) {
+        List<ProjectUser> members = projectUserRepository.findAllActiveProjectMembers(projectId, ids);
+        if (members.size() != ids.size()) {
+            throw new ChatException(ChatErrorCode.USER_NOT_FOUND, "프로젝트 멤버가 아니거나 탈퇴한 유저가 포함됨");
+        }
+        return userRepository.findAllById(ids);
+    }
+
+
 }
