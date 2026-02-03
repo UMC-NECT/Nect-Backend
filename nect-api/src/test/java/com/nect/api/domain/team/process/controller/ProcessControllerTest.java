@@ -121,17 +121,32 @@ class ProcessControllerTest {
 
         ProcessCreateReqDto request = new ProcessCreateReqDto(
                 "1주차 미션",
-                "프로세스 내용",
+                "로그인/회원가입 API 초안 + 문서화",
                 ProcessStatus.IN_PROGRESS,
-                List.of(),
-                List.of(),
+
+                // assignee_ids
+                List.of(2L),
+
+                List.of(RoleField.BACKEND, RoleField.FRONTEND),
+
                 null,
+
                 LocalDate.of(2026, 1, 19),
                 LocalDate.of(2026, 1, 25),
+
                 List.of(),
+
+                // file_ids
                 List.of(),
-                List.of(),
-                List.of()
+
+                // links
+                List.of("https://github.com/nect/nect-backend", "https://figma.com/file/xxxxx"),
+
+                List.of(
+                        new ProcessTaskItemReqDto("요구사항 정리", false, 1),
+                        new ProcessTaskItemReqDto("API 명세 작성", false, 2),
+                        new ProcessTaskItemReqDto("컨트롤러/서비스 구현", false, 3)
+                )
         );
 
         given(processService.createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class)))
@@ -172,8 +187,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("mention_user_ids").type(ARRAY).description("멘션된 유저 ID 목록"),
                                                 fieldWithPath("file_ids").type(ARRAY).description("첨부 파일 ID 목록"),
 
-                                                fieldWithPath("links").type(ARRAY).description("첨부 링크 목록"),
-                                                fieldWithPath("links[].url").optional().type(STRING).description("링크 URL"),
+                                                fieldWithPath("links").type(ARRAY).description("첨부 링크 목록").optional(),
 
                                                 fieldWithPath("task_items").type(ARRAY).description("업무 항목(TaskItem) 목록"),
                                                 fieldWithPath("task_items[].content").optional().type(STRING).description("업무 항목 내용"),
@@ -559,20 +573,120 @@ class ProcessControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
-        ProcessPartResDto response = new ProcessPartResDto(
-                null,   // TEAM 탭이면 null (toApiLaneKey 정책)
-                List.of()
+        // assignee 샘플
+        AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "https://img.com/1.png");
+        AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "https://img.com/2.png");
+
+        // IN_PROGRESS 카드 2개
+        ProcessCardResDto p10 = new ProcessCardResDto(
+                10L,
+                ProcessStatus.IN_PROGRESS,
+                "백엔드 API 초안 작성",
+                1,                  // complete_check_list
+                3,                  // whole_check_list
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 2, 10),
+                5,                  // left_day
+                List.of(RoleField.BACKEND),
+                List.of("AI"),      // custom_fields
+                List.of(a1, a2)
         );
 
-        given(processService.getPartProcesses(eq(projectId), eq(userId), nullable(String.class)))
+        ProcessCardResDto p12 = new ProcessCardResDto(
+                12L,
+                ProcessStatus.IN_PROGRESS,
+                "CI 파이프라인 점검",
+                0,
+                2,
+                LocalDate.of(2026, 2, 3),
+                LocalDate.of(2026, 2, 8),
+                3,
+                List.of(RoleField.BACKEND, RoleField.FRONTEND),
+                List.of("DevOps"),
+                List.of(a2)
+        );
+
+        ProcessStatusGroupResDto inProgressGroup = new ProcessStatusGroupResDto(
+                ProcessStatus.IN_PROGRESS,
+                2,
+                List.of(p10, p12)
+        );
+
+        // PLANNING 카드 1개
+        ProcessCardResDto p20 = new ProcessCardResDto(
+                20L,
+                ProcessStatus.PLANNING,
+                "DB 스키마 점검",
+                0,
+                0,
+                null,
+                null,
+                null,
+                List.of(RoleField.BACKEND),
+                List.of(),
+                List.of(a1)
+        );
+
+        ProcessStatusGroupResDto planningGroup = new ProcessStatusGroupResDto(
+                ProcessStatus.PLANNING,
+                1,
+                List.of(p20)
+        );
+
+        // DONE 카드 1개
+        ProcessCardResDto p30 = new ProcessCardResDto(
+                30L,
+                ProcessStatus.DONE,
+                "로그인 API 테스트 완료",
+                3,
+                3,
+                LocalDate.of(2026, 1, 20),
+                LocalDate.of(2026, 1, 24),
+                0,
+                List.of(RoleField.BACKEND),
+                List.of("Auth"),
+                List.of(a1, a2)
+        );
+
+        ProcessStatusGroupResDto doneGroup = new ProcessStatusGroupResDto(
+                ProcessStatus.DONE,
+                1,
+                List.of(p30)
+        );
+
+        // BACKLOG 카드 1개
+        ProcessCardResDto p40 = new ProcessCardResDto(
+                40L,
+                ProcessStatus.BACKLOG,
+                "리팩토링 후보 정리",
+                0,
+                1,
+                null,
+                null,
+                null,
+                List.of(RoleField.BACKEND),
+                List.of("TechDebt"),
+                List.of(a2)
+        );
+
+        ProcessStatusGroupResDto backlogGroup = new ProcessStatusGroupResDto(
+                ProcessStatus.BACKLOG,
+                1,
+                List.of(p40)
+        );
+
+        ProcessPartResDto response = new ProcessPartResDto(
+                "ROLE:BACKEND",
+                List.of(planningGroup, inProgressGroup, doneGroup, backlogGroup)
+        );
+
+        given(processService.getPartProcesses(eq(projectId), eq(userId), eq("ROLE:BACKEND")))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/part", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        // TEAM 탭이면 lane_key 자체를 안 보내는 게 자연스러움 (null)
-                        // ROLE/CUSTOM 탭 테스트를 하고 싶으면 아래처럼:
-                        // .param("lane_key", "ROLE:BACKEND")
+                        .param("lane_key", "ROLE:BACKEND")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-part",
@@ -582,13 +696,13 @@ class ProcessControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("Process")
                                         .summary("프로세스 목록 조회(파트별)")
-                                        .description("파트(레인)별 작업 현황을 조회합니다. lane_key 미입력(null) 시 팀 탭(전체).")
+                                        .description("파트(레인)별 작업 현황을 조회합니다. lane_key 미입력(null) 시 팀 탭(전체), ROLE:XXX / CUSTOM:이름 지원")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .queryParameters(
                                                 parameterWithName("lane_key").optional()
-                                                        .description("레인 키 (미입력/null=팀 탭, ROLE:XXX, CUSTOM:이름)")
+                                                        .description("레인 키 (미입력/null=TEAM, ROLE:XXX, CUSTOM:이름)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -600,15 +714,112 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                // TEAM이면 null이 올 수 있으니 optional 처리 추천
-                                                fieldWithPath("body.lane_key").optional().type(STRING).description("레인 키(팀/파트 구분 키, TEAM이면 null)"),
-                                                subsectionWithPath("body.groups").type(ARRAY).description("상태별 그룹 목록")
+                                                fieldWithPath("body.lane_key").optional().type(STRING).description("레인 키(TEAM이면 null 가능)"),
+
+                                                fieldWithPath("body.groups").type(ARRAY).description("상태별 그룹 목록"),
+                                                fieldWithPath("body.groups[].status").type(STRING).description("상태(PLANNING/IN_PROGRESS/DONE/BACKLOG)"),
+                                                fieldWithPath("body.groups[].count").type(NUMBER).description("해당 상태의 프로세스 개수"),
+                                                fieldWithPath("body.groups[].processes").type(ARRAY).description("프로세스 카드 목록"),
+
+                                                fieldWithPath("body.groups[].processes[].process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.groups[].processes[].process_status").type(STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.groups[].processes[].title").type(STRING).description("프로세스 제목"),
+                                                fieldWithPath("body.groups[].processes[].complete_check_list").type(NUMBER).description("완료 체크리스트 수"),
+                                                fieldWithPath("body.groups[].processes[].whole_check_list").type(NUMBER).description("전체 체크리스트 수"),
+                                                fieldWithPath("body.groups[].processes[].start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.groups[].processes[].dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.groups[].processes[].left_day").optional().type(NUMBER).description("남은 일수(null 가능)"),
+
+                                                fieldWithPath("body.groups[].processes[].role_fields").type(ARRAY).description("RoleField 목록"),
+                                                fieldWithPath("body.groups[].processes[].custom_fields").type(ARRAY).description("커스텀 필드명 목록"),
+
+                                                fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").type(STRING).description("담당자 이미지 URL")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processService).getPartProcesses(eq(projectId), eq(userId), nullable(String.class));
+        verify(processService).getPartProcesses(eq(projectId), eq(userId), eq("ROLE:BACKEND"));
+    }
+
+
+    @Test
+    @DisplayName("프로세스 위치(순서) 변경")
+    void updateProcessOrder() throws Exception {
+        long projectId = 1L;
+        long processId = 2L;
+        long userId = 1L;
+
+        ProcessOrderUpdateReqDto request = new ProcessOrderUpdateReqDto(
+                ProcessStatus.IN_PROGRESS,
+                List.of(10L, 2L, 12L),
+                "ROLE:BACKEND",
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 2, 10)
+        );
+
+        ProcessOrderUpdateResDto response = new ProcessOrderUpdateResDto(
+                processId,
+                ProcessStatus.IN_PROGRESS,
+                1,
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 2, 10)
+        );
+
+        given(processService.updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class)))
+                .willReturn(response);
+
+        mockMvc.perform(
+                        patch("/api/v1/projects/{projectId}/processes/{processId}/order", projectId, processId)
+                                .with(mockUser(userId))
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andDo(document("process-order-update",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("프로세스 위치(순서) 변경")
+                                        .description("특정 레인(lane_key) + 상태(status) 내에서 프로세스 카드들의 순서 및 기간(start/deadLine)을 변경합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
+                                                ResourceDocumentation.parameterWithName("processId").description("프로세스 ID(앵커)")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("status").optional().type(STRING).description("대상 프로세스 상태(컬럼)"),
+                                                fieldWithPath("ordered_process_ids").optional().type(ARRAY).description("정렬 순서대로 나열한 프로세스 ID 목록"),
+                                                fieldWithPath("lane_key").type(STRING).description("레인 키(TEAM, ROLE:XXX, CUSTOM:이름)"),
+                                                fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.status").type(STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.status_order").type(NUMBER).description("해당 status 내 정렬 순서"),
+                                                fieldWithPath("body.start_at").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(processService).updateProcessOrder(eq(projectId), eq(userId), eq(processId), any(ProcessOrderUpdateReqDto.class));
     }
 
     @Test
