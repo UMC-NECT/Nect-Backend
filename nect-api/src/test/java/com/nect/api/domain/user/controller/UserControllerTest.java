@@ -112,7 +112,8 @@ class UserControllerTest extends NectDocumentApiTester {
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 System.currentTimeMillis() + 3600000,
-                System.currentTimeMillis() + 86400000
+                System.currentTimeMillis() + 86400000,
+                false
         );
         when(userService.login(any(LoginDto.LoginRequestDto.class))).thenReturn(responseDto);
 

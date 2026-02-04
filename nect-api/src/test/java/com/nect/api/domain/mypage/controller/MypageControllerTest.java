@@ -36,7 +36,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 "https://example.com/profile.jpg",
                 "안녕하세요! 백엔드 개발자입니다.",
                 "Spring Boot, Java, REST API",
-                "JOB_SEEKING",
+                "구직중",
                 true,
                 "6개월",  // careerDuration
                 "백엔드 개발자",  // interestedJob
@@ -65,11 +65,11 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.name").type(JsonFieldType.STRING).description("이름"),
                                                 fieldWithPath("body.nickname").type(JsonFieldType.STRING).description("닉네임"),
                                                 fieldWithPath("body.email").type(JsonFieldType.STRING).description("이메일"),
-                                                fieldWithPath("body.role").type(JsonFieldType.STRING).description("역할").optional(),
+                                                fieldWithPath("body.role").type(JsonFieldType.STRING).description("역할 (DEVELOPER, DESIGNER, PLANNER, MARKETER)").optional(),
                                                 fieldWithPath("body.profileImageUrl").type(JsonFieldType.STRING).description("프로필 사진 URL").optional(),
                                                 fieldWithPath("body.bio").type(JsonFieldType.STRING).description("자기소개").optional(),
                                                 fieldWithPath("body.coreCompetencies").type(JsonFieldType.STRING).description("핵심 역량").optional(),
-                                                fieldWithPath("body.userStatus").type(JsonFieldType.STRING).description("사용자 상태").optional(),
+                                                fieldWithPath("body.userStatus").type(JsonFieldType.STRING).description("사용자 상태 (예: 재학중, 구직중, 재직중)").optional(),
                                                 fieldWithPath("body.isPublicMatching").type(JsonFieldType.BOOLEAN).description("공개 매칭 여부"),
                                                 fieldWithPath("body.careerDuration").type(JsonFieldType.STRING).description("경력 기간").optional(),
                                                 fieldWithPath("body.interestedJob").type(JsonFieldType.STRING).description("관심 직무").optional(),
@@ -195,12 +195,14 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 "**부분 수정 규칙**\n" +
                                                 "- null이거나 작성하지 않은 필드는 기존 값을 유지합니다.\n" +
                                                 "- careers, portfolios, projectHistories는 제공된 배열로 완전히 교체됩니다. (기존 데이터 삭제 후 새로운 데이터만 저장)\n" +
-                                                "- userStatus 등 Enum 필드는 유효한 값만 허용됩니다 (유효하지 않으면 M002 에러).")
+                                                "- userStatus는 Enum 값으로 입력받지만 (ENROLLED, JOB_SEEKING, EMPLOYED), 응답에서는 한국어로 변환됩니다 (재학중, 구직중, 재직중).\n" +
+                                                "- role도 응답에서 한국어로 변환됩니다 (개발자, 디자이너, 기획자, 마케터).\n" +
+                                                "- 유효하지 않은 userStatus 값이면 M002 에러가 반환됩니다.")
                                         .requestFields(
                                                 fieldWithPath("profileImageUrl").type(JsonFieldType.STRING).description("프로필 사진 URL. 사용자 프로필 이미지 주소 (예: https://example.com/profile.jpg)").optional(),
                                                 fieldWithPath("bio").type(JsonFieldType.STRING).description("자기소개. 사용자가 작성한 자유로운 형식의 소개글 (예: 안녕하세요! 3년차 백엔드 개발자입니다)").optional(),
                                                 fieldWithPath("coreCompetencies").type(JsonFieldType.STRING).description("핵심 역량. 보유 중인 주요 기술 및 역량을 쉼표로 구분하여 작성 (예: Spring Boot, Java, REST API, MySQL)").optional(),
-                                                fieldWithPath("userStatus").type(JsonFieldType.STRING).description("사용자 상태. 현재 상태를 나타내는 Enum 값 (ENROLLED: 재학중, JOB_SEEKING: 구직중, EMPLOYED: 재직중)").optional(),
+                                                fieldWithPath("userStatus").type(JsonFieldType.STRING).description("사용자 상태. 현재 상태를 나타내는 한국어 값 (재학중, 구직중, 재직중)").optional(),
                                                 fieldWithPath("isPublicMatching").type(JsonFieldType.BOOLEAN).description("공개 매칭 여부. true면 다른 사용자에게 프로필 공개, false면 비공개").optional(),
                                                 fieldWithPath("careerDuration").type(JsonFieldType.STRING).description("경력 기간. 현재 직무의 경력 기간 (예: 6개월, 1년, 3년)").optional(),
                                                 fieldWithPath("interestedJob").type(JsonFieldType.STRING).description("관심 직무. 관심있는 직무/역할을 자유롭게 입력 (예: 백엔드 개발자, 풀스택 개발자)").optional(),

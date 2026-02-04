@@ -108,7 +108,7 @@ public class MypageService {
                 user.getProfileImageUrl(),
                 user.getBio(),
                 user.getCoreCompetencies(),
-                user.getUserStatus() != null ? user.getUserStatus().name() : null,
+                user.getUserStatus() != null ? user.getUserStatus().getDescription() : null,
                 user.getIsPublicMatching(),
                 user.getCareerDuration(),
                 user.getInterestedJob(),

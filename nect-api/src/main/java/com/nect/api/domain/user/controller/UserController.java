@@ -93,4 +93,12 @@ public class UserController {
         userService.setupProfile(userDetails.getUserId(), request);
         return ApiResponse.ok();
     }
+
+    @GetMapping("/info")
+    public ApiResponse<ProfileDto.UserInfoResponseDto> getUserInfo(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        ProfileDto.UserInfoResponseDto response = userService.getUserInfo(userDetails.getUserId());
+        return ApiResponse.ok(response);
+    }
 }
