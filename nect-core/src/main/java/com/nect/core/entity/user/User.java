@@ -49,6 +49,7 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private Job job;
 
+    // 온보딩 직종
     @Enumerated(EnumType.STRING)
     private Role role;
 
@@ -73,6 +74,34 @@ public class User extends BaseEntity {
     @Builder.Default
     @Column(name = "isAutoLoginEnabled", nullable = false)
     private Boolean isAutoLoginEnabled = false;
+
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
+
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
+    @Column(name = "core_competencies", columnDefinition = "TEXT")
+    private String coreCompetencies;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_status")
+    private UserStatus userStatus;
+
+    @Builder.Default
+    @Column(name = "is_public_matching", nullable = false)
+    private Boolean isPublicMatching = true;
+
+    @Column(name = "career_duration")
+    private String careerDuration;
+
+    // 마이페이지 관심 직종
+    @Column(name = "interested_job")
+    private String interestedJob;
+
+    // 마이페이지 관심 직무
+    @Column(name = "interested_field")
+    private String interestedField;
 
     public void updateAutoLoginEnabled(Boolean enabled) {
         this.isAutoLoginEnabled = enabled;
