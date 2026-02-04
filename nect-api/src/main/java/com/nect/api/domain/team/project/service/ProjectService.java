@@ -6,14 +6,13 @@ import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.core.entity.analysis.*;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.repository.analysis.*;
 import com.nect.core.repository.team.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.nect.core.entity.team.enums.ProjectStatus;
-import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
@@ -187,4 +186,5 @@ public class ProjectService {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
+
 }

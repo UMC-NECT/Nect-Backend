@@ -2,7 +2,6 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -18,26 +17,16 @@ import java.util.Optional;
 @Repository
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> {
 
-    interface UserFieldIdsRow {
-        Long getUserId();
-        Long getFieldId();
-    }
-
-
-    interface ProjectLeaderRow {
-        Long getProjectId();
-        Long getLeaderUserId();
-    }
-
-    interface ProjectActiveCountRow {
-        Long getProjectId();
-        Long getActiveCount();
-    }
-    interface UserRoleFieldsRow {
-        Long getUserId();
-        RoleField getRoleField();
-        String getCustomRoleFieldName();
-    }
+    @Query("""
+        select pu
+        from ProjectUser pu
+        where pu.userId = :userId
+            and pu.memberStatus = :memberStatus
+    """)
+    List<ProjectUser> findByUserIdAndProjectMemberStatus(
+            @Param("userId") Long userId,
+            @Param("memberStatus") ProjectMemberStatus memberStatus
+    );
 
     Optional<ProjectUser> findByUserIdAndProject(Long userid, Project project);
 
@@ -113,16 +102,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     """)
     boolean existsActiveLeader(@Param("projectId") Long projectId, @Param("userId") Long userId);
 
-
-    interface MemberBoardRow {
-        Long getUserId();
-        String getName();
-        String getNickname();
-        RoleField getRoleField();
-        String getCustomRoleFieldName();
-        ProjectMemberType getMemberType();
-    }
-
     @Query("""
         SELECT 
             pu.userId as userId,
@@ -138,7 +117,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     """)
     List<MemberBoardRow> findActiveMemberBoardRows(@Param("projectId") Long projectId);
 
-
     boolean existsByProjectIdAndUserIdAndMemberStatus(Long projectId, Long userId, ProjectMemberStatus memberStatus);
 
     @Query("""
@@ -151,4 +129,36 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("projectId") Long projectId,
             @Param("userIds") List<Long> userIds
     );
+
+    interface UserFieldIdsRow {
+        Long getUserId();
+        Long getFieldId();
+    }
+
+
+    interface ProjectLeaderRow {
+        Long getProjectId();
+        Long getLeaderUserId();
+    }
+
+    interface ProjectActiveCountRow {
+        Long getProjectId();
+        Long getActiveCount();
+    }
+
+
+    interface UserRoleFieldsRow {
+        Long getUserId();
+        RoleField getRoleField();
+        String getCustomRoleFieldName();
+    }
+
+    interface MemberBoardRow {
+        Long getUserId();
+        String getName();
+        String getNickname();
+        RoleField getRoleField();
+        String getCustomRoleFieldName();
+        ProjectMemberType getMemberType();
+    }
 }
