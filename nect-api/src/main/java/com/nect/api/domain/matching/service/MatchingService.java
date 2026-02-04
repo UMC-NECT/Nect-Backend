@@ -2,74 +2,89 @@ package com.nect.api.domain.matching.service;
 
 import com.nect.api.domain.matching.converter.MatchingConverter;
 import com.nect.api.domain.matching.dto.MatchingResDto;
-import com.nect.api.domain.matching.enums.MatchingBox;
+import com.nect.api.domain.matching.enums.CounterParty;
 import com.nect.api.domain.matching.enums.code.MatchingErrorCode;
 import com.nect.api.domain.matching.exception.MatchingException;
+import com.nect.api.domain.team.project.service.ProjectService;
+import com.nect.api.domain.user.service.UserService;
 import com.nect.core.entity.matching.Matching;
+import com.nect.core.entity.matching.enums.MatchingRejectReason;
 import com.nect.core.entity.matching.enums.MatchingRequestType;
 import com.nect.core.entity.matching.enums.MatchingStatus;
+import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.matching.MatchingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class MatchingService {
 
     private final MatchingRepository matchingRepository;
+    private final UserService userService;
+    private final ProjectService projectService;
 
     public Matching createUserToProjectMatching(
-            Long requestUserId,
-            Long projectId,
-            Long fieldId
+            User requestUser,
+            Project project,
+            RoleField field,
+            String customField
     ) {
-        // TODO: Long targetUserId = project.getLeader();
+        User targetUser = projectService.getLeader(project);
 
-        if (matchingRepository.countByRequestTypeAndRequestUserIdAndMatchingStatus(
+        if (matchingRepository.countByRequestTypeAndRequestUserAndMatchingStatus(
                 MatchingRequestType.USER_TO_PROJECT,
-                requestUserId,
+                requestUser,
                 MatchingStatus.PENDING
         ) >= 1){
             throw new MatchingException(MatchingErrorCode.MATCHING_APPLY_COUNT_EXCEEDED);
         }
 
+        if (field == RoleField.CUSTOM) {
+            if (customField == null || customField.isBlank()){
+                throw new MatchingException(MatchingErrorCode.MATCHING_CUSTOM_FIELD_REQUIRED);
+            }
+        }
+
         Matching matching = MatchingConverter
-                .toMatching(requestUserId, 1L, projectId, fieldId, MatchingRequestType.USER_TO_PROJECT);
+                .toMatching(requestUser, targetUser, project, field, MatchingRequestType.USER_TO_PROJECT, customField);
         matchingRepository.save(matching);
         return matching;
     }
 
     public Matching createProjectToUserMatching(
-            Long requestUserId, Long targetUserId, Long projectId, Long fieldId
+            User requestUser, User targetUser, Project project, RoleField field, String customField
     ) {
-        // TODO: Project project = projectRepository.findById(projectId).orElseThrow();
-
-        if (matchingRepository.countByRequestTypeAndProjectIdAndFieldIdAndMatchingStatus(
+        if (matchingRepository.countByRequestTypeAndProjectAndFieldAndMatchingStatus(
                 MatchingRequestType.PROJECT_TO_USER,
-                projectId,
-                fieldId,
+                project,
+                field,
                 MatchingStatus.PENDING
         ) > 3) {
             throw new MatchingException(MatchingErrorCode.MATCHING_INVITE_COUNT_EXCEEDED);
         }
 
+        if (field == RoleField.CUSTOM) {
+            if (customField == null || customField.isBlank()){
+                throw new MatchingException(MatchingErrorCode.MATCHING_CUSTOM_FIELD_REQUIRED);
+            }
+        }
+
         Matching matching = MatchingConverter.toMatching(
-                requestUserId, targetUserId, projectId, fieldId, MatchingRequestType.PROJECT_TO_USER
+                requestUser, targetUser, project, field, MatchingRequestType.PROJECT_TO_USER, customField
         );
         matchingRepository.save(matching);
         return matching;
     }
 
-    @Transactional
-    public MatchingResDto.MatchingRes cancelMatching(Long matchingId, Long userId) {
-        Matching matching = getMatching(matchingId);
-
-        if (!(matching.getRequestUserId().equals(userId))) {
+    public Matching cancelMatching(Matching matching, User user) {
+        if (!(matching.getRequestUser().equals(user))) {
             throw new MatchingException(MatchingErrorCode.MATCHING_ACCESS_DENIED);
         }
 
@@ -78,13 +93,13 @@ public class MatchingService {
         }
 
         matching.changeStatus(MatchingStatus.CANCELED);
-        return MatchingConverter.toMatchingResDto(matching);
+        return matching;
     }
 
-    public Matching acceptMatching(Long matchingId, Long userId) {
+    public Matching acceptMatching(Long matchingId, User user) {
         Matching matching = getMatching(matchingId);
 
-        if (!(matching.getTargetUserId().equals(userId))){
+        if (!(matching.getTargetUser().equals(user))){
             throw new MatchingException(MatchingErrorCode.MATCHING_ACCESS_DENIED);
         }
 
@@ -97,46 +112,109 @@ public class MatchingService {
     }
 
     @Transactional(readOnly = true)
-    public MatchingResDto.MatchingListRes getMatchingsByBox(Long userId, MatchingBox matchingBox) {
-        List<Matching> pendingMatchings = new ArrayList<>();
-        List<Matching> otherMatchings = new ArrayList<>();
+    public MatchingResDto.MatchingListRes getReceivedMatchingsByTarget(
+            Long userId,
+            CounterParty counterParty,
+            MatchingStatus matchingStatus
+    ) {
+        User user = userService.getUser(userId);
+        List<Matching> pendingMatchings;
 
-        if (matchingBox == MatchingBox.SENT){
-            pendingMatchings = matchingRepository.findByRequestUserIdAndMatchingStatusOrderByExpiresAtAsc(
-                    userId,
-                    MatchingStatus.PENDING
-            );
-
-            otherMatchings = matchingRepository.findByRequestUserIdAndMatchingStatusInOrderByCreatedAtDesc(
-                    userId,
-                    List.of(MatchingStatus.CANCELED, MatchingStatus.EXPIRED)
-            );
-        }else if (matchingBox == MatchingBox.RECEIVED){
-            pendingMatchings = matchingRepository.findByTargetUserIdAndMatchingStatusOrderByExpiresAtAsc(
-                    userId,
-                    MatchingStatus.PENDING
+        if (counterParty == CounterParty.USER){
+            pendingMatchings = matchingRepository.findReceivedMatchingsOrderByExpiresAt(
+                    MatchingRequestType.USER_TO_PROJECT,
+                    user,
+                    matchingStatus
             );
 
-            otherMatchings = matchingRepository.findByTargetUserIdAndMatchingStatusInOrderByCreatedAtDesc(
-                    userId,
-                    List.of(MatchingStatus.CANCELED, MatchingStatus.EXPIRED)
+            List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
+                    .map(Matching::getRequestUser)
+                    .map(MatchingConverter::toUserSummary)
+                    .toList();
+
+            return MatchingResDto.MatchingListRes.builder()
+                    .counterParty(counterParty)
+                    .userMatchings(userSummaries)
+                    .projectMatchings(List.of()) // 빈 리스트로 반환
+                    .build();
+        }else if (counterParty == CounterParty.PROJECT){
+            pendingMatchings = matchingRepository.findReceivedMatchingsOrderByExpiresAt(
+                    MatchingRequestType.PROJECT_TO_USER,
+                    user,
+                    matchingStatus
             );
+
+            List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
+                    .map(Matching::getProject)
+                    .map(project -> MatchingConverter.toProjectSummary(
+                            project,
+                            projectService.getUserNumberOfProject(project)
+                        )
+                    )
+                    .toList();
+
+            return MatchingResDto.MatchingListRes.builder()
+                    .counterParty(counterParty)
+                    .userMatchings(List.of()) //빈 리스트로 반환
+                    .projectMatchings(projectSummaries)
+                    .build();
         }
 
-        List<MatchingResDto.MatchingRes> items = Stream.concat(pendingMatchings.stream(), otherMatchings.stream())
-                .map(MatchingConverter::toMatchingResDto)
-                .toList();
-
-        return MatchingResDto.MatchingListRes.builder()
-                .matchings(items)
-                .pendingRequestCount(pendingMatchings.size())
-                .build();
+        throw new MatchingException(MatchingErrorCode.NOT_INVALID_COUNTERPARTY);
     }
 
-    public Matching rejectMatchingRequest(Long matchingId, Long userId) {
+    @Transactional(readOnly = true)
+    public MatchingResDto.MatchingListRes getSentMatchingsByTarget(
+            Long userId,
+            CounterParty counterParty,
+            MatchingStatus matchingStatus
+    ) {
+        User user = userService.getUser(userId);
+        List<Matching> pendingMatchings;
+
+        if (counterParty == CounterParty.USER){
+            pendingMatchings = matchingRepository.findSentMatchingsOrderByExpiresAt(
+                    MatchingRequestType.PROJECT_TO_USER, user, matchingStatus
+            );
+
+            List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
+                    .map(Matching::getTargetUser)
+                    .map(MatchingConverter::toUserSummary)
+                    .toList();
+
+            return MatchingResDto.MatchingListRes.builder()
+                    .counterParty(counterParty)
+                    .userMatchings(userSummaries)
+                    .projectMatchings(List.of()) // 빈 리스트로 반환
+                    .build();
+        }else if(counterParty == CounterParty.PROJECT){
+            pendingMatchings = matchingRepository.findSentMatchingsOrderByExpiresAt(
+                    MatchingRequestType.USER_TO_PROJECT, user, matchingStatus
+            );
+
+            List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
+                    .map(Matching::getProject)
+                    .map(project -> MatchingConverter.toProjectSummary(
+                            project,
+                            projectService.getUserNumberOfProject(project)
+                            )
+                    )
+                    .toList();
+
+            return MatchingResDto.MatchingListRes.builder()
+                    .counterParty(counterParty)
+                    .userMatchings(List.of()) //빈 리스트로 반환
+                    .projectMatchings(projectSummaries)
+                    .build();
+        }
+
+        throw new MatchingException(MatchingErrorCode.NOT_INVALID_COUNTERPARTY);
+    }
+
+    public Matching rejectMatchingRequest(Long matchingId, User user, MatchingRejectReason rejectReason) {
         Matching matching = getMatching(matchingId);
 
-        if (!(matching.getTargetUserId().equals(userId))){
+        if (!(matching.getTargetUser().equals(user))){
             throw new MatchingException(MatchingErrorCode.MATCHING_ACCESS_DENIED);
         }
 
@@ -144,7 +222,7 @@ public class MatchingService {
             throw new MatchingException(MatchingErrorCode.MATCHING_STATUS_NOT_REJECTABLE);
         }
 
-        // TODO: 거절 사유 받는 필드 추가 예정
+        matching.setRejectReason(rejectReason);
         matching.changeStatus(MatchingStatus.REJECTED);
         return matching;
     }
@@ -156,4 +234,19 @@ public class MatchingService {
                 );
     }
 
+    @Transactional
+    public int expireDueMatchings(){
+        return matchingRepository.bulkExpire(LocalDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
+    public MatchingResDto.MatchingCounts getMatchingsCount(Long userId) {
+        User user = userService.getUser(userId);
+
+        int received = matchingRepository.countByTargetUserAndMatchingStatus(user, MatchingStatus.PENDING);
+        int sent = matchingRepository.countByRequestUserAndMatchingStatus(user, MatchingStatus.PENDING);
+
+        return MatchingResDto.MatchingCounts.builder()
+                .receivedCount(received).sentCount(sent).build();
+    }
 }
