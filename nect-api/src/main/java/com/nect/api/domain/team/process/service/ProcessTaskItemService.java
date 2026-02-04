@@ -29,9 +29,6 @@ public class ProcessTaskItemService {
     private final ProjectUserRepository projectUserRepository;
     private final ProjectHistoryPublisher historyPublisher;
 
-    // TODO : 알림 추가 예정
-//    private final NotificationFacade notificationFacade;
-
     // 헬퍼 메서드
     private void assertWritableMember(Long projectId, Long userId) {
         if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
