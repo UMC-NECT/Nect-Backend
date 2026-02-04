@@ -107,7 +107,7 @@ public class MatchingControllerTest {
                                 .build()
                 );
 
-        mockMvc.perform(post("/matchings/projects/{projectId}", 1L)
+        mockMvc.perform(post("/api/v1/matchings/projects/{projectId}", 1L)
                         .with(csrf())
                         .header("Authorization", "Bearer AccessToken")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -169,7 +169,7 @@ public class MatchingControllerTest {
                                 .build()
                 );
 
-        mockMvc.perform(post("/matchings/projects/{projectId}/users/{targetUserId}", 1L, 1L)
+        mockMvc.perform(post("/api/v1/matchings/projects/{projectId}/users/{targetUserId}", 1L, 1L)
                         .with(csrf())
                         .header("Authorization", "Bearer AccessToken")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -230,7 +230,7 @@ public class MatchingControllerTest {
                                 .build()
                 );
 
-        mockMvc.perform(post("/matchings/{matchingId}/cancel", 1L)
+        mockMvc.perform(post("/api/v1/matchings/{matchingId}/cancel", 1L)
                         .with(csrf())
                         .header("Authorization", "Bearer AccessToken")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -295,7 +295,7 @@ public class MatchingControllerTest {
 
         given(matchingFacade.acceptMatchingRequest(eq(1L), anyLong())).willReturn(dto);
 
-        mockMvc.perform(post("/matchings/{matchingId}/accept", 1L)
+        mockMvc.perform(post("/api/v1/matchings/{matchingId}/accept", 1L)
                         .with(csrf())
                         .header("Authorization", "Bearer AccessToken")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -358,7 +358,7 @@ public class MatchingControllerTest {
                                 .build()
                 );
 
-        mockMvc.perform(post("/matchings/{matchingId}/reject", 1L)
+        mockMvc.perform(post("/api/v1/matchings/{matchingId}/reject", 1L)
                         .with(csrf())
                         .header("Authorization", "Bearer AccessToken")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -426,7 +426,7 @@ public class MatchingControllerTest {
         given(matchingService.getReceivedMatchingsByTarget(anyLong(), eq(CounterParty.PROJECT), eq(MatchingStatus.PENDING)))
                 .willReturn(dto);
 
-        mockMvc.perform(get("/matchings/received")
+        mockMvc.perform(get("/api/v1/matchings/received")
                         .param("target", "project")
                         .param("status", "pending")
                         .header("Authorization", "Bearer AccessToken")
@@ -499,7 +499,7 @@ public class MatchingControllerTest {
         given(matchingService.getSentMatchingsByTarget(anyLong(), eq(CounterParty.USER), eq(MatchingStatus.PENDING)))
                 .willReturn(dto);
 
-        mockMvc.perform(get("/matchings/sent")
+        mockMvc.perform(get("/api/v1/matchings/sent")
                         .param("target", "user")
                         .param("status", "pending")
                         .with(authentication(authentication))
@@ -557,7 +557,7 @@ public class MatchingControllerTest {
 
         given(matchingService.getMatchingsCount(anyLong())).willReturn(counts);
 
-        mockMvc.perform(get("/matchings/count")
+        mockMvc.perform(get("/api/v1/matchings/count")
                         .with(authentication(authentication))
                         .header("Authorization", "Bearer AccessToken")
                         .contentType(MediaType.APPLICATION_JSON))
