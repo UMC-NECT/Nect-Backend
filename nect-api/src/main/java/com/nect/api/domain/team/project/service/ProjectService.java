@@ -5,23 +5,19 @@ import com.nect.api.domain.analysis.dto.res.ProjectCreateResponseDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.domain.user.service.UserService;
-import com.nect.core.entity.team.Project;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
-import com.nect.core.entity.user.User;
 import com.nect.core.entity.analysis.*;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
+import com.nect.core.entity.user.User;
 import com.nect.core.repository.analysis.*;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.nect.core.entity.team.enums.ProjectStatus;
-import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -65,6 +61,7 @@ public class ProjectService {
                 ProjectMemberStatus.ACTIVE,
                 project
         );
+    }
         
     @Transactional
     public ProjectCreateResponseDto createProjectFromAnalysis(Long userId, ProjectCreateRequestDto request) {
