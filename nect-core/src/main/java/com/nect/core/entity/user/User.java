@@ -92,6 +92,10 @@ public class User extends BaseEntity {
     @Column(name = "is_public_matching", nullable = false)
     private Boolean isPublicMatching = true;
 
+    @Builder.Default
+    @Column(name = "is_onboarding_completed", nullable = false)
+    private Boolean isOnboardingCompleted = false;
+
     @Column(name = "career_duration")
     private String careerDuration;
 

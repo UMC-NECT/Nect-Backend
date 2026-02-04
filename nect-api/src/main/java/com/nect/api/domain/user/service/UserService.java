@@ -67,7 +67,8 @@ public class UserService {
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt()
+                tokenData.getRefreshTokenExpiredAt(),
+                null
         );
     }
 
@@ -84,7 +85,8 @@ public class UserService {
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt()
+                tokenData.getRefreshTokenExpiredAt(),
+                user.getIsOnboardingCompleted()
         );
     }
 
@@ -164,7 +166,8 @@ public class UserService {
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt()
+                tokenData.getRefreshTokenExpiredAt(),
+                user.getIsOnboardingCompleted()
         );
     }
 
@@ -330,6 +333,7 @@ public class UserService {
                 .collaborationStylePlanning(request.collaborationStyle() != null ? request.collaborationStyle().planning() : null)
                 .collaborationStyleLogic(request.collaborationStyle() != null ? request.collaborationStyle().logic() : null)
                 .collaborationStyleLeadership(request.collaborationStyle() != null ? request.collaborationStyle().leadership() : null)
+                .isOnboardingCompleted(true)
                 .build();
         userRepository.save(updatedUser);
 

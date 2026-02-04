@@ -18,20 +18,23 @@ public class LoginDto {
             String accessToken,
             String refreshToken,
             Long accessTokenExpiredAt,
-            Long refreshTokenExpiredAt
+            Long refreshTokenExpiredAt,
+            Boolean isOnboardingCompleted
     ) {
         public static LoginResponseDto of(
                 String accessToken,
                 String refreshToken,
                 Long accessTokenExpiredAt,
-                Long refreshTokenExpiredAt
+                Long refreshTokenExpiredAt,
+                Boolean isOnboardingCompleted
         ) {
             return new LoginResponseDto(
                     "Bearer",
                     accessToken,
                     refreshToken,
                     accessTokenExpiredAt,
-                    refreshTokenExpiredAt
+                    refreshTokenExpiredAt,
+                    isOnboardingCompleted
             );
         }
     }

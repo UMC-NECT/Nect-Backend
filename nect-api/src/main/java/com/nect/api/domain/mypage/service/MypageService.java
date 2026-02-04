@@ -2,7 +2,6 @@
 package com.nect.api.domain.mypage.service;
 
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
-import com.nect.api.domain.mypage.enums.MypageErrorCode;
 import com.nect.api.domain.mypage.exception.InvalidUserStatusException;
 import com.nect.api.domain.mypage.exception.UserNotFoundException;
 import com.nect.core.entity.user.*;
