@@ -58,4 +58,27 @@ public class LoginDto {
     public record LogoutResponseDto(
             String message
     ) {}
+
+    public record TokenResponseDto(
+            String grantType,
+            String accessToken,
+            String refreshToken,
+            Long accessTokenExpiredAt,
+            Long refreshTokenExpiredAt
+    ) {
+        public static TokenResponseDto of(
+                String accessToken,
+                String refreshToken,
+                Long accessTokenExpiredAt,
+                Long refreshTokenExpiredAt
+        ) {
+            return new TokenResponseDto(
+                    "Bearer",
+                    accessToken,
+                    refreshToken,
+                    accessTokenExpiredAt,
+                    refreshTokenExpiredAt
+            );
+        }
+    }
 }

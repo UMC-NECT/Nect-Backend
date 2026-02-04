@@ -21,18 +21,18 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/refresh")
-    public ApiResponse<LoginDto.LoginResponseDto> refreshToken(
+    public ApiResponse<LoginDto.TokenResponseDto> refreshToken(
             @Valid @RequestBody LoginDto.RefreshTokenRequestDto request
     ) {
-        LoginDto.LoginResponseDto response = userService.refreshToken(request.refreshToken());
+        LoginDto.TokenResponseDto response = userService.refreshToken(request.refreshToken());
         return ApiResponse.ok(response);
     }
 
     @PostMapping("/test-login")
-    public ApiResponse<LoginDto.LoginResponseDto> testLogin(
+    public ApiResponse<LoginDto.TokenResponseDto> testLogin(
             @RequestBody(required = false) LoginDto.TestLoginRequestDto request
     ) {
-        LoginDto.LoginResponseDto response = userService.testLoginByEmail(request);
+        LoginDto.TokenResponseDto response = userService.testLoginByEmail(request);
         return ApiResponse.ok(response);
     }
 

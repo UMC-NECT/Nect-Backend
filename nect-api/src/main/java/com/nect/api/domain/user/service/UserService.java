@@ -60,20 +60,19 @@ public class UserService {
     private String authKey;
 
     @Transactional(readOnly = true)
-    public LoginDto.LoginResponseDto refreshToken(String refreshToken) {
+    public LoginDto.TokenResponseDto refreshToken(String refreshToken) {
         TokenDataDto tokenData = jwtUtil.refreshToken(refreshToken);
 
-        return LoginDto.LoginResponseDto.of(
+        return LoginDto.TokenResponseDto.of(
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt(),
-                null
+                tokenData.getRefreshTokenExpiredAt()
         );
     }
 
     @Transactional(readOnly = true)
-    public LoginDto.LoginResponseDto testLoginByEmail(LoginDto.TestLoginRequestDto request) {
+    public LoginDto.TokenResponseDto testLoginByEmail(LoginDto.TestLoginRequestDto request) {
         validateTestLoginRequest(request);
 
         User user = userRepository.findByEmail(request.email())
@@ -81,12 +80,11 @@ public class UserService {
 
         TokenDataDto tokenData = jwtUtil.createTokenData(user.getUserId());
 
-        return LoginDto.LoginResponseDto.of(
+        return LoginDto.TokenResponseDto.of(
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt(),
-                user.getIsOnboardingCompleted()
+                tokenData.getRefreshTokenExpiredAt()
         );
     }
 
