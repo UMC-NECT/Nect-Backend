@@ -7,6 +7,11 @@ public class NotificationEnumResponse {
             String label
     ) {}
 
+    public record NotificationSearchFilterDto(
+            String value,
+            java.util.List<String> scopes
+    ) {}
+
     public record NotificationTypeDto(
             String value,
             String mainMessageFormat,
