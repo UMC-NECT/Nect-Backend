@@ -7,6 +7,8 @@ import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.core.entity.user.enums.InterestField;
+import com.nect.core.entity.user.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -35,11 +37,16 @@ public class HomeController {
         return ApiResponse.ok(projects);
     }
 
-    // 홈화면 매칭 가능한 넥터
+    // 홈화면 매칭 가능한 넥터, , role, interest 필수x
     @GetMapping("/members")
-    public ApiResponse<HomeMembersResponse> matchableMembers(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
+    public ApiResponse<HomeMembersResponse> matchableMembers(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam("count") int count,
+            @RequestParam(value = "role", required = false) Role role,
+            @RequestParam(value = "interest", required = false) InterestField interest
+    ){
         Long userId = (userDetails == null) ? null : userDetails.getUserId();
-        HomeMembersResponse members = mainHomeFacade.getMatchableMembers(userId, count);
+        HomeMembersResponse members = mainHomeFacade.getMatchableMembers(userId, count, role, interest);
         return ApiResponse.ok(members);
     }
 

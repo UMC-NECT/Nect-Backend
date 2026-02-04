@@ -4,10 +4,13 @@ import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
+import com.nect.api.domain.home.exception.HomeInvalidParametersException;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.domain.home.service.HomeProjectQueryService;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.InterestField;
+import com.nect.core.entity.user.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -55,8 +58,23 @@ public class MainHomeFacade {
     }
 
     // 홈화면 매칭 가능한 넥터
-    public HomeMembersResponse getMatchableMembers(Long userId, int count) {
-        List<User> users = homeMemberQueryService.getAllUsersWithoutUser(userId, count);
+    public HomeMembersResponse getMatchableMembers(Long userId, int count, Role role, InterestField interset) {
+
+        // 둘 중 하나가 null일 수는 없음
+        if ((role == null && interset != null) || (role != null && interset == null)) {
+            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
+        }
+
+        // List 선언
+        List<User> users;
+
+        if (role != null) { // 둘 다 null이 아니면 필터링해서 반환
+            users = homeMemberQueryService.getFilteredMembers(userId, count, role, interset);
+        }
+        else{ // 둘 모두 null이면 모두 조회하여 반환
+            users = homeMemberQueryService.getAllUsersWithoutUser(userId, count);
+        }
+
         return new HomeMembersResponse(responsesFromMembers(users));
     }
 

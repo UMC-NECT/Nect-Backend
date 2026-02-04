@@ -12,6 +12,7 @@ import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.repository.matching.RecruitmentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,12 +148,14 @@ class HomeControllerTest {
     @Test
     @DisplayName("홈화면 매칭 가능한 넥터 API")
     void 홈화면_매칭_가능한_넥터_API() throws Exception {
-        given(mainHomeFacade.getMatchableMembers(eq(1L), eq(3)))
+        given(mainHomeFacade.getMatchableMembers(eq(1L), eq(3), eq(Role.DEVELOPER), eq(InterestField.IT_WEB_MOBILE)))
                 .willReturn(mockMembersResponse());
 
         mockMvc.perform(get("/api/v1/home/members")
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
+                        .param("role", "DEVELOPER")
+                        .param("interest", "IT_WEB_MOBILE")
                         .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -165,7 +168,13 @@ class HomeControllerTest {
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .queryParameters(
-                                        parameterWithName("count").description("조회할 넥터 개수")
+                                        parameterWithName("count").description("조회할 넥터 개수"),
+                                        parameterWithName("role")
+                                                .optional()
+                                                .description("필터 역할 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/roles)"),
+                                        parameterWithName("interest")
+                                                .optional()
+                                                .description("필터 관심 분야 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/interest-fields)")
                                 )
                                 .responseFields(memberResponseFields())
                                 .build()

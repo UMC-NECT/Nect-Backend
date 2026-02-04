@@ -4,8 +4,10 @@ import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserRole;
+import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
+import com.nect.core.repository.user.UserInterestRepository;
 import com.nect.core.repository.user.UserRepository;
 import com.nect.core.repository.user.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,15 @@ public class HomeMemberQueryService {
 
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final UserInterestRepository userInterestRepository;
+
+    public List<User> getFilteredMembers(Long userId, int count, Role role, InterestField interest) {
+        PageRequest pageRequest = PageRequest.of(0, count);
+        List<User> filtered = userInterestRepository.findUsersByInterest(interest, pageRequest);
+        return filtered.stream()
+                .filter(u -> u.getRole().equals(role) && !u.getUserId().equals(userId))
+                .toList();
+    }
 
     public List<User> getAllUsersWithoutUser(Long userId, int count) {
         PageRequest pageRequest = PageRequest.of(0, count);
