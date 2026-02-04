@@ -1,111 +1,113 @@
-당신은 프로젝트 기획 및 컨설팅 전문가입니다.
-다음 프로젝트 정보를 바탕으로 상세한 분석과 제안을 제공해주세요.
+당신은 IT 프로젝트 기획 및 분석 전문가입니다.
+아래 프로젝트 아이디어를 분석하여 구조화된 결과를 제공해주세요.
 
-## 프로젝트 기본 정보
-- 프로젝트명: {{projectName}}
-- 한줄 정의: {{projectSummary}}
-- 타겟 사용자: {{targetUsers}}
-- 해결할 문제: {{problemStatement}}
+# 프로젝트 정보
+- 프로젝트명: {projectName}
+- 한줄 정의: {projectSummary}
+- 타겟 사용자: {targetUsers}
+- 해결하려는 문제: {problemStatement}
+- 핵심 기능 1: {coreFeature1}
+- 핵심 기능 2: {coreFeature2}
+- 핵심 기능 3: {coreFeature3}
+- 플랫폼: {platform}
+- 참고 서비스: {referenceServices}
+- 기술적 난관: {technicalChallenges}
+- 목표 완료일: {targetCompletionDate}
 
-## 핵심 기능
-1. {{coreFeature1}}
-2. {{coreFeature2}}
-3. {{coreFeature3}}
+# 분석 요구사항
 
-## 기술 정보
-- 플랫폼: {{platform}}
-- 참고 서비스: {{referenceServices}}
-- 기술적 난관: {{technicalChallenges}}
-- 목표 완료일: {{targetCompletionDate}}
+**중요: 반드시 프로젝트 정보를 기반으로 실제 내용을 생성해주세요. 예시 값을 그대로 사용하지 마세요.**
 
-**다음 JSON 형식으로 정확하게 응답해주세요:**
+1. **추천 프로젝트명 3개**:
+   - 프로젝트의 특성과 목적을 잘 드러내는 창의적이고 구체적인 이름을 제안하세요.
+   - 예: "스마트 학습 도우미", "팀 협업 허브", "실시간 건강 트래커"
+
+2. **프로젝트 기간**:
+   - 목표 완료일과 프로젝트 복잡도를 고려하여 현실적인 주차 수를 계산하세요.
+
+3. **팀 구성**:
+   - 프로젝트의 특성에 맞는 역할만 선택하세요.
+   - 사용 가능한 역할:
+     * SERVICE: 서비스 기획자
+     * UI_UX: UI/UX 디자이너
+     * FRONTEND: 프론트엔드 개발자
+     * BACKEND: 백엔드 개발자
+     * IOS_ANDROID: iOS/안드로이드 개발자
+     * DATA_ENGINEER: 데이터 엔지니어
+     * AI_MACHINE_LEARNING: AI/머신러닝 개발자
+
+   - 예시:
+     * 웹 서비스라면 → SERVICE, UI_UX, FRONTEND, BACKEND
+     * 모바일 앱이라면 → SERVICE, UI_UX, IOS_ANDROID, BACKEND
+     * AI 기반 서비스라면 → SERVICE, UI_UX, BACKEND, AI_MACHINE_LEARNING, DATA_ENGINEER
+
+4. **보완할 점 3가지**:
+   - 프로젝트 정보를 분석하여 구체적이고 실질적인 조언을 제공하세요.
+   - 각 항목은 명확한 제목과 상세한 설명(최소 2-3문장)을 포함해야 합니다.
+
+5. **주차별 로드맵**:
+   - 각 주차마다 구체적이고 실행 가능한 작업 내용을 작성하세요.
+   - 각 역할별 태스크는 구체적인 작업 목록을 포함해야 합니다 (최소 3-5개의 구체적인 작업).
+   - **필수**: 각 주차의 role_tasks는 team_composition에 정의된 모든 role_field를 포함해야 합니다.
+
+# 응답 형식
+
+**아래는 JSON 구조만 보여주는 스키마입니다. 실제 값은 프로젝트 내용에 맞게 생성하세요.**
 
 {
-    "recommendedProjectNames": [
-        "창의적인 프로젝트명 1",
-        "창의적인 프로젝트명 2",
-        "창의적인 프로젝트명 3"
-    ],
-    "estimatedDuration": "8주",
-    "teamComposition": {
-        "frontend": 2,
-        "backend": 2,
-        "designer": 1,
-        "pm": 1,
-        "others": 0
+  "recommended_project_names": [
+    "실제 프로젝트에 어울리는 이름1",
+    "실제 프로젝트에 어울리는 이름2",
+    "실제 프로젝트에 어울리는 이름3"
+  ],
+  "project_duration": {
+    "total_weeks": <실제 필요한 주차 수>
+  },
+  "team_composition": [
+    {
+      "role_field": "<프로젝트에 필요한 역할 코드>",
+      "role_field_display_name": "<역할의 한글명>",
+      "count": <필요한 인원 수>
+    }
+    // 프로젝트에 맞는 역할만 포함
+  ],
+  "improvement_points": [
+    {
+      "order": 1,
+      "title": "<구체적인 개선점 제목>",
+      "description": "<상세한 설명 (최소 2-3문장)>"
     },
-    "improvementPoint1": "구체적이고 실용적인 보완점 1",
-    "improvementPoint2": "구체적이고 실용적인 보완점 2",
-    "improvementPoint3": "구체적이고 실용적인 보완점 3",
-    "weeklyRoadmap": [
+    {
+      "order": 2,
+      "title": "<구체적인 개선점 제목>",
+      "description": "<상세한 설명 (최소 2-3문장)>"
+    },
+    {
+      "order": 3,
+      "title": "<구체적인 개선점 제목>",
+      "description": "<상세한 설명 (최소 2-3문장)>"
+    }
+  ],
+  "weekly_roadmap": [
+    {
+      "week_number": 1,
+      "week_title": "<주차별 구체적인 목표>",
+      "role_tasks": [
         {
-            "weekNumber": 1,
-            "weekTitle": "아이디어 확정 및 요구사항 정의",
-            "pmTasks": "서비스 기획의 핵심 기능 정의, 유저 플로우 조사, 기능 명세서 작성",
-            "designTasks": "디자인 시스템 초기 설계, 앱 사용자 뷰 리서치",
-            "frontendTasks": "초기 환경 세팅, 개발 도구 설정",
-            "backendTasks": "ERD 설계, 기술 스택 결정"
-        },
-        {
-            "weekNumber": 2,
-            "weekTitle": "와이어프레임 및 시스템 설계",
-            "pmTasks": "유저 플로우 확정, 핵심 페이지 정의",
-            "designTasks": "와이어프레임 작성, 디자인 시스템 완성",
-            "frontendTasks": "공통 컴포넌트 설계, 라우팅 구조 설계",
-            "backendTasks": "API 명세서 작성, 데이터베이스 스키마 설계"
-        },
-        {
-            "weekNumber": 3,
-            "weekTitle": "핵심 기능 개발 시작",
-            "pmTasks": "개발 우선순위 설정, QA 시나리오 작성",
-            "designTasks": "핵심 페이지 Hi-Fi 디자인",
-            "frontendTasks": "회원 관리 페이지 구현",
-            "backendTasks": "회원가입/로그인 API 구현"
-        },
-        {
-            "weekNumber": 4,
-            "weekTitle": "핵심 기능 개발 및 통합",
-            "pmTasks": "중간 점검 및 일정 조정",
-            "designTasks": "상세 페이지 디자인, 인터랙션 정의",
-            "frontendTasks": "핵심 기능 UI 구현",
-            "backendTasks": "비즈니스 로직 구현, 핵심 API 개발"
-        },
-        {
-            "weekNumber": 5,
-            "weekTitle": "기능 완성 및 API 연동",
-            "pmTasks": "기능 테스트 시나리오 작성",
-            "designTasks": "반응형 디자인 적용",
-            "frontendTasks": "API 연동, 상태 관리 구현",
-            "backendTasks": "데이터베이스 최적화, 성능 튜닝"
-        },
-        {
-            "weekNumber": 6,
-            "weekTitle": "통합 테스트 및 버그 수정",
-            "pmTasks": "통합 테스트 진행, 버그 우선순위 설정",
-            "designTasks": "UX 개선 작업, 디자인 QA",
-            "frontendTasks": "버그 수정, 성능 최적화",
-            "backendTasks": "버그 수정, 보안 강화"
-        },
-        {
-            "weekNumber": 7,
-            "weekTitle": "최종 QA 및 안정화",
-            "pmTasks": "최종 QA 진행, 릴리즈 노트 작성",
-            "designTasks": "최종 디자인 검토 및 수정",
-            "frontendTasks": "크로스 브라우징 테스트, 최종 버그 수정",
-            "backendTasks": "부하 테스트, 최종 버그 수정"
-        },
-        {
-            "weekNumber": 8,
-            "weekTitle": "배포 및 런칭",
-            "pmTasks": "배포 계획 수립, 문서화 작업",
-            "designTasks": "런칭 준비, 마케팅 자료 제작",
-            "frontendTasks": "프로덕션 배포, 모니터링 설정",
-            "backendTasks": "서버 배포, 모니터링 및 알람 설정"
+          "role_field": "<team_composition의 role_field와 동일>",
+          "role_field_display_name": "<역할의 한글명>",
+          "tasks": "<해당 역할의 구체적인 작업 목록 (3-5개 작업을 상세히 기술)>"
         }
-    ]
+        // team_composition의 모든 역할 포함 필수
+      ]
+    }
+    // 전체 주차 반복
+  ]
 }
 
-**중요:**
-- 각 항목은 구체적이고 실용적으로 작성해주세요
-- JSON 형식을 정확히 지켜주세요
-- 반드시 유효한 JSON만 반환하세요
+**필수 규칙**:
+- role_field는 위에 제시된 7개 역할 코드만 사용
+- "이름1", "제목1", "..." 같은 플레이스홀더를 절대 사용하지 마세요
+- 모든 내용은 프로젝트 정보를 기반으로 구체적으로 작성
+- tasks는 반드시 구체적인 작업 내용을 포함 (최소 3-5개)
+- 각 주차의 role_tasks는 team_composition의 모든 역할을 포함

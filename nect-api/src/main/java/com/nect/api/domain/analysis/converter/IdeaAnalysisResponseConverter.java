@@ -1,11 +1,15 @@
 package com.nect.api.domain.analysis.converter;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.analysis.dto.res.IdeaAnalysisResponseDto;
+import com.nect.api.domain.analysis.dto.res.IdeaAnalysisResponseDto.*;
 import com.nect.client.openai.dto.OpenAiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -14,58 +18,106 @@ public class IdeaAnalysisResponseConverter {
     private final ObjectMapper objectMapper;
 
 
-      //OpenAiResponse → IdeaAnalysisResponseDto
-
     public IdeaAnalysisResponseDto toIdeaAnalysisResponse(OpenAiResponse openAiResponse) {
-        // 텍스트 추출
-        String output = openAiResponse.getFirstOutputText();
-        if (output == null || output.isBlank()) {
-            throw new RuntimeException("OpenAI 응답이 비어있습니다.");
-        }
-
-
-        // JSON 파싱
-        return parseJson(output);
-    }
-
-    /**
-     * JSON 문자열 파싱
-     */
-    private IdeaAnalysisResponseDto parseJson(String output) {
         try {
-            // JSON Schema로 응답받으므로 마크다운 블록 제거
-            String cleaned = cleanJsonString(output);
+            String jsonContent = openAiResponse.getFirstOutputText();
+            JsonNode root = objectMapper.readTree(jsonContent);
 
-            // IdeaAnalysisResponseDto로 파싱
-            IdeaAnalysisResponseDto response = objectMapper.readValue(
-                    cleaned,
-                    IdeaAnalysisResponseDto.class
-            );
-
-            return response;
+            return IdeaAnalysisResponseDto.builder()
+                    .recommendedProjectNames(parseRecommendedProjectNames(root))
+                    .projectDuration(parseProjectDuration(root))
+                    .teamComposition(parseTeamComposition(root))
+                    .improvementPoints(parseImprovementPoints(root))
+                    .weeklyRoadmap(parseWeeklyRoadmap(root))
+                    .build();
 
         } catch (Exception e) {
-            throw new RuntimeException("AI 응답 파싱 실패: " + e.getMessage(), e);
+            throw new RuntimeException("OpenAI 응답 파싱 실패", e);
         }
     }
 
-    /**
-     * JSON 문자열 정리
-     */
-    private String cleanJsonString(String jsonString) {
-        String cleaned = jsonString.trim();
-
-        // 마크다운 코드 블록 제거
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
+    private List<String> parseRecommendedProjectNames(JsonNode root) {
+        List<String> names = new ArrayList<>();
+        JsonNode namesNode = root.get("recommended_project_names");
+        if (namesNode != null && namesNode.isArray()) {
+            namesNode.forEach(node -> names.add(node.asText()));
         }
+        return names;
+    }
 
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
+    private ProjectDuration parseProjectDuration(JsonNode root) {
+        JsonNode durationNode = root.get("project_duration");
+        if (durationNode != null) {
+            int totalWeeks = durationNode.get("total_weeks").asInt();
+            return ProjectDuration.builder()
+                    .totalWeeks(totalWeeks)
+                    .build();
         }
+        return null;
+    }
 
-        return cleaned.trim();
+    private List<TeamMember> parseTeamComposition(JsonNode root) {
+        List<TeamMember> teamMembers = new ArrayList<>();
+        JsonNode teamNode = root.get("team_composition");
+
+        if (teamNode != null && teamNode.isArray()) {
+            teamNode.forEach(node -> {
+                TeamMember member = TeamMember.builder()
+                        .roleField(node.get("role_field").asText())
+                        .roleFieldDisplayName(node.get("role_field_display_name").asText())
+                        .requiredCount(node.get("count").asInt())
+                        .build();
+                teamMembers.add(member);
+            });
+        }
+        return teamMembers;
+    }
+
+    private List<ImprovementPoint> parseImprovementPoints(JsonNode root) {
+        List<ImprovementPoint> points = new ArrayList<>();
+        JsonNode pointsNode = root.get("improvement_points");
+
+        if (pointsNode != null && pointsNode.isArray()) {
+            pointsNode.forEach(node -> {
+                ImprovementPoint point = ImprovementPoint.builder()
+                        .order(node.get("order").asInt())
+                        .title(node.get("title").asText())
+                        .description(node.get("description").asText())
+                        .build();
+                points.add(point);
+            });
+        }
+        return points;
+    }
+
+    private List<WeeklyRoadmap> parseWeeklyRoadmap(JsonNode root) {
+        List<WeeklyRoadmap> roadmaps = new ArrayList<>();
+        JsonNode roadmapNode = root.get("weekly_roadmap");
+
+        if (roadmapNode != null && roadmapNode.isArray()) {
+            roadmapNode.forEach(weekNode -> {
+                List<RoleTask> roleTasks = new ArrayList<>();
+                JsonNode tasksNode = weekNode.get("role_tasks");
+
+                if (tasksNode != null && tasksNode.isArray()) {
+                    tasksNode.forEach(taskNode -> {
+                        RoleTask roleTask = RoleTask.builder()
+                                .roleField(taskNode.get("role_field").asText())
+                                .roleFieldDisplayName(taskNode.get("role_field_display_name").asText())
+                                .tasks(taskNode.get("tasks").asText())
+                                .build();
+                        roleTasks.add(roleTask);
+                    });
+                }
+
+                WeeklyRoadmap roadmap = WeeklyRoadmap.builder()
+                        .weekNumber(weekNode.get("week_number").asInt())
+                        .weekTitle(weekNode.get("week_title").asText())
+                        .roleTasks(roleTasks)
+                        .build();
+                roadmaps.add(roadmap);
+            });
+        }
+        return roadmaps;
     }
 }

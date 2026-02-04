@@ -1,6 +1,7 @@
 package com.nect.core.repository.team.chat;
 
 import com.nect.core.entity.team.chat.ChatRoom;
+import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,5 +32,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     );
 
     List<ChatRoom> findAllByProject_Id(Long projectId);
+
+
 
 }

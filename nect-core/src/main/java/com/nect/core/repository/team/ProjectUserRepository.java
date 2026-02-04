@@ -2,6 +2,7 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -161,4 +162,17 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         ProjectMemberType getMemberType();
     }
 
+
+    boolean existsByProjectIdAndUserIdAndMemberStatus(Long projectId, Long userId, ProjectMemberStatus memberStatus);
+
+    @Query("""
+        SELECT pu FROM ProjectUser pu 
+        WHERE pu.project.id = :projectId 
+        AND pu.userId IN :userIds 
+        AND pu.memberStatus = 'ACTIVE'
+    """)
+    List<ProjectUser> findAllActiveProjectMembers(
+            @Param("projectId") Long projectId,
+            @Param("userIds") List<Long> userIds
+    );
 }
