@@ -277,8 +277,8 @@ class ProcessControllerTest {
                 List.of("디자인"),        // custom_fields
 
                 List.of(
-                        new AssigneeResDto(1L, "유저1", "https://img.com/1.png"),
-                        new AssigneeResDto(2L, "유저2", "https://img.com/2.png")
+                        new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png"),
+                        new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png")
                 ),
                 List.of(3L, 4L),
 
@@ -363,6 +363,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.assignees").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.assignees[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.assignees[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.assignees[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.assignees[].user_image").type(STRING).description("담당자 이미지 URL"),
 
                                                 fieldWithPath("body.mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
@@ -574,24 +575,33 @@ class ProcessControllerTest {
     }
 
     @Test
-    @DisplayName("주차별 프로세스 조회")
+    @DisplayName("주차별 프로세스 조회(weeks 지원)")
     void getWeekProcesses() throws Exception {
         long projectId = 1L;
         long userId = 1L;
 
-        ProcessWeekResDto response = new ProcessWeekResDto(
+        ProcessWeekResDto w1 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 19),
                 List.of(),
                 List.of()
         );
 
-        given(processService.getWeekProcesses(eq(projectId), eq(userId), any()))
+        ProcessWeekResDto w2 = new ProcessWeekResDto(
+                LocalDate.of(2026, 1, 26),
+                List.of(),
+                List.of()
+        );
+
+        ProcessWeeksResDto response = new ProcessWeeksResDto(List.of(w1, w2));
+
+        given(processService.getWeekProcesses(eq(projectId), eq(userId), any(LocalDate.class), eq(2)))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/week", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("start_date", "2026-01-19")
+                        .param("weeks", "2")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-week",
@@ -600,13 +610,14 @@ class ProcessControllerTest {
                         resource(
                                 ResourceSnippetParameters.builder()
                                         .tag("Process")
-                                        .summary("프로세스 목록 조회(주차별)")
-                                        .description("프로젝트의 프로세스를 주차 기준으로 조회합니다. start_date 미입력 시 현재 주차 기준.")
+                                        .summary("프로세스 목록 조회(주차별/범위)")
+                                        .description("프로젝트의 프로세스를 주차 기준으로 조회합니다. weeks를 통해 여러 주차를 한번에 조회할 수 있습니다. start_date 미입력 시 현재 주차 기준.")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .queryParameters(
-                                                parameterWithName("start_date").optional().description("주 시작일(yyyy-MM-dd)")
+                                                parameterWithName("start_date").optional().description("기준 주 시작일(yyyy-MM-dd)"),
+                                                parameterWithName("weeks").optional().description("조회할 주 개수(기본 1, 최대 12)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -618,16 +629,17 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks").type(ARRAY).description("주차별 결과 목록"),
 
-                                                subsectionWithPath("body.common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
-                                                subsectionWithPath("body.by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
+                                                fieldWithPath("body.weeks[].start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
+                                                subsectionWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
+                                                subsectionWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processService).getWeekProcesses(eq(projectId), eq(userId), any());
+        verify(processService).getWeekProcesses(eq(projectId), eq(userId), any(LocalDate.class), eq(2));
     }
 
     @Test
@@ -637,8 +649,8 @@ class ProcessControllerTest {
         long userId = 1L;
 
         // assignee 샘플
-        AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "https://img.com/1.png");
-        AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "https://img.com/2.png");
+        AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png");
+        AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png");
 
         // IN_PROGRESS 카드 2개
         ProcessCardResDto p10 = new ProcessCardResDto(
@@ -799,6 +811,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.groups[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_image").type(STRING).description("담당자 이미지 URL")
                                         )
                                         .build()
