@@ -28,8 +28,11 @@ public class ChatConverter {
         ChatMessageDto dto = new ChatMessageDto();
         dto.setMessageId(message.getId());
         dto.setRoomId(message.getChatRoom().getId());
+        dto.setUserId(message.getUser().getUserId());
+        dto.setUserName(message.getUser().getName());
 
-        dto.setUserName("사용자" + message.getUser().getUserId());  // TODO: User 조회
+        dto.setProfileImage(message.getUser().getProfileImageUrl());
+
         dto.setContent(message.getContent());
         dto.setMessageType(message.getMessageType());
         dto.setIsPinned(message.getIsPinned());

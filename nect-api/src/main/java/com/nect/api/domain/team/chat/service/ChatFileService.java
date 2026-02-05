@@ -50,71 +50,59 @@ public class ChatFileService {
     private String uploadDir;
 
     @Transactional
-    public ChatFileUploadResponseDto uploadFile(Long roomId,MultipartFile file,Long userId) {
-        validateRoomMember(roomId, userId);
+    public ChatMessageDto uploadAndSendFile(Long roomId, MultipartFile file, Long userId) {
 
-        FileValidator.validateImageFile(file);
-
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new StorageException(StorageErrorCode.CHAT_ROOM_NOT_FOUND));
-
-        try{
-
-            // Cloudflare R2에 업로드
-            String storedFileName = s3Service.uploadFile(file);
-            String fileUrl = s3Service.getPresignedGetUrl(storedFileName);
-
-
-            ChatFile chatFile = FileConverter.toFileEntity(
-                    file.getOriginalFilename(),
-                    storedFileName,
-                    fileUrl,
-                    file.getSize(),
-                    file.getContentType(),
-                    chatRoom
-            );
-
-            chatFileRepository.save(chatFile);
-
-
-            return FileConverter.toFileUploadResponseDTO(chatFile);
-
-
-        }catch(IOException e){
-            throw new StorageException(StorageErrorCode.FILE_UPLOAD_FAILED);
-        }
-    }
-
-    @Transactional
-    public ChatMessageDto sendFileMessage(Long roomId, Long userId, Long fileId) {
-
-
+        // 1. 사용자의 채팅방 멤버십 확인
         ChatRoomUser chatRoomUser = chatRoomUserRepository.findMemberInRoom(roomId, userId)
                 .orElseThrow(() -> new StorageException(StorageErrorCode.NOT_CHAT_ROOM_MEMBER));
 
         ChatRoom chatRoom = chatRoomUser.getChatRoom();
         User user = chatRoomUser.getUser();
 
+        // 2. 파일 검증 (이미지만 허용)
+        FileValidator.validateFile(file);
 
-        ChatFile chatFile = chatFileRepository.findById(fileId)
-                .orElseThrow(() ->  new StorageException(StorageErrorCode.FILE_NOT_FOUND));
+        try {
+            // 3. S3 업로드 (전송 확정 시점!)
+            String storedFileName = s3Service.uploadFile(file);
+            String fileUrl = s3Service.getPresignedGetUrl(storedFileName);
 
+            // 4. ChatMessage 생성 및 저장
+            ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
+            chatMessageRepository.save(message);
 
-        String refreshedUrl = s3Service.getPresignedGetUrl(chatFile.getStoredFileName());
-        chatFile.updateFileUrl(refreshedUrl);
+            // 5. ChatFile 생성 및 저장 (Message와 연결)
+            ChatFile chatFile = FileConverter.toFileEntity(
+                    file.getOriginalFilename(),
+                    storedFileName,
+                    fileUrl,
+                    file.getSize(),
+                    file.getContentType(),  // 파일 타입 저장 (image/jpeg, image/png 등)
+                    chatRoom
+            );
+            chatFile.setChatMessage(message);  // 메시지와 연결
+            chatFileRepository.save(chatFile);
 
-        ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
-        chatMessageRepository.save(message);
+            // 6. 발신자의 lastReadMessageId 업데이트 (본인은 이미 읽음)
+            chatRoomUser.setLastReadMessageId(message.getId());
+            chatRoomUser.setLastReadAt(LocalDateTime.now());
 
-        chatFile.setChatMessage(message);
-        ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
+            // 7. DTO 변환
+            ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
 
+            // 8. readCount 설정 (전체 인원 - 1(본인))
+            int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
+            messageDto.setReadCount(totalMembers - 1);
 
-        String channel = "chatroom:" + roomId;
-        redisPublisher.publish(channel, messageDto);
+            // 9. Redis 발행 (실시간 전달)
+            String channel = "chatroom:" + roomId;
+            redisPublisher.publish(channel, messageDto);
 
-        return messageDto;
+            return messageDto;
 
+        } catch (IOException e) {
+            throw new StorageException(StorageErrorCode.FILE_UPLOAD_FAILED);
+        }
     }
 
 
@@ -142,11 +130,12 @@ public class ChatFileService {
                 .map(room -> {
 
                     int totalFileCount = chatFileRepository
-                            .countByChatRoomIdAndCreatedAtAfter(room.getId(), fifteenDaysAgo);
+                            .countImageFilesByChatRoomIdAndCreatedAtAfter(
+                                    room.getId(), fifteenDaysAgo);
 
 
                     List<ChatFile> chatFiles = chatFileRepository
-                            .findTopNByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(
+                            .findImageFilesByChatRoomIdAndCreatedAtAfter(
                                     room.getId(),
                                     fifteenDaysAgo,
                                     PageRequest.of(0, limitPerRoom));
@@ -174,12 +163,12 @@ public class ChatFileService {
 
 
         int totalCount = chatFileRepository
-                .countByChatRoomIdAndCreatedAtAfter(roomId, fifteenDaysAgo);
-
+                .countImageFilesByChatRoomIdAndCreatedAtAfter(roomId, fifteenDaysAgo);
 
         Pageable pageable = PageRequest.of(page, size);
+
         List<ChatFile> chatFiles = chatFileRepository
-                .findTopNByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(
+                .findImageFilesByChatRoomIdAndCreatedAtAfter(
                         roomId, fifteenDaysAgo, pageable);
 
 

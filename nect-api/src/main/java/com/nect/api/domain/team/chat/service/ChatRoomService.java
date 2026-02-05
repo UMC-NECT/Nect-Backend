@@ -82,13 +82,20 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomUser.getChatRoom();
         User user = chatRoomUser.getUser();
         String userName = user.getNickname();
-        chatService.sendMessage(roomId, userId, userName + "님이 채팅방을 나갔습니다.");
+
+
+        long currentMemberCount = chatRoomUserRepository.countByChatRoomId(roomId);
+
+
+        if (currentMemberCount > 1) {
+            chatService.sendMessage(roomId, userId, userName + "님이 채팅방을 나갔습니다.");
+        }
+
 
         chatRoomUserRepository.delete(chatRoomUser);
 
-        // 채팅방 전원이 나갈경우 채팅방 삭제
-        long remainingMemberCount = chatRoomUserRepository.countByChatRoomId(roomId);
-        if (remainingMemberCount == 0) {
+
+        if (currentMemberCount == 1) {
             chatRoomRepository.delete(chatRoom);
         }
 

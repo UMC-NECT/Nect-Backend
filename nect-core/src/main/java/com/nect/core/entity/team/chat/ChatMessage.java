@@ -35,7 +35,7 @@ public class ChatMessage extends BaseEntity {
     @Builder.Default
     private Boolean isPinned = false;
 
-    // TODO 발신자 (User 외래키)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
