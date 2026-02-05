@@ -1,5 +1,5 @@
 package com.nect.core.repository.analysis;
-import com.nect.core.entity.analysis.ProjectTeamRole;
+import com.nect.core.entity.team.process.ProjectTeamRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

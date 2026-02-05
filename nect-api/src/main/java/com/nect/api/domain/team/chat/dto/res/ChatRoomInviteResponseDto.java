@@ -1,20 +1,14 @@
 package com.nect.api.domain.team.chat.dto.res;
-
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.List;
 
-
+@Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public record ChatRoomAlbumResponseDto(
+public record ChatRoomInviteResponseDto(
         Long roomId,
-        String roomName,
-        String roomType,
-        Integer fileCount,
-        List<ChatFileResponseDto> files
+        Integer invitedCount,
+        List<String> invitedUserNames
 ) {}

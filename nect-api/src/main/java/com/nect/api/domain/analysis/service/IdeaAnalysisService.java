@@ -39,6 +39,7 @@ public class IdeaAnalysisService {
     private final ProjectIdeaAnalysisRepository projectIdeaAnalysisRepository;
     private final ObjectMapper objectMapper;
 
+
     public IdeaAnalysisResponseDto analyzeProjectIdea(Long userId, IdeaAnalysisRequestDto requestDto) {
 
         long analysisCount = projectIdeaAnalysisRepository.countByUserId(userId);

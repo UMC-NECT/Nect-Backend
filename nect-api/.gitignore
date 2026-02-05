@@ -50,3 +50,7 @@ certbot/www
 ### logs ###
 *.log
 logs/
+
+### YAML / Config ###
+application.yml
+application-*.yml

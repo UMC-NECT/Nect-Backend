@@ -2,6 +2,7 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -20,6 +21,18 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     Optional<ProjectUser> findByUserIdAndProject(Long userId, Project project);
 
     @Query("""
+    SELECT pu.userId 
+    FROM ProjectUser pu 
+    WHERE pu.project.id = :projectId 
+      AND pu.userId != :currentUserId 
+      AND pu.memberStatus = 'ACTIVE'
+""")
+    List<Long> findUserIdsByProjectIdExcludingUser(
+            @Param("projectId") Long projectId,
+            @Param("currentUserId") Long currentUserId
+    );
+
+    @Query("""
         select pu
         from ProjectUser pu
         where pu.userId = :userId
@@ -30,6 +43,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("memberStatus") ProjectMemberStatus memberStatus
     );
 
+
     @Query("""
         SELECT u FROM User u 
         JOIN ProjectUser pu ON u.userId = pu.userId 
@@ -37,6 +51,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         AND pu.memberStatus = 'ACTIVE'
     """)
     List<User> findAllUsersByProjectId(@Param("projectId") Long projectId);
+
 
     @Query("""
         SELECT u FROM User u 
@@ -49,6 +64,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("projectId") Long projectId,
             @Param("userIds") List<Long> userIds
     );
+
 
     @Query("SELECT COUNT(pu) > 0 FROM ProjectUser pu " +
             "WHERE pu.project.id = :projectId " +
@@ -101,6 +117,9 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
           AND pu.memberType = 'LEADER'
     """)
     boolean existsActiveLeader(@Param("projectId") Long projectId, @Param("userId") Long userId);
+
+
+
 
     @Query("""
         SELECT 
@@ -185,4 +204,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getCustomRoleFieldName();
         ProjectMemberType getMemberType();
     }
+
+    Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
 }
