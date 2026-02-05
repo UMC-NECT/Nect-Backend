@@ -501,6 +501,7 @@ public class UserService {
                 user.getRole() != null ? user.getRole().getDescription() : null,
                 user.getEmail()
         );
+    }
       
     public User getUser(Long userId){
         return userRepository.findById(userId)
