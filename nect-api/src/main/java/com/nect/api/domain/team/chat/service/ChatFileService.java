@@ -4,6 +4,7 @@ import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.ChatFileResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatFileUploadResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomAlbumResponseDto;
+import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -38,7 +39,7 @@ public class ChatFileService {
     private final UserRepository userRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
-    private final RedisPublisher redisPublisher;
+    private final ChatRedisPublisher redisPublisher;
 
     //application.yml에 설정 x  ./uploads/'에 저장 (상대 경로)
     @Value("${file.upload-dir:${user.home}/nect-uploads/}")
@@ -119,8 +120,7 @@ public class ChatFileService {
         ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
        
         //Redis 발행
-        String channel = "chatroom:" + roomId;
-        redisPublisher.publish(channel, messageDto);
+        redisPublisher.publish(roomId, messageDto);
         return messageDto;
 
     }

@@ -1,6 +1,5 @@
-package com.nect.api.global.infra.exception;
+package com.nect.api.global.code;
 
-import com.nect.api.global.code.ResponseCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

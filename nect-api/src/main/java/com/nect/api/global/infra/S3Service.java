@@ -5,7 +5,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.nect.api.global.infra.exception.StorageErrorCode;
+import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.exception.StorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

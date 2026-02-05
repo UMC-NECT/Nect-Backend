@@ -5,6 +5,7 @@ import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
+import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.user.User;
@@ -32,7 +33,7 @@ public class ChatService {
     private final ChatRoomRepository  chatRoomRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final RedisPublisher redisPublisher;
+    private final ChatRedisPublisher redisPublisher;
     private final UserRepository userRepository;
 
 
@@ -53,8 +54,7 @@ public class ChatService {
         ChatMessageDto messageDto = ChatConverter.toMessageDto(message);
 
         //Redis 발행
-        String channel = "chatroom:" + roomId;
-        redisPublisher.publish(channel, messageDto);
+        redisPublisher.publish(roomId, messageDto);
 
         return messageDto;
     }
