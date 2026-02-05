@@ -1,8 +1,7 @@
-package com.nect.core.entity.team.process;
+package com.nect.core.entity.team;
 
 
 import com.nect.core.entity.BaseEntity;
-import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
 import lombok.*;
