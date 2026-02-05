@@ -1,5 +1,7 @@
 package com.nect.api.domain.team.workspace.service;
 
+import com.nect.api.domain.notifications.command.NotificationCommand;
+import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.workspace.dto.req.PostCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.PostUpdateReqDto;
@@ -7,6 +9,9 @@ import com.nect.api.domain.team.workspace.dto.res.*;
 import com.nect.api.domain.team.workspace.enums.PostErrorCode;
 import com.nect.api.domain.team.workspace.enums.PostSort;
 import com.nect.api.domain.team.workspace.exception.PostException;
+import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
@@ -43,6 +48,50 @@ public class PostService {
     private final PostMentionRepository postMentionRepository;
 
     private final ProjectHistoryPublisher historyPublisher;
+    private final NotificationFacade notificationFacade;
+
+    private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
+        if (mentionIds == null) return List.of();
+
+        List<Long> ids = mentionIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .filter(id -> !id.equals(actorId))
+                .toList();
+
+        if (ids.isEmpty()) return List.of();
+
+        long cnt = projectUserRepository.countByProject_IdAndUserIdIn(projectId, ids);
+        if (cnt != ids.size()) {
+            throw new PostException(
+                    PostErrorCode.INVALID_REQUEST,
+                    "mention_user_ids contains non-member user. projectId=" + projectId
+            );
+        }
+
+        List<User> users = userRepository.findAllById(ids);
+        if (users.size() != ids.size()) {
+            throw new PostException(PostErrorCode.USER_NOT_FOUND, "mentioned user not found");
+        }
+
+        return users;
+    }
+
+    private void notifyBoardMention(Project project, User actor, Long targetBoardId, List<User> receivers, String content) {
+        if (receivers == null || receivers.isEmpty()) return;
+
+        NotificationCommand command = new NotificationCommand(
+                NotificationType.WORKSPACE_MENTIONED,
+                NotificationClassification.BOARD,
+                NotificationScope.WORKSPACE_GLOBAL,
+                targetBoardId,
+                new Object[]{ actor.getName() },
+                new Object[]{ content },
+                project
+        );
+
+        notificationFacade.notify(receivers, command);
+    }
 
     // 게시글 생성 서비스
     @Transactional
@@ -91,6 +140,10 @@ public class PostService {
                 .stream().filter(Objects::nonNull).distinct().toList();
 
         syncMentions(saved, mentionIds, projectId);
+
+        // 멘션된 사람들에게 알림
+        List<User> mentionReceivers = validateAndLoadMentionReceivers(projectId, userId, mentionIds);
+        notifyBoardMention(project, author, saved.getId(), mentionReceivers, post.getTitle());
 
         historyPublisher.publish(
                 projectId,
@@ -275,6 +328,22 @@ public class PostService {
 
         // 멘션 교체 (null이면 변경 안 함 / []이면 전부 제거)
         List<Long> mentionIdsForRes = syncMentions(post, req.mentionUserIds(), projectId);
+
+        // 멘션 알림 : 요청이 들어온 경우에만, 그리고 '새로 추가된 멘션'에게만 전송
+        if (req.mentionUserIds() != null) {
+            List<Long> afterIds = (mentionIdsForRes == null) ? List.of() : mentionIdsForRes.stream()
+                    .filter(Objects::nonNull).distinct().toList();
+
+            Set<Long> beforeSet = new HashSet<>(beforeMentionIds);
+            List<Long> addedMentionIds = afterIds.stream()
+                    .filter(id -> !beforeSet.contains(id))
+                    .toList();
+
+            if (!addedMentionIds.isEmpty()) {
+                List<User> receivers = validateAndLoadMentionReceivers(projectId, userId, addedMentionIds);
+                notifyBoardMention(post.getProject(), post.getAuthor(), post.getId(), receivers, post.getTitle());
+            }
+        }
 
         // after 스냅샷
         final PostType afterType = post.getPostType();

@@ -2,7 +2,6 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -19,6 +18,17 @@ import java.util.Optional;
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> {
 
     Optional<ProjectUser> findByUserIdAndProject(Long userId, Project project);
+
+    @Query("""
+        select pu
+        from ProjectUser pu
+        where pu.userId = :userId
+            and pu.memberStatus = :memberStatus
+    """)
+    List<ProjectUser> findByUserIdAndProjectMemberStatus(
+            @Param("userId") Long userId,
+            @Param("memberStatus") ProjectMemberStatus memberStatus
+    );
 
     @Query("""
         SELECT u FROM User u 
@@ -131,10 +141,24 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     """)
     long countProjectUserByMemberStatusAndProject(@Param("status")ProjectMemberStatus status, @Param("project") Project project);
 
+    boolean existsByProjectIdAndUserIdAndMemberStatus(Long projectId, Long userId, ProjectMemberStatus memberStatus);
+
+    @Query("""
+        SELECT pu FROM ProjectUser pu 
+        WHERE pu.project.id = :projectId 
+        AND pu.userId IN :userIds 
+        AND pu.memberStatus = 'ACTIVE'
+    """)
+    List<ProjectUser> findAllActiveProjectMembers(
+            @Param("projectId") Long projectId,
+            @Param("userIds") List<Long> userIds
+    );
+
     interface UserFieldIdsRow {
         Long getUserId();
         Long getFieldId();
     }
+
 
     interface ProjectLeaderRow {
         Long getProjectId();
@@ -161,18 +185,4 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getCustomRoleFieldName();
         ProjectMemberType getMemberType();
     }
-
-
-    boolean existsByProjectIdAndUserIdAndMemberStatus(Long projectId, Long userId, ProjectMemberStatus memberStatus);
-
-    @Query("""
-        SELECT pu FROM ProjectUser pu 
-        WHERE pu.project.id = :projectId 
-        AND pu.userId IN :userIds 
-        AND pu.memberStatus = 'ACTIVE'
-    """)
-    List<ProjectUser> findAllActiveProjectMembers(
-            @Param("projectId") Long projectId,
-            @Param("userIds") List<Long> userIds
-    );
 }

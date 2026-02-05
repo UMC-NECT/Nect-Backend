@@ -9,6 +9,7 @@ import com.nect.core.entity.analysis.*;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectStatus;
+import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.analysis.*;
@@ -62,7 +63,7 @@ public class ProjectService {
                 project
         );
     }
-        
+
     @Transactional
     public ProjectCreateResponseDto createProjectFromAnalysis(Long userId, ProjectCreateRequestDto request) {
 
@@ -210,4 +211,5 @@ public class ProjectService {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
+
 }
