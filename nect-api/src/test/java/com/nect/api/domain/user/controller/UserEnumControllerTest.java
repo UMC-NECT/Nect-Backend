@@ -225,4 +225,26 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                         )
                 ));
     }
+
+    @Test
+    void getUserStatuses() throws Exception {
+        this.mockMvc.perform(get("/api/v1/enums/user-statuses"))
+                .andExpect(status().isOk())
+                .andDo(document("user-enum-get-statuses",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("enums")
+                                        .summary("사용자 상태(UserStatus) 조회")
+                                        .description("사용 가능한 모든 사용자 상태 목록을 조회합니다. (재학중, 구직중, 재직중)")
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body[].value").type(JsonFieldType.STRING).description("사용자 상태 Enum 값 (예: ENROLLED, JOB_SEEKING, EMPLOYED)"),
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("사용자 상태 한글명 (예: 재학중)")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
 }
