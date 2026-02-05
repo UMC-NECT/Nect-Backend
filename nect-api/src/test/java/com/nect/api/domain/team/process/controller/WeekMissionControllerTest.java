@@ -7,6 +7,7 @@ import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
+import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
 import com.nect.api.domain.team.process.service.WeekMissionService;
 import com.nect.api.global.jwt.JwtUtil;
@@ -375,5 +376,50 @@ class WeekMissionControllerTest {
                 ));
 
         verify(weekMissionService).updateWeekMissionTaskItem(eq(projectId), eq(userId), eq(processId), eq(taskItemId), any(WeekMissionTaskItemUpdateReqDto.class));
+    }
+
+    @Test
+    @DisplayName("멤버형 모달 미션 주차 선택 드롭다운 조회")
+    void readMissionDropdown() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        WeekMissionDropdownResDto response = newRecord(WeekMissionDropdownResDto.class);
+
+        given(weekMissionService.getMissionDropdown(eq(projectId), eq(userId)))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/v1/projects/{projectId}/week-missions/missions", projectId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("week-mission-missions-dropdown",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Week-Mission")
+                                        .summary("미션 주차 드롭다운 조회")
+                                        .description("멤버형 모달에서 미션(주차) 선택을 위한 드롭다운 목록을 조회합니다.")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                subsectionWithPath("body").type(OBJECT).description("미션 드롭다운 조회 결과")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(weekMissionService).getMissionDropdown(eq(projectId), eq(userId));
     }
 }
