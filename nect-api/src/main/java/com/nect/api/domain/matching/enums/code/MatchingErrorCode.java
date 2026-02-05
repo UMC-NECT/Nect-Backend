@@ -13,6 +13,8 @@ public enum MatchingErrorCode implements ResponseCode {
     MATCHING_STATUS_NOT_CANCELABLE("400_3", "해당 매칭은 취소 불가능한 상태입니다."),
     MATCHING_STATUS_NOT_ACCEPTABLE("400_4", "해당 매칭은 수락 불가능한 상태입니다."),
     MATCHING_STATUS_NOT_REJECTABLE("400_5", "해당 매칭은 거절 불가능한 상태입니다"),
+    NOT_INVALID_COUNTERPARTY("400_6", "지원하지 않는 \"COUNTERPARTY\" 입니다."),
+    MATCHING_CUSTOM_FIELD_REQUIRED("400_7","field가 CUSTOM일 때 customField는 필수입니다."),
 
     MATCHING_ACCESS_DENIED("M403_1", "해당 요청에 대한 권한이 없습니다."),
 

@@ -17,6 +17,8 @@ import java.util.Optional;
 @Repository
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> {
 
+    Optional<ProjectUser> findByUserIdAndProject(Long userId, Project project);
+
     @Query("""
         select pu
         from ProjectUser pu
@@ -27,8 +29,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userId") Long userId,
             @Param("memberStatus") ProjectMemberStatus memberStatus
     );
-
-    Optional<ProjectUser> findByUserIdAndProject(Long userid, Project project);
 
     @Query("""
         SELECT u FROM User u 
@@ -116,6 +116,30 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
           AND pu.memberStatus = 'ACTIVE'
     """)
     List<MemberBoardRow> findActiveMemberBoardRows(@Param("projectId") Long projectId);
+
+    @Query("""
+        select pu.userId
+        from ProjectUser pu
+        where pu.project = :project
+            and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
+    """)
+    Long findLeaderByProject(@Param("project") Project project);
+
+    @Query("""
+        select pu.project
+        from ProjectUser pu
+        where pu.userId = :userId
+            and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
+    """)
+    List<Project> findProjectsAsLeader(@Param("userId") Long userId);
+
+    @Query("""
+        select count(pu)
+        from ProjectUser pu
+        where pu.memberStatus = :status 
+            and pu.project = :project
+    """)
+    long countProjectUserByMemberStatusAndProject(@Param("status")ProjectMemberStatus status, @Param("project") Project project);
 
     boolean existsByProjectIdAndUserIdAndMemberStatus(Long projectId, Long userId, ProjectMemberStatus memberStatus);
 

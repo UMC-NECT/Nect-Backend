@@ -1,8 +1,12 @@
 package com.nect.core.entity.matching;
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.matching.enums.MatchingRejectReason;
 import com.nect.core.entity.matching.enums.MatchingRequestType;
 import com.nect.core.entity.matching.enums.MatchingStatus;
+import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -17,23 +21,25 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Matching extends BaseEntity {
 
-    // TODO: 타 도메인 구현 완료시 id 저장 방식 -> 엔티티 연관관계로 변경
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "request_user_id", nullable = false)
-    private Long requestUserId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "request_user_id", nullable =false)
+    private User requestUser;
 
-    @Column(name = "target_user_id", nullable = false)
-    private Long targetUserId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "target_user_id", nullable =false)
+    private User targetUser;
 
-    @Column(name = "project_id", nullable = false)
-    private Long projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable =false)
+    private Project project;
 
-    @Column(name = "field_id", nullable = false)
-    private Long fieldId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "field", nullable = false)
+    private RoleField field;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "request_type", nullable = false)
@@ -43,26 +49,30 @@ public class Matching extends BaseEntity {
     @Column(name = "matching_status", nullable = false)
     private MatchingStatus matchingStatus;
 
-    // TODO: 거절 사유 Enum Type으로 설정 예정
     @Column(name = "reject_reason", nullable = true)
-    private String rejectReason;
+    private MatchingRejectReason rejectReason;
 
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    @Column(name = "custom_field", nullable = true)
+    private String customField;
+
     @Builder
     public Matching(
-            Long requestUserId,
-            Long targetUserId,
-            Long projectId,
-            Long fieldId,
-            MatchingRequestType requestType
+            User requestUser,
+            User targetUser,
+            Project project,
+            RoleField field,
+            MatchingRequestType requestType,
+            String customField
             ){
-        this.requestUserId = requestUserId;
-        this.targetUserId = targetUserId;
-        this.projectId = projectId;
-        this.fieldId = fieldId;
+        this.requestUser = requestUser;
+        this.targetUser = targetUser;
+        this.project = project;
+        this.field = field;
         this.requestType = requestType;
+        this.customField = customField;
         this.matchingStatus = MatchingStatus.PENDING;
     }
 
@@ -73,5 +83,9 @@ public class Matching extends BaseEntity {
 
     public void changeStatus(MatchingStatus status) {
         this.matchingStatus = status;
+    }
+
+    public void setRejectReason(MatchingRejectReason rejectReason) {
+        this.rejectReason = rejectReason;
     }
 }
