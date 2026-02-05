@@ -166,10 +166,14 @@ public class ProjectUserControllerTest {
     void kickProjectUser() throws Exception {
         ProjectUserResDto resDto = ProjectUserResDto.builder()
                 .id(1L)
+                .userId(1L)
+                .projectId(1L)
+                .field(RoleField.BACKEND)
+                .memberType(ProjectMemberType.MEMBER)
                 .memberStatus(ProjectMemberStatus.KICKED)
                 .build();
 
-        given(projectUserService.kickProjectUser(eq(1L)))
+        given(projectUserService.kickProjectUser(anyLong(), eq(1L)))
                 .willReturn(resDto);
 
         mockMvc.perform(patch("/api/v1/project-users/{projectUserId}/kick", 1L)
@@ -193,11 +197,67 @@ public class ProjectUserControllerTest {
 
                                         fieldWithPath("body").description("응답 데이터"),
                                         fieldWithPath("body.id").description("프로젝트 유저 ID"),
-                                        fieldWithPath("body.userId").description("유저 ID").optional(),
-                                        fieldWithPath("body.projectId").description("프로젝트 ID").optional(),
-                                        fieldWithPath("body.field").description("분야").optional(),
-                                        fieldWithPath("body.memberType").description("멤버 타입").optional(),
+                                        fieldWithPath("body.userId").description("유저 ID"),
+                                        fieldWithPath("body.projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body.field").description("분야"),
+                                        fieldWithPath("body.memberType").description("멤버 타입"),
                                         fieldWithPath("body.memberStatus").description("멤버 상태 (KICK)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void updateProjectUserType() throws Exception {
+        ProjectUserResDto resDto = ProjectUserResDto.builder()
+                .id(1L)
+                .userId(1L)
+                .projectId(1L)
+                .field(RoleField.BACKEND)
+                .memberType(ProjectMemberType.LEAD)
+                .memberStatus(ProjectMemberStatus.ACTIVE)
+                .build();
+
+        given(projectUserService.changeProjectUserTypeInProject(anyLong(), eq(1L), eq(ProjectMemberType.LEAD)))
+                .willReturn(resDto);
+
+        String requestJson = """
+                {
+                  "memberType": "LEAD"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/project-users/{projectUserId}/type", 1L)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("patch-project-user-type",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("ProjectUser")
+                                .summary("프로젝트 멤버 타입 변경")
+                                .description("프로젝트에서 특정 멤버의 타입을 변경합니다. (LEADER | LEAD | MEMBER)")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .requestFields(
+                                        fieldWithPath("memberType").description("변경할 프로젝트 멤버 타입")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body").description("응답 데이터"),
+                                        fieldWithPath("body.id").description("프로젝트 유저 ID"),
+                                        fieldWithPath("body.userId").description("유저 ID"),
+                                        fieldWithPath("body.projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body.field").description("분야"),
+                                        fieldWithPath("body.memberType").description("멤버 타입 (변경된 타입)"),
+                                        fieldWithPath("body.memberStatus").description("멤버 상태")
                                 )
                                 .build()
                         )
