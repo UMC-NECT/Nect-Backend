@@ -1,7 +1,6 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
-import com.nect.api.domain.team.chat.dto.res.ChatNotificationResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomListDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
@@ -9,6 +8,7 @@ import com.nect.api.domain.team.chat.exeption.ChatException;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
+import com.nect.core.entity.team.chat.enums.MessageType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,11 +61,11 @@ public class ChatRoomService {
             }
 
             return ChatRoomListDto.builder()
-                    .room_id(room.getId())
-                    .room_name(room.getName())
-                    .last_message(lastMessage != null ? lastMessage.getContent() : "")
-                    .has_new_message(hasNewMessage)
-                    .last_message_time(lastMessage != null ? lastMessage.getCreatedAt() : room.getCreatedAt())
+                    .roomId(room.getId())
+                    .roomName(room.getName())
+                    .lastMessage(lastMessage != null ? lastMessage.getContent() : "")
+                    .hasNewMessage(hasNewMessage)
+                    .lastMessageTime(lastMessage != null ? lastMessage.getCreatedAt() : room.getCreatedAt())
                     .build();
         }).collect(Collectors.toList());
     }
@@ -74,44 +75,114 @@ public class ChatRoomService {
     @Transactional
     public ChatRoomLeaveResponseDto leaveChatRoom(Long roomId, Long userId) {
 
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
-
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND));
-
-        // 멤버인지 확인하고 삭제
-        ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomIdAndUserUserId(roomId, userId)
+        ChatRoomUser chatRoomUser = chatRoomUserRepository
+                .findMemberInRoom(roomId, userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED));
 
-        chatRoomUserRepository.delete(chatRoomUser); // 방에서 내보내기
+        ChatRoom chatRoom = chatRoomUser.getChatRoom();
+        User user = chatRoomUser.getUser();
+        String userName = user.getNickname();
+        chatService.sendMessage(roomId, userId, userName + "님이 채팅방을 나갔습니다.");
 
-        // 나갔습니다 메시지 전송
-        chatService.sendMessage(roomId, userId,user.getNickname() + "님이 채팅방을 나갔습니다.");
+        chatRoomUserRepository.delete(chatRoomUser);
 
+        // 채팅방 전원이 나갈경우 채팅방 삭제
+        long remainingMemberCount = chatRoomUserRepository.countByChatRoomId(roomId);
+        if (remainingMemberCount == 0) {
+            chatRoomRepository.delete(chatRoom);
+        }
 
-        //TODO 추후에 리팩토링 할 때 컨버터로 넣겠습니다.
         return ChatRoomLeaveResponseDto.builder()
                 .roomId(roomId)
                 .userId(userId)
-                .userName(user.getNickname())
+                .userName(userName)
                 .message("채팅방을 나갔습니다.")
                 .leftAt(LocalDateTime.now())
                 .build();
     }
 
-    @Transactional
-    public ChatNotificationResponseDto updateNotificationSettings(Long roomId, Long userId, Boolean isEnabled) {
-        ChatRoomUser chatRoomUser = chatRoomUserRepository.findByChatRoomIdAndUserUserId(roomId, userId)
-                .orElseThrow(() -> new RuntimeException("해당 채팅방에 참여하고 있지 않은 사용자입니다."));
 
-        //TODO 채팅 알림은 어떻게 구현해야하는지 궁금합니다
-        //  알림 설정 변경 (도메인 엔티티 내부 메서드 활용)
-        chatRoomUser.updateNotification(isEnabled);
 
-        return chatConverter.toNotificationResponse(chatRoomUser);
+    public List<ChatRoomListDto> getProjectChatRooms(Long projectId, Long userId) {
+
+        List<ChatRoom> chatRooms = chatRoomRepository
+                .findGroupChatRoomsByProjectAndUser(projectId, userId);
+
+        return chatRooms.stream()
+                .map(room -> buildChatRoomListDto(room, userId))
+                .collect(Collectors.toList());
     }
 
+
+    private ChatRoomListDto buildChatRoomListDto(ChatRoom chatRoom, Long userId) {
+
+
+        int memberCount = chatRoomUserRepository.countByChatRoomId(chatRoom.getId());
+
+        //  TODO: 프로필 이미지 (User 엔티티에 profileImage 필드 추가 후 활성화)
+        List<String> profileImages = getProfileImages(chatRoom.getId());
+
+
+        ChatMessage lastMessage = chatMessageRepository
+                .findTopByChatRoomIdOrderByCreatedAtDesc(chatRoom.getId())
+                .orElse(null);
+
+
+        boolean hasNewMessage = checkHasNewMessage(chatRoom.getId(), userId, lastMessage);
+
+        return ChatRoomListDto.builder()
+                .roomId(chatRoom.getId())
+                .roomName(chatRoom.getName())
+                .memberCount(memberCount)
+                .profileImages(profileImages)
+                .lastMessage(getLastMessageContent(lastMessage))
+                .lastMessageTime(lastMessage != null ? lastMessage.getCreatedAt() : null)
+                .hasNewMessage(hasNewMessage)
+                .build();
+    }
+    /**
+     * TODO: 프로필 이미지 목록 조회
+     */
+    private List<String> getProfileImages(Long chatRoomId) {
+        // TODO: User 엔티티에 profileImage 필드 추가 후 주석 해제
+        return Collections.emptyList();
+
+    /*
+    List<ChatRoomUser> roomUsers = chatRoomUserRepository
+            .findAllByChatRoomId(chatRoomId);
+
+    return roomUsers.stream()
+            .map(ChatRoomUser::getUser)
+            .map(User::getProfileImage)
+            .filter(StringUtils::hasText)  // null, 빈 문자열 필터링
+            .limit(4)
+            .collect(Collectors.toList());
+    */
+    }
+
+    private boolean checkHasNewMessage(Long chatRoomId, Long userId, ChatMessage lastMessage) {
+        if (lastMessage == null) {
+            return false;
+        }
+
+        return chatRoomUserRepository
+                .findByChatRoomIdAndUser_UserId(chatRoomId, userId)
+                .map(userRoom -> {
+                    Long lastReadMessageId = userRoom.getLastReadMessageId();
+                    return lastReadMessageId == null || lastMessage.getId() > lastReadMessageId;
+                })
+                .orElse(false);
+    }
+    private String getLastMessageContent(ChatMessage lastMessage) {
+        if (lastMessage == null) {
+            return null;
+        }
+
+        if (lastMessage.getMessageType() == MessageType.FILE) {
+            return " 파일을 보냈습니다.";
+        }
+
+        return lastMessage.getContent();
+    }
 
 }

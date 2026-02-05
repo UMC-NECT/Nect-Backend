@@ -20,10 +20,16 @@ public class ChatMessageDto {
     private Long userId;
     private Long roomId;
     private String userName;
+
+    // TODO: 프로필 사진
+    private String profileImage;
+
     private String content;
     private MessageType messageType;
     private Boolean isPinned;
     private LocalDateTime createdAt;
+
+    private Integer readCount;
     // 파일 일 경우
     private ChatFileUploadResponseDto fileInfo;
 

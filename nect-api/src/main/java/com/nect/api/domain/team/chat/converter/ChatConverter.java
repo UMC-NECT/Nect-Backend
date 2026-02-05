@@ -3,7 +3,6 @@ package com.nect.api.domain.team.chat.converter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomDto;
 import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
-import com.nect.api.domain.team.chat.dto.res.ChatNotificationResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.core.entity.team.Project;
@@ -143,21 +142,15 @@ public class ChatConverter {
         return ChatNoticeResponseDto.builder()
                 .messageId(message.getId())
                 .roomId(message.getChatRoom().getId())
+                .userId(message.getUser() != null ? message.getUser().getUserId() : null)
                 .content(message.getContent())
                 .messageType(message.getMessageType())
-                // User가 null일 경우 대비 (시스템 메시지 등)
                 .senderName(message.getUser() != null ? message.getUser().getNickname() : "알 수 없음")
                 .isPinned(message.getIsPinned())
-                .registeredAt(LocalDateTime.now())
+                .registeredAt(message.getCreatedAt())
                 .build();
     }
 
-    public static ChatNotificationResponseDto toNotificationResponse(ChatRoomUser chatRoomUser) {
-        return ChatNotificationResponseDto.builder()
-                .roomId(chatRoomUser.getChatRoom().getId())
-                .isNotificationEnabled(chatRoomUser.getIsNotificationEnabled())
-                .build();
-    }
 
     public static List<ChatRoomUser> toChatRoomUserList(ChatRoom chatRoom, List<User> users) {
         return users.stream()

@@ -12,6 +12,11 @@ public enum ProjectErrorCode implements ResponseCode {
     PROJECT_USER_NOT_FOUND("P400_2", "해당 프로젝트 유저가 존재하지 않습니다."),
     ANALYSIS_NOT_FOUND("P400_3", "해당 분석서가 존재하지 않습니다."),
     INVALID_ANALYSIS_DATA("P400_4", "분석서 데이터가 유효하지 않습니다."),
+    USER_NOT_FOUND("P400_5", "해당 사용자가 존재하지 않습니다."),
+    WEEK_MISSION_NOT_FOUND("P400_6", "해당 위크미션을 찾을 수 없습니다."),
+    WEEK_MISSION_ALREADY_INITIALIZED("P400_7", "위크미션이 이미 생성되어 있습니다."),
+    INVALID_WEEK_MISSION_UPDATE("P400_8", "수정할 수 없는 항목이 포함되어 있습니다."),
+
 
     LEADER_ONLY_ACTION("P403_1", "리더만 할 수 있는 요청입니다."),
     ;

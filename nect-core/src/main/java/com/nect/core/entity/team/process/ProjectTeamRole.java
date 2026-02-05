@@ -1,7 +1,8 @@
-package com.nect.core.entity.analysis;
+package com.nect.core.entity.team.process;
 
 
 import com.nect.core.entity.BaseEntity;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,8 +18,9 @@ public class ProjectTeamRole extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "project_id", nullable = false)
-    private Long projectId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role_field", nullable = false)
@@ -28,9 +30,11 @@ public class ProjectTeamRole extends BaseEntity {
     private Integer requiredCount;
 
     @Builder
-    public ProjectTeamRole(Long projectId, RoleField roleField, Integer requiredCount) {
-        this.projectId = projectId;
+    private ProjectTeamRole(Project project, RoleField roleField, Integer requiredCount) {
+        this.project = project;
         this.roleField = roleField;
         this.requiredCount = requiredCount;
     }
+
+
 }

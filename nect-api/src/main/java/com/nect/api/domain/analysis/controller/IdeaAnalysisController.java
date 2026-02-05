@@ -66,6 +66,7 @@ public class IdeaAnalysisController {
 
         return ApiResponse.ok(response);
     }
+
 }
 
 
