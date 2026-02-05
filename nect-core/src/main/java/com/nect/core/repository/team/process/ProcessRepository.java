@@ -18,8 +18,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     Optional<Process> findByIdAndProjectIdAndDeletedAtIsNull(Long id, Long projectId);
 
     @EntityGraph(attributePaths = {
-            "taskItems",
-            "processFields",
             "processUsers",
             "processUsers.user"
     })
@@ -65,102 +63,85 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
      *  Team 보드(공통) 조회
      * - "모든 팀의 작업들을 전부 확인" => 필드/파트 관계없이 전체 프로세스 조회
      */
-    @EntityGraph(attributePaths = {
-            "taskItems",
-            "processFields",
-            "processUsers",
-            "processUsers.user"
-    })
+    @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
     @Query("""
         select p
         from Process p
+        left join ProcessLaneOrder o
+          on o.process = p
+         and o.projectId = :projectId
+         and o.laneKey = 'TEAM'
+         and o.status = p.status
+         and o.deletedAt is null
         where p.project.id = :projectId
           and p.deletedAt is null
-        order by p.status asc, p.statusOrder asc, p.id asc
+        order by
+          p.status asc,
+          coalesce(o.sortOrder, 999999) asc,
+          p.id asc
     """)
     List<Process> findAllForTeamBoard(@Param("projectId") Long projectId);
+
+    // ROLE 레인: 조건에 맞는 Process ID만 (정렬은 굳이 안 해도 됨)
+    @Query("""
+        select distinct p.id
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField = :roleField
+    """)
+    List<Long> findRoleLaneIds(
+            @Param("projectId") Long projectId,
+            @Param("roleField") RoleField roleField
+    );
+
+    // CUSTOM 레인: 조건에 맞는 Process ID만
+    @Query("""
+        select distinct p.id
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
+          and trim(pf.customFieldName) = :customName
+    """)
+    List<Long> findCustomLaneIds(
+            @Param("projectId") Long projectId,
+            @Param("customName") String customName
+    );
 
     /**
      * 파트 보드 조회:
      * - 지정된 roleField가 매핑된 프로세스만 조회한다.
      */
-    @EntityGraph(attributePaths = {
-            "taskItems",
-            "processFields",
-            "processUsers",
-            "processUsers.user"
-    })
+    // 유저용
+    @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
     @Query("""
-        select distinct p
+        select p
         from Process p
-        join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and pf.deletedAt is null
-          and pf.roleField = :roleField
-        order by p.status asc, p.statusOrder asc, p.id asc
+          and p.id in :ids
     """)
-    List<Process> findAllForRoleLaneBoard(
+    List<Process> findAllByIdsInProjectWithUsers(
             @Param("projectId") Long projectId,
-            @Param("roleField") RoleField roleField
+            @Param("ids") List<Long> ids
     );
 
-    @EntityGraph(attributePaths = {
-            "taskItems",
-            "processFields",
-            "processUsers",
-            "processUsers.user"
-    })
+    @EntityGraph(attributePaths = { "processFields" })
     @Query("""
-        select distinct p
+        select p
         from Process p
-        join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and pf.deletedAt is null
-          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
-          and pf.customFieldName = :customName
-        order by p.status asc, p.statusOrder asc, p.id asc
+          and p.id in :ids
     """)
-    List<Process> findAllForCustomLaneBoard(
+    List<Process> findAllByIdsInProjectWithFields(
             @Param("projectId") Long projectId,
-            @Param("customName") String customName
-    );
-
-
-    int countByProjectIdAndDeletedAtIsNullAndStatus(Long projectId, ProcessStatus status);
-
-    @Query("""
-        select count(distinct p)
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.status = :status
-          and pf.deletedAt is null
-          and pf.roleField = :roleField
-    """)
-    int countRoleLaneTotal(
-            @Param("projectId") Long projectId,
-            @Param("status") ProcessStatus status,
-            @Param("roleField") RoleField roleField
-    );
-
-    @Query("""
-        select count(distinct p)
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.status = :status
-          and pf.deletedAt is null
-          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
-          and pf.customFieldName = :customName
-    """)
-    int countCustomLaneTotal(
-            @Param("projectId") Long projectId,
-            @Param("status") ProcessStatus status,
-            @Param("customName") String customName
+            @Param("ids") List<Long> ids
     );
 
     interface MissionProgressRow {
@@ -205,5 +186,163 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         GROUP BY pu.user.userId, p.status
         """)
     List<MemberProcessCountRow> aggregateMemberProcessCounts(@Param("projectId") Long projectId);
+
+
+    interface LaneStatusCountRow {
+        RoleField getRoleField();
+        String getCustomName();
+        ProcessStatus getStatus();
+        long getCnt();
+    }
+
+    // ROLE 레인 집계 (CUSTOM 제외)
+    @Query("""
+        select
+            pf.roleField as roleField,
+            null as customName,
+            p.status as status,
+            count(distinct p.id) as cnt
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField is not null
+          and pf.roleField <> :custom
+          and p.status in :statuses
+        group by pf.roleField, p.status
+    """)
+    List<LaneStatusCountRow> countRoleLaneStatusForProgressSummary(
+            @Param("projectId") Long projectId,
+            @Param("custom") RoleField custom,
+            @Param("statuses") List<ProcessStatus> statuses
+    );
+
+    // CUSTOM 레인 집계 (customFieldName별)
+    @Query("""
+        select
+            :custom as roleField,
+            trim(pf.customFieldName) as customName,
+            p.status as status,
+            count(distinct p.id) as cnt
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField = :custom
+          and pf.customFieldName is not null
+          and trim(pf.customFieldName) <> ''
+          and p.status in :statuses
+        group by trim(pf.customFieldName), p.status
+    """)
+    List<LaneStatusCountRow> countCustomLaneStatusForProgressSummary(
+            @Param("projectId") Long projectId,
+            @Param("custom") RoleField custom,
+            @Param("statuses") List<ProcessStatus> statuses
+    );
+
+    // status 내 TEAM 전체
+    @Query("""
+        select p
+        from Process p
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.status = :status
+    """)
+    List<Process> findAllByStatusInProject(
+            @Param("projectId") Long projectId,
+            @Param("status") ProcessStatus status
+    );
+
+    // status 내 ROLE lane 전체
+    @Query("""
+        select distinct p
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.status = :status
+          and pf.deletedAt is null
+          and pf.roleField = :roleField
+    """)
+    List<Process> findAllInRoleLaneByStatus(
+            @Param("projectId") Long projectId,
+            @Param("status") ProcessStatus status,
+            @Param("roleField") RoleField roleField
+    );
+
+    // status 내 CUSTOM lane 전체
+    @Query("""
+        select distinct p
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.status = :status
+          and pf.deletedAt is null
+          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
+          and trim(pf.customFieldName) = :customName
+    """)
+    List<Process> findAllInCustomLaneByStatus(
+            @Param("projectId") Long projectId,
+            @Param("status") ProcessStatus status,
+            @Param("customName") String customName
+    );
+
+    // 프로젝트에 존재하는 lane 목록(ROLE + CUSTOM 이름)
+    interface LaneKeyRow {
+        RoleField getRoleField();
+        String getCustomFieldName();
+    }
+
+    @Query("""
+        select distinct
+          pf.roleField as roleField,
+          pf.customFieldName as customFieldName
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and pf.deletedAt is null
+          and pf.roleField is not null
+    """)
+    List<LaneKeyRow> findLaneKeysInProject(@Param("projectId") Long projectId);
+
+    int countByProjectIdAndDeletedAtIsNullAndStatus(Long projectId, ProcessStatus status);
+
+
+    @Query("""
+        select count(distinct p)
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.status = :status
+          and pf.deletedAt is null
+          and pf.roleField = :roleField
+    """)
+    int countRoleLaneTotal(
+            @Param("projectId") Long projectId,
+            @Param("status") ProcessStatus status,
+            @Param("roleField") RoleField roleField
+    );
+
+    @Query("""
+        select count(distinct p)
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.status = :status
+          and pf.deletedAt is null
+          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
+          and trim(pf.customFieldName) = :customName
+    """)
+    int countCustomLaneTotal(
+            @Param("projectId") Long projectId,
+            @Param("status") ProcessStatus status,
+            @Param("customName") String customName
+    );
 }
 

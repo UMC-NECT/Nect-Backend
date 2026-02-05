@@ -1,35 +1,14 @@
 package com.nect.api.domain.user.service;
 
-import com.nect.api.domain.user.dto.AgreeDto;
-import com.nect.api.domain.user.dto.DuplicateCheckDto;
-import com.nect.api.domain.user.dto.LoginDto;
-import com.nect.api.domain.user.dto.SignUpDto;
-import com.nect.api.domain.user.dto.ProfileDto;
-import com.nect.api.domain.user.enums.CheckType;
+import com.nect.api.domain.user.dto.*;
 import com.nect.api.domain.user.exception.*;
-import com.nect.core.entity.user.enums.UserType;
-import com.nect.core.entity.user.enums.Job;
-import com.nect.core.entity.user.enums.Role;
-import com.nect.core.entity.user.enums.RoleField;
-import com.nect.core.entity.user.enums.Goal;
-import com.nect.core.entity.user.enums.Skill;
-import com.nect.core.entity.user.enums.SkillCategory;
-import com.nect.core.entity.user.enums.InterestField;
-import com.nect.core.entity.user.*;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.dto.TokenDataDto;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
-import com.nect.core.entity.user.TermUser;
-import com.nect.core.entity.user.User;
-import com.nect.core.entity.user.UserRole;
-import com.nect.core.entity.user.UserSkill;
-import com.nect.core.entity.user.UserInterest;
-import com.nect.core.repository.user.TermUserRepository;
-import com.nect.core.repository.user.UserRepository;
-import com.nect.core.repository.user.UserRoleRepository;
-import com.nect.core.repository.user.UserSkillRepository;
-import com.nect.core.repository.user.UserInterestRepository;
+import com.nect.core.entity.user.*;
+import com.nect.core.entity.user.enums.*;
+import com.nect.core.repository.user.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -522,5 +501,9 @@ public class UserService {
                 user.getRole() != null ? user.getRole().getDescription() : null,
                 user.getEmail()
         );
+      
+    public User getUser(Long userId){
+        return userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
     }
 }
