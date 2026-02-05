@@ -581,5 +581,27 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("excludeProcessId") Long excludeProcessId
     );
 
+    @Query("""
+        select
+          p.missionNumber as missionNumber,
+          min(p.startAt) as startDate,
+          max(p.endAt) as endDate
+        from Process p
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.missionNumber is not null
+          and p.startAt is not null
+          and p.endAt is not null
+        group by p.missionNumber
+        order by p.missionNumber asc
+    """)
+    List<WeekMissionRangeRow> findWeekMissionRanges(@Param("projectId") Long projectId);
+
+    interface WeekMissionRangeRow {
+        Integer getMissionNumber();
+        LocalDate getStartDate();
+        LocalDate getEndDate();
+    }
+
 }
 

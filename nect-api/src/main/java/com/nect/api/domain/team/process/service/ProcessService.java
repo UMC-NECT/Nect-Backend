@@ -24,6 +24,7 @@ import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.ProcessLaneOrderRepository;
@@ -53,6 +54,7 @@ public class ProcessService {
     private final ProcessMentionRepository processMentionRepository;
     private final UserRepository userRepository;
     private final ProcessLaneOrderRepository processLaneOrderRepository;
+    private final ProjectTeamRoleRepository projectTeamRoleRepository;
 
     private final ProcessLaneOrderService processLaneOrderService;
 
@@ -291,6 +293,41 @@ public class ProcessService {
         }
     }
 
+    private void validateProjectTeamRolesOrThrow(Long projectId, List<RoleField> roleFields, String customFieldName) {
+
+        // roleFields(일반 역할) 검증
+        for (RoleField rf : Optional.ofNullable(roleFields).orElse(List.of())) {
+            if (rf == null) continue;
+
+            if (rf == RoleField.CUSTOM) continue; // CUSTOM은 customFieldName으로 검증
+
+            boolean exists = projectTeamRoleRepository.existsByProject_IdAndRoleField(projectId, rf);
+            if (!exists) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "role_field not registered in project. roleField=" + rf
+                );
+            }
+        }
+
+        // CUSTOM 검증 (ProcessCreateReqDto는 customFieldName 단일)
+        if (roleFields != null && roleFields.contains(RoleField.CUSTOM)) {
+            String name = (customFieldName == null) ? "" : customFieldName.trim();
+            if (name.isBlank()) {
+                throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "custom_field_name is required");
+            }
+
+            boolean exists = projectTeamRoleRepository
+                    .existsByProject_IdAndRoleFieldAndCustomRoleFieldName(projectId, RoleField.CUSTOM, name);
+
+            if (!exists) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "custom role not registered in project. customRoleFieldName=" + name
+                );
+            }
+        }
+    }
 
     // 알림 관련 헬퍼 메서드
     private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
@@ -338,7 +375,7 @@ public class ProcessService {
         assertActiveProjectMember(projectId, userId);
         validateProcessTitle(req.processTitle());
 
-        List<ProcessTaskItemReqDto> taskItems = req.taskItems();
+        List<ProcessTaskItemReqDto> taskItems = Optional.ofNullable(req.taskItems()).orElse(List.of());
         validateTaskItems(taskItems);
 
         // 프로젝트 확인
@@ -387,8 +424,20 @@ public class ProcessService {
 
         process.updatePeriod(start, end);
 
+        // 필드(역할) CUSTOM쪽 검증
+        List<RoleField> roleFields = Optional.ofNullable(req.roleFields()).orElse(List.of())
+                .stream().filter(Objects::nonNull).distinct().toList();
+
+        // 정규화 이후 검증/저장/히스토리 모두 이 값 사용
+        String customName = (req.customFieldName() == null) ? null : req.customFieldName().trim();
+
+        // 프로젝트에 등록된 파트인지 검증 (CUSTOM 포함)
+        validateProjectTeamRolesOrThrow(projectId, roleFields, req.customFieldName());
+
+        // 미션 N 검증: "시작일만" 미션 기간에 포함되면 요구사항 일치
         validateStartDateInSelectedMission(projectId, req.missionNumber(), start);
 
+        // lane 기간 겹침 검증
         validateNoOverlapInLane(projectId, req, start, end);
 
         int i = 0;
@@ -444,26 +493,9 @@ public class ProcessService {
         }
 
 
-        // 필드(역할) CUSTOM쪽 검증
-        List<RoleField> roleFields = Optional.ofNullable(req.roleFields()).orElse(List.of())
-                .stream().filter(Objects::nonNull).distinct().toList();
-
-
-        if (roleFields.contains(RoleField.CUSTOM)) {
-            if (req.customFieldName() == null || req.customFieldName().isBlank()) {
-                throw new ProcessException(
-                        ProcessErrorCode.INVALID_REQUEST,
-                        "custom_field_name is required when role_fields contains CUSTOM"
-                );
-            }
-        }
-
         for (RoleField rf : roleFields) {
-            if (rf == RoleField.CUSTOM) {
-                process.addField(RoleField.CUSTOM, req.customFieldName());
-            } else {
-                process.addField(rf, null);
-            }
+            if (rf == RoleField.CUSTOM) process.addField(RoleField.CUSTOM, customName);
+            else process.addField(rf, null);
         }
 
 
@@ -527,7 +559,7 @@ public class ProcessService {
         meta.put("startAt", saved.getStartAt());
         meta.put("endAt", saved.getEndAt());
         meta.put("roleFields", roleFields);
-        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? req.customFieldName() : null);
+        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? customName : null);
         meta.put("assigneeIds", assigneeIds);
         meta.put("mentionUserIds", mentionIds);
         meta.put("fileIds", fileIds);
@@ -875,6 +907,7 @@ public class ProcessService {
                 .filter(pf -> pf.getDeletedAt() == null)
                 .map(ProcessField::getRoleField)
                 .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM)
                 .distinct()
                 .sorted(Comparator.comparing(Enum::name))
                 .toList();
@@ -900,6 +933,7 @@ public class ProcessService {
                 .toList();
 
         if(req.processTitle() != null && !req.processTitle().isBlank()) {
+            validateProcessTitle(req.processTitle());
             process.updateTitle(req.processTitle());
         }
 
@@ -929,41 +963,66 @@ public class ProcessService {
             );
         }
 
+        // 시작일만 미션 범위에 포함되면 통과
         if (req.missionNumber() != null && mergedStart != null && mergedEnd != null) {
             validateStartDateInSelectedMission(projectId, req.missionNumber(), mergedStart);
         }
 
-        if (mergedStart != null && mergedEnd != null && (newStart != null || newEnd != null)) {
+        // fields PATCH 준비(정규화 + 프로젝트 등록 파트 검증)
+        boolean fieldsPatchRequested = (req.roleFields() != null || req.customFields() != null);
 
-            // 검증할 lane 후보 결정
-            List<RoleField> laneRoleFields =
-                    (req.roleFields() != null)
-                            ? req.roleFields()
-                            : process.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .map(ProcessField::getRoleField)
-                            .filter(Objects::nonNull)
-                            .filter(rf -> rf != RoleField.CUSTOM)
-                            .distinct()
-                            .toList();
+        List<RoleField> requestedRoleFields = (req.roleFields() == null)
+                ? null
+                : req.roleFields().stream()
+                .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM)
+                .distinct()
+                .toList();
 
-            List<String> laneCustomFields =
-                    (req.customFields() != null)
-                            ? req.customFields()
-                            : process.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
-                            .map(ProcessField::getCustomFieldName)
-                            .filter(Objects::nonNull)
-                            .map(String::trim)
-                            .filter(s -> !s.isBlank())
-                            .distinct()
-                            .toList();
+        List<String> requestedCustomFields = (req.customFields() == null)
+                ? null
+                : normalizeCustomFields(req.customFields());
+
+        if (fieldsPatchRequested) {
+            validateProjectTeamRolesForUpdateOrThrow(
+                    projectId,
+                    (requestedRoleFields == null ? List.of() : requestedRoleFields),
+                    (requestedCustomFields == null ? List.of() : requestedCustomFields)
+            );
+        }
+
+        // 기간 변경이 없더라도 "파트/커스텀 변경"만으로도 lane이 바뀌면 overlap 가능
+        boolean periodPatchRequested = (newStart != null || newEnd != null);
+
+        if (mergedStart != null && mergedEnd != null && (periodPatchRequested || fieldsPatchRequested)) {
+
+            List<RoleField> laneRoleFields = (requestedRoleFields != null)
+                    ? requestedRoleFields
+                    : process.getProcessFields().stream()
+                    .filter(pf -> pf.getDeletedAt() == null)
+                    .map(ProcessField::getRoleField)
+                    .filter(Objects::nonNull)
+                    .filter(rf -> rf != RoleField.CUSTOM)
+                    .distinct()
+                    .toList();
+
+            List<String> laneCustomFields = (requestedCustomFields != null)
+                    ? requestedCustomFields
+                    : process.getProcessFields().stream()
+                    .filter(pf -> pf.getDeletedAt() == null)
+                    .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                    .map(ProcessField::getCustomFieldName)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isBlank())
+                    .distinct()
+                    .toList();
 
             validateNoOverlapForUpdateBasic(projectId, processId, laneRoleFields, laneCustomFields, mergedStart, mergedEnd);
         }
 
-        if (newStart != null || newEnd != null) {
+
+        if (periodPatchRequested) {
             process.updatePeriod(mergedStart, mergedEnd);
         }
 
@@ -973,8 +1032,8 @@ public class ProcessService {
 
         // 멘션 알림: 요청이 들어온 경우에만, 그리고 '새로 추가된 멘션'에게만 전송
         if (req.mentionUserIds() != null) {
-            List<Long> afterIds = (mentionIdsForRes == null) ? List.of() : mentionIdsForRes.stream()
-                    .filter(Objects::nonNull).distinct().toList();
+            List<Long> afterIds = (mentionIdsForRes == null) ? List.of()
+                    : mentionIdsForRes.stream().filter(Objects::nonNull).distinct().toList();
 
             Set<Long> beforeSet = new HashSet<>(beforeMentionIds);
             List<Long> addedMentionIds = afterIds.stream()
@@ -997,61 +1056,44 @@ public class ProcessService {
             }
         }
 
-        if (req.roleFields() != null || req.customFields() != null) {
-            //  기존 전부 soft delete
+        if (fieldsPatchRequested) {
+            // 기존 전부 soft delete
             process.getProcessFields().forEach(pf -> {
                 if (pf.getDeletedAt() == null) pf.softDelete();
             });
 
-            // roleFields 반영 (CUSTOM 제외)
-            List<RoleField> requestedRoleFields = (req.roleFields() == null) ? List.of() : req.roleFields();
-            for (RoleField rf : requestedRoleFields) {
-                if (rf == null) continue;
-                if (rf == RoleField.CUSTOM) continue;
-
-                // 기존에 같은 roleField가 삭제된 상태로 있으면 restore, 없으면 생성
+            List<RoleField> finalRoleFields = (requestedRoleFields == null) ? List.of() : requestedRoleFields;
+            for (RoleField rf : finalRoleFields) {
                 ProcessField found = process.getProcessFields().stream()
                         .filter(pf -> pf.getRoleField() == rf)
                         .findFirst()
                         .orElse(null);
 
-                if (found != null) {
-                    found.restore();
-                } else {
-                    ProcessField pf = ProcessField.builder()
-                            .process(process)
-                            .roleField(rf)
-                            .customFieldName(null)
-                            .build();
-                    process.getProcessFields().add(pf);
-                }
+                if (found != null) found.restore();
+                else process.getProcessFields().add(ProcessField.builder()
+                        .process(process)
+                        .roleField(rf)
+                        .customFieldName(null)
+                        .build());
             }
 
-            // customFields 반영 (CUSTOM은 이름 기반)
-            List<String> requestedCustomFields = (req.customFields() == null) ? List.of() : req.customFields();
-            for (String name : requestedCustomFields) {
-                if (name == null) continue;
-                String trimmed = name.trim();
-                if (trimmed.isBlank()) continue;
-
+            List<String> finalCustomFields = (requestedCustomFields == null) ? List.of() : requestedCustomFields;
+            for (String name : finalCustomFields) {
                 ProcessField found = process.getProcessFields().stream()
                         .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
-                        .filter(pf -> trimmed.equals(pf.getCustomFieldName()))
+                        .filter(pf -> pf.getCustomFieldName() != null && pf.getCustomFieldName().trim().equals(name))
                         .findFirst()
                         .orElse(null);
 
-                if (found != null) {
-                    found.restore();
-                } else {
-                    ProcessField pf = ProcessField.builder()
-                            .process(process)
-                            .roleField(RoleField.CUSTOM)
-                            .customFieldName(trimmed)
-                            .build();
-                    process.getProcessFields().add(pf);
-                }
+                if (found != null) found.restore();
+                else process.getProcessFields().add(ProcessField.builder()
+                        .process(process)
+                        .roleField(RoleField.CUSTOM)
+                        .customFieldName(name)
+                        .build());
             }
         }
+
 
         // 요청이 null이면 변경 안 함
         if (req.assigneeIds() != null) {
@@ -1254,6 +1296,57 @@ public class ProcessService {
                 )
         );
 
+    }
+
+    private List<String> normalizeCustomFields(List<String> raw) {
+        return raw.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    /**
+     * 프로젝트에 등록된 파트(ProjectTeamRole)인지 검증
+     * - roleFields: CUSTOM 제외 리스트
+     * - customFields: CUSTOM 이름 리스트
+     */
+    private void validateProjectTeamRolesForUpdateOrThrow(Long projectId, List<RoleField> roleFields, List<String> customFields) {
+        List<ProjectTeamRoleRepository.TeamRoleRow> rows =
+                projectTeamRoleRepository.findActiveTeamRoleRowsByProjectId(projectId);
+
+        Set<RoleField> registeredRoleFields = rows.stream()
+                .map(ProjectTeamRoleRepository.TeamRoleRow::getRoleField)
+                .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM)
+                .collect(Collectors.toSet());
+
+        Set<String> registeredCustomNames = rows.stream()
+                .filter(r -> r.getRoleField() == RoleField.CUSTOM)
+                .map(ProjectTeamRoleRepository.TeamRoleRow::getCustomRoleFieldName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toSet());
+
+        for (RoleField rf : roleFields) {
+            if (!registeredRoleFields.contains(rf)) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "role_field not registered in project. projectId=" + projectId + ", roleField=" + rf
+                );
+            }
+        }
+
+        for (String name : customFields) {
+            if (!registeredCustomNames.contains(name)) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "custom_field not registered in project. projectId=" + projectId + ", customField=" + name
+                );
+            }
+        }
     }
 
 
