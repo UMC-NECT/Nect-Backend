@@ -144,6 +144,153 @@ public class ProcessService {
         }
     }
 
+    // lane 내 기간 겹침 검증
+    private void validateNoOverlapInLane(Long projectId, ProcessCreateReqDto req, LocalDate start, LocalDate end) {
+        List<RoleField> roleFields = Optional.ofNullable(req.roleFields()).orElse(List.of())
+                .stream().filter(Objects::nonNull).distinct().toList();
+
+        // ROLE (CUSTOM 제외)
+        for (RoleField rf : roleFields) {
+            if (rf == RoleField.CUSTOM) continue;
+
+            boolean overlap = processRepository.existsOverlappingInRoleLane(projectId, rf, start, end);
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "roleField=" + rf + ", start=" + start + ", end=" + end
+                );
+            }
+        }
+
+        // CUSTOM lane
+        if (roleFields.contains(RoleField.CUSTOM)) {
+            String custom = (req.customFieldName() == null) ? "" : req.customFieldName().trim();
+            if (custom.isBlank()) {
+                throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "custom_field_name is required when role_fields contains CUSTOM");
+            }
+
+            boolean overlap = processRepository.existsOverlappingInCustomLane(projectId, custom, start, end);
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "customName=" + custom + ", start=" + start + ", end=" + end
+                );
+            }
+        }
+    }
+
+    private void validateNoOverlapForUpdateBasic(
+            Long projectId,
+            Long processId,
+            List<RoleField> roleFields,
+            List<String> customFields,
+            LocalDate start,
+            LocalDate end
+    ) {
+        // ROLE (CUSTOM 제외)
+        for (RoleField rf : Optional.ofNullable(roleFields).orElse(List.of())) {
+            if (rf == null || rf == RoleField.CUSTOM) continue;
+
+            boolean overlap = processRepository.existsOverlappingInRoleLaneExcludingProcess(
+                    projectId, rf, start, end, processId
+            );
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "roleField=" + rf + ", start=" + start + ", end=" + end
+                );
+            }
+        }
+
+        // CUSTOM lanes (이름 기반)
+        for (String name : Optional.ofNullable(customFields).orElse(List.of())) {
+            if (name == null) continue;
+            String trimmed = name.trim();
+            if (trimmed.isBlank()) continue;
+
+            boolean overlap = processRepository.existsOverlappingInCustomLaneExcludingProcess(
+                    projectId, trimmed, start, end, processId
+            );
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "customName=" + trimmed + ", start=" + start + ", end=" + end
+                );
+            }
+        }
+    }
+
+    private void validateNoOverlapForUpdateOrderLane(
+            Long projectId,
+            Long processId,
+            String dbLaneKey,
+            LocalDate start,
+            LocalDate end
+    ) {
+        if (TEAM_LANE_KEY.equals(dbLaneKey)) return;
+
+        if (dbLaneKey.startsWith("ROLE:")) {
+            RoleField rf = parseRoleField(dbLaneKey);
+            if (rf == RoleField.CUSTOM) {
+                throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ROLE lane cannot be CUSTOM. laneKey=" + dbLaneKey);
+            }
+
+            boolean overlap = processRepository.existsOverlappingInRoleLaneExcludingProcess(
+                    projectId, rf, start, end, processId
+            );
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "roleField=" + rf + ", start=" + start + ", end=" + end
+                );
+            }
+            return;
+        }
+
+        if (dbLaneKey.startsWith("CUSTOM:")) {
+            String customName = parseCustomName(dbLaneKey);
+
+            boolean overlap = processRepository.existsOverlappingInCustomLaneExcludingProcess(
+                    projectId, customName, start, end, processId
+            );
+            if (overlap) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                        "customName=" + customName + ", start=" + start + ", end=" + end
+                );
+            }
+            return;
+        }
+
+        throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "invalid lane_key prefix. laneKey=" + dbLaneKey);
+    }
+
+
+    // 선택 미션 N과 startDate 포함 검증
+    private void validateStartDateInSelectedMission(Long projectId, Integer missionNumber, LocalDate startDate) {
+        if (missionNumber == null) return;
+
+        var mp = processRepository.findWeekMissionPeriodByMissionNumber(projectId, missionNumber)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "week mission not found. missionNumber=" + missionNumber
+                ));
+
+        LocalDate mStart = mp.getStartAt();
+        LocalDate mEnd = mp.getEndAt();
+        if (mStart == null || mEnd == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "missionNumber=" + missionNumber);
+        }
+
+        boolean ok = !startDate.isBefore(mStart) && !startDate.isAfter(mEnd);
+        if (!ok) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_PROCESS_PERIOD,
+                    "startDate=" + startDate + ", mission=" + missionNumber
+            );
+        }
+    }
+
 
     // 알림 관련 헬퍼 메서드
     private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
@@ -174,7 +321,7 @@ public class ProcessService {
         NotificationCommand command = new NotificationCommand(
                 NotificationType.WORKSPACE_MENTIONED,
                 NotificationClassification.WORK_STATUS,
-                NotificationScope.WORKSPACE_GLOBAL,
+                NotificationScope.WORKSPACE_ONLY,
                 targetProcessId,
                 new Object[]{ actor.getName() },
                 new Object[]{ content },
@@ -239,6 +386,10 @@ public class ProcessService {
         }
 
         process.updatePeriod(start, end);
+
+        validateStartDateInSelectedMission(projectId, req.missionNumber(), start);
+
+        validateNoOverlapInLane(projectId, req, start, end);
 
         int i = 0;
         // 업무 리스트 저장
@@ -405,16 +556,32 @@ public class ProcessService {
                         "writer must be active project member. projectId=" + projectId + ", userId=" + userId
                 ));
 
+        List<ProcessCreateResDto.AssigneeDto> assigneeDtos =
+                saved.getProcessUsers().stream()
+                        .filter(pu -> pu.getDeletedAt() == null)
+                        .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                        .map(pu -> {
+                            User u = pu.getUser();
+                            return new ProcessCreateResDto.AssigneeDto(
+                                    u.getUserId(),
+                                    u.getName(),
+                                    u.getNickname(),
+                                    u.getProfileImageUrl()
+                            );
+                        })
+                        .toList();
+
         return new ProcessCreateResDto(
                 saved.getId(),
                 saved.getCreatedAt(),
-                new ProcessCreateResDto.WriterDto(
+                new ProcessCreateResDto.WriterDto( // 작성자
                         writer.getUserId(),
                         writer.getName(),
                         writer.getNickname(),
                         writerMember.getRoleField(),
                         writerMember.getCustomRoleFieldName()
-                )
+                ),
+                assigneeDtos // 담당자
         );
     }
 
@@ -529,8 +696,7 @@ public class ProcessService {
                 .map(pu -> {
                     User u = pu.getUser();
 
-                    // TODO : 유저 프로필 넣기
-                    String userImage = null;
+                    String userImage = u.getProfileImageUrl();
 
                     return new AssigneeResDto(
                             u.getUserId(),
@@ -763,6 +929,40 @@ public class ProcessService {
             );
         }
 
+        if (req.missionNumber() != null && mergedStart != null && mergedEnd != null) {
+            validateStartDateInSelectedMission(projectId, req.missionNumber(), mergedStart);
+        }
+
+        if (mergedStart != null && mergedEnd != null && (newStart != null || newEnd != null)) {
+
+            // 검증할 lane 후보 결정
+            List<RoleField> laneRoleFields =
+                    (req.roleFields() != null)
+                            ? req.roleFields()
+                            : process.getProcessFields().stream()
+                            .filter(pf -> pf.getDeletedAt() == null)
+                            .map(ProcessField::getRoleField)
+                            .filter(Objects::nonNull)
+                            .filter(rf -> rf != RoleField.CUSTOM)
+                            .distinct()
+                            .toList();
+
+            List<String> laneCustomFields =
+                    (req.customFields() != null)
+                            ? req.customFields()
+                            : process.getProcessFields().stream()
+                            .filter(pf -> pf.getDeletedAt() == null)
+                            .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                            .map(ProcessField::getCustomFieldName)
+                            .filter(Objects::nonNull)
+                            .map(String::trim)
+                            .filter(s -> !s.isBlank())
+                            .distinct()
+                            .toList();
+
+            validateNoOverlapForUpdateBasic(projectId, processId, laneRoleFields, laneCustomFields, mergedStart, mergedEnd);
+        }
+
         if (newStart != null || newEnd != null) {
             process.updatePeriod(mergedStart, mergedEnd);
         }
@@ -904,6 +1104,20 @@ public class ProcessService {
         final LocalDate afterStart = process.getStartAt();
         final LocalDate afterEnd = process.getEndAt();
 
+        List<AssigneeResDto> assigneeDtos = process.getProcessUsers().stream()
+                .filter(pu -> pu.getDeletedAt() == null)
+                .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
+                .map(pu -> {
+                    User u = pu.getUser();
+                    return new AssigneeResDto(
+                            u.getUserId(),
+                            u.getName(),
+                            u.getNickname(),
+                            u.getProfileImageUrl()
+                    );
+                })
+                .toList();
+
         final List<Long> afterMentionIds = (mentionIdsForRes == null)
                 ? null   // 요청이 null이면 멘션 변경 안함
                 : mentionIdsForRes.stream().filter(Objects::nonNull).distinct().sorted().toList();
@@ -1028,6 +1242,7 @@ public class ProcessService {
                 afterRoleFields,
                 afterCustomFields,
                 afterAssigneeIds,
+                assigneeDtos,
                 (afterMentionIds == null) ? beforeMentionIds : afterMentionIds,
                 process.getUpdatedAt(),
                 new ProcessBasicUpdateResDto.WriterDto(
@@ -1082,11 +1297,11 @@ public class ProcessService {
         );
     }
 
-
-
-    private LocalDate normalizeWeekStart(LocalDate startDate) {
-        LocalDate base = (startDate == null) ? LocalDate.now() : startDate;
-        return base.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    private LocalDate normalizeWeekStart(LocalDate date) {
+        if (date == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "startDate must not be null");
+        }
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
     private ProcessCardResDto toProcessCardResDTO(Process p) {
@@ -1120,12 +1335,13 @@ public class ProcessService {
                 .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
                 .map(pu -> {
                     User u = pu.getUser();
-                    String userImage = null; // TODO: 프로필 컬럼/연동되면 세팅
+                    String userImage = u.getProfileImageUrl();
                     String nickname = u.getNickname();
                     return new AssigneeResDto(u.getUserId(), u.getName(), nickname, userImage);
                 })
                 .toList();
 
+        Integer missionNumber = resolveMissionNumberByStartDate(p.getProject().getId(), p.getStartAt());
 
         return new ProcessCardResDto(
                 p.getId(),
@@ -1138,6 +1354,7 @@ public class ProcessService {
                 leftDay,
                 roleFields,
                 customFields,
+                missionNumber,
                 assignees
         );
     }
@@ -1226,6 +1443,24 @@ public class ProcessService {
         return new ProcessWeekResDto(weekStart, commonLane, byField);
     }
 
+
+    private LocalDate toMonday(LocalDate date) {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    }
+
+    private LocalDate resolveWeekStart(LocalDate requested, LocalDate fallbackBaseDate) {
+        LocalDate base = (requested != null) ? requested : fallbackBaseDate;
+        return toMonday(base);
+    }
+
+    private Integer resolveMissionNumberByStartDate(Long projectId, LocalDate startAt) {
+        if (startAt == null) return null;
+
+        return processRepository.findWeekMissionContainingDate(projectId, startAt)
+                .map(Process::getMissionNumber)
+                .orElse(null);
+    }
+
     // 주차별 프로세스 조회 서비스
     @Transactional(readOnly = true)
     public ProcessWeeksResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate, int weeks) {
@@ -1242,8 +1477,10 @@ public class ProcessService {
         if (weeks <= 0) weeks = 1;
         if (weeks > 12) weeks = 12;
 
+        LocalDate fallback = processRepository.findMinProcessStartAt(projectId);
+        if (fallback == null) fallback = LocalDate.now();
 
-        LocalDate rangeStart = normalizeWeekStart(startDate);
+        LocalDate rangeStart = resolveWeekStart(startDate, fallback);
         LocalDate rangeEnd = rangeStart.plusDays((long) weeks * 7 - 1);
 
         List<Process> processes = processRepository.findAllInRangeOrdered(projectId, rangeStart, rangeEnd);
@@ -1555,6 +1792,14 @@ public class ProcessService {
                         ProcessErrorCode.INVALID_PROCESS_PERIOD,
                         "startDate = " + mergedStart + ", endDate = " + mergedEnd
                 );
+            }
+
+            if (req.missionNumber() != null && mergedStart != null) {
+                validateStartDateInSelectedMission(projectId, req.missionNumber(), mergedStart);
+            }
+
+            if (mergedStart != null && mergedEnd != null) {
+                validateNoOverlapForUpdateOrderLane(projectId, processId, dbLaneKey, mergedStart, mergedEnd);
             }
 
             process.updatePeriod(mergedStart, mergedEnd);
