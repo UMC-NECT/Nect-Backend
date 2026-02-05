@@ -4,12 +4,17 @@ import com.nect.api.domain.analysis.dto.req.ProjectCreateRequestDto;
 import com.nect.api.domain.analysis.dto.res.ProjectCreateResponseDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
+import com.nect.api.domain.user.service.UserService;
 import com.nect.core.entity.analysis.*;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
+import com.nect.core.entity.user.User;
 import com.nect.core.repository.analysis.*;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +31,8 @@ import java.util.stream.Collectors;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final ProjectUserRepository projectUserRepository;
+    private final UserService userService;
     private final ProjectIdeaAnalysisRepository analysisRepository;
     private final ProjectTeamRoleRepository teamRoleRepository;
     private final ProjectWeeklyPlanRepository weeklyPlanRepository;
@@ -39,6 +46,24 @@ public class ProjectService {
                         () -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND)
                 );
     }
+
+    public User getLeader(Project project){
+        Long userId = projectUserRepository.findLeaderByProject(project);
+
+        return userService.getUser(userId);
+    }
+
+    public List<Project> getProjectsAsLeader(Long userId){
+        return projectUserRepository.findProjectsAsLeader(userId);
+    }
+
+    public long getUserNumberOfProject(Project project){
+        return projectUserRepository.countProjectUserByMemberStatusAndProject(
+                ProjectMemberStatus.ACTIVE,
+                project
+        );
+    }
+
     @Transactional
     public ProjectCreateResponseDto createProjectFromAnalysis(Long userId, ProjectCreateRequestDto request) {
 

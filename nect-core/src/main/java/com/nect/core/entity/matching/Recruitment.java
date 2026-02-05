@@ -2,6 +2,7 @@ package com.nect.core.entity.matching;
 
 import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,8 +14,6 @@ import lombok.*;
 @Builder
 public class Recruitment extends BaseEntity {
 
-    // TODO: 타 도메인 구현 완료시 id 저장 방식 -> 엔티티 연관관계로 변경
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
@@ -23,11 +22,15 @@ public class Recruitment extends BaseEntity {
     @JoinColumn(name = "project_id", nullable = false)
     Project project;
 
-    @Column(name = "field_id", nullable = false)
-    Long fieldId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "field", nullable = false)
+    RoleField field;
 
     @Column(name = "capacity", nullable = false)
     Integer capacity;
+
+    @Column(name = "custom_field")
+    private String customField;
 
     public void decreaseCapacity(){
         this.capacity -= 1;

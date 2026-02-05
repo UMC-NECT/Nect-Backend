@@ -195,7 +195,7 @@ public class ProjectUserControllerTest {
                                         fieldWithPath("body.id").description("프로젝트 유저 ID"),
                                         fieldWithPath("body.userId").description("유저 ID").optional(),
                                         fieldWithPath("body.projectId").description("프로젝트 ID").optional(),
-                                        fieldWithPath("body.fieldId").description("분야 ID").optional(),
+                                        fieldWithPath("body.field").description("분야").optional(),
                                         fieldWithPath("body.memberType").description("멤버 타입").optional(),
                                         fieldWithPath("body.memberStatus").description("멤버 상태 (KICK)")
                                 )

@@ -11,7 +11,7 @@ public class ProjectUserConverter {
                 .id(projectUser.getId())
                 .userId(projectUser.getUserId())
                 .projectId(projectUser.getProject().getId())
-//                .fieldId(projectUser.getFieldId())
+                .field(projectUser.getRoleField())
                 .memberType(projectUser.getMemberType())
                 .memberStatus(projectUser.getMemberStatus())
                 .build();

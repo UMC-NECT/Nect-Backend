@@ -6,4 +6,9 @@ public enum MatchingStatus {
     REJECTED, // 거절
     EXPIRED, // 만료
     CANCELED // 취소
+    ;
+
+    public static MatchingStatus from(String value) {
+        return MatchingStatus.valueOf(value.toUpperCase());
+    }
 }
