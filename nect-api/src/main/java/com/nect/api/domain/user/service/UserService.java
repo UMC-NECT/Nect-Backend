@@ -1,35 +1,14 @@
 package com.nect.api.domain.user.service;
 
-import com.nect.api.domain.user.dto.AgreeDto;
-import com.nect.api.domain.user.dto.DuplicateCheckDto;
-import com.nect.api.domain.user.dto.LoginDto;
-import com.nect.api.domain.user.dto.SignUpDto;
-import com.nect.api.domain.user.dto.ProfileDto;
-import com.nect.api.domain.user.enums.CheckType;
+import com.nect.api.domain.user.dto.*;
 import com.nect.api.domain.user.exception.*;
-import com.nect.core.entity.user.enums.UserType;
-import com.nect.core.entity.user.enums.Job;
-import com.nect.core.entity.user.enums.Role;
-import com.nect.core.entity.user.enums.RoleField;
-import com.nect.core.entity.user.enums.Goal;
-import com.nect.core.entity.user.enums.Skill;
-import com.nect.core.entity.user.enums.SkillCategory;
-import com.nect.core.entity.user.enums.InterestField;
-import com.nect.core.entity.user.*;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.dto.TokenDataDto;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
-import com.nect.core.entity.user.TermUser;
-import com.nect.core.entity.user.User;
-import com.nect.core.entity.user.UserRole;
-import com.nect.core.entity.user.UserSkill;
-import com.nect.core.entity.user.UserInterest;
-import com.nect.core.repository.user.TermUserRepository;
-import com.nect.core.repository.user.UserRepository;
-import com.nect.core.repository.user.UserRoleRepository;
-import com.nect.core.repository.user.UserSkillRepository;
-import com.nect.core.repository.user.UserInterestRepository;
+import com.nect.core.entity.user.*;
+import com.nect.core.entity.user.enums.*;
+import com.nect.core.repository.user.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,10 +39,10 @@ public class UserService {
     private String authKey;
 
     @Transactional(readOnly = true)
-    public LoginDto.LoginResponseDto refreshToken(String refreshToken) {
+    public LoginDto.TokenResponseDto refreshToken(String refreshToken) {
         TokenDataDto tokenData = jwtUtil.refreshToken(refreshToken);
 
-        return LoginDto.LoginResponseDto.of(
+        return LoginDto.TokenResponseDto.of(
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
@@ -72,7 +51,7 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public LoginDto.LoginResponseDto testLoginByEmail(LoginDto.TestLoginRequestDto request) {
+    public LoginDto.TokenResponseDto testLoginByEmail(LoginDto.TestLoginRequestDto request) {
         validateTestLoginRequest(request);
 
         User user = userRepository.findByEmail(request.email())
@@ -80,7 +59,7 @@ public class UserService {
 
         TokenDataDto tokenData = jwtUtil.createTokenData(user.getUserId());
 
-        return LoginDto.LoginResponseDto.of(
+        return LoginDto.TokenResponseDto.of(
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
@@ -164,7 +143,8 @@ public class UserService {
                 tokenData.getAccessToken(),
                 tokenData.getRefreshToken(),
                 tokenData.getAccessTokenExpiredAt(),
-                tokenData.getRefreshTokenExpiredAt()
+                tokenData.getRefreshTokenExpiredAt(),
+                user.getIsOnboardingCompleted()
         );
     }
 
@@ -330,6 +310,7 @@ public class UserService {
                 .collaborationStylePlanning(request.collaborationStyle() != null ? request.collaborationStyle().planning() : null)
                 .collaborationStyleLogic(request.collaborationStyle() != null ? request.collaborationStyle().logic() : null)
                 .collaborationStyleLeadership(request.collaborationStyle() != null ? request.collaborationStyle().leadership() : null)
+                .isOnboardingCompleted(true)
                 .build();
         userRepository.save(updatedUser);
 
@@ -509,5 +490,21 @@ public class UserService {
         } catch (IllegalArgumentException e) {
             throw new InvalidInterestFieldException("올바른 관심분야 타입이 아닙니다");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileDto.UserInfoResponseDto getUserInfo(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다"));
+        return new ProfileDto.UserInfoResponseDto(
+                user.getName(),
+                user.getRole() != null ? user.getRole().getDescription() : null,
+                user.getEmail()
+        );
+    }
+      
+    public User getUser(Long userId){
+        return userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
     }
 }

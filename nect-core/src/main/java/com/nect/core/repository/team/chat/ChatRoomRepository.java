@@ -1,6 +1,7 @@
 package com.nect.core.repository.team.chat;
 
 import com.nect.core.entity.team.chat.ChatRoom;
+import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -31,5 +32,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     );
 
     List<ChatRoom> findAllByProject_Id(Long projectId);
+
+    @Query("SELECT DISTINCT cr FROM ChatRoom cr " +
+            "JOIN ChatRoomUser cru ON cru.chatRoom = cr " +
+            "WHERE cr.project.id = :projectId " +
+            "AND cr.type = 'GROUP' " +
+            "AND cru.user.userId = :userId " +
+            "ORDER BY cr.updatedAt DESC")
+    List<ChatRoom> findGroupChatRoomsByProjectAndUser(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId);
 
 }

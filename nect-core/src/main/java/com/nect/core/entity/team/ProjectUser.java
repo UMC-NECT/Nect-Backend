@@ -83,4 +83,9 @@ public class ProjectUser {
     public void kick() {
         this.memberStatus = ProjectMemberStatus.KICKED;
     }
+
+    public void changeField(RoleField roleField, String customRoleFieldName){
+        this.roleField = roleField;
+        this.customRoleFieldName = customRoleFieldName;
+    }
 }

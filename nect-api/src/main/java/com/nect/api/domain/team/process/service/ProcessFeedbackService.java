@@ -1,5 +1,7 @@
 package com.nect.api.domain.team.process.service;
 
+import com.nect.api.domain.notifications.command.NotificationCommand;
+import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessFeedbackCreateReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessFeedbackUpdateReqDto;
@@ -9,18 +11,27 @@ import com.nect.api.domain.team.process.dto.res.ProcessFeedbackDeleteResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFeedbackUpdateResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
+import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessFeedback;
+import com.nect.core.entity.team.process.ProcessUser;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessFeedbackRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
+import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,6 +43,9 @@ public class ProcessFeedbackService {
     private final ProcessRepository processRepository;
     private final ProcessFeedbackRepository processFeedbackRepository;
     private final ProjectUserRepository projectUserRepository;
+    private final UserRepository userRepository;
+
+    private final NotificationFacade notificationFacade;
     private final ProjectHistoryPublisher historyPublisher;
 
     // 헬퍼 메서드
@@ -90,6 +104,36 @@ public class ProcessFeedbackService {
                 ));
     }
 
+    //- 해당 프로세스 담당자(assignee)들에게 보냄
+    private List<Long> getAssigneeUserIdsFromProcess(Process process) {
+        if (process == null || process.getProcessUsers() == null) return List.of();
+
+       return process.getProcessUsers().stream()
+               .map(ProcessUser::getUser)
+               .filter(Objects::nonNull)
+               .map(User::getUserId)
+               .filter(Objects::nonNull)
+               .distinct()
+               .toList();
+    }
+
+    private String preview(String text, int max) {
+        if(text == null) return null;
+        String t = text.trim();
+        if(t.length() <= max) return t;
+        return t.substring(0, max) + "...";
+    }
+
+    private void notifyAfterCommit(List<User> receivers, NotificationCommand notificationCommand) {
+        if(receivers == null || receivers.isEmpty()) return;
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                notificationFacade.notify(receivers, notificationCommand);
+            }
+        });
+    }
 
     // 피드백 생성 서비스
     @Transactional
@@ -99,7 +143,8 @@ public class ProcessFeedbackService {
 
         Process process = getActiveProcess(projectId, processId);
 
-        User actor = User.builder().userId(userId).build();
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ProcessException(ProcessErrorCode.USER_NOT_FOUND, "userId=" + userId));
 
         ProcessFeedback feedback = ProcessFeedback.builder()
                 .process(process)
@@ -113,7 +158,9 @@ public class ProcessFeedbackService {
         List<String> createdByRoleFields = roleFieldLabelsMap.getOrDefault(userId, List.of());
 
         String createdByUserName = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getName() : null;
+        String createdByNickname = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getNickname() : null;
 
+        // 히스토리
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
         meta.put("feedbackId", saved.getId());
@@ -129,15 +176,38 @@ public class ProcessFeedbackService {
         );
 
 
-        // TODO(TEAM EVENT FACADE):
-        // - 추후 Notification ActivityFacade(가칭)로 통합하여 activityFacade.recordAndNotify 호출로 변경 예정
+        // 알림 (새 피드백)
+        // 수신자 : 담당자(assignees) -> 작성자는 제외
+        List<Long> assignneIds = getAssigneeUserIdsFromProcess(process);
+        List<Long> receiverIds = assignneIds.stream()
+                .filter(id -> id != null && !id.equals(userId))
+                .distinct()
+                .toList();
+
+        if(!receiverIds.isEmpty()) {
+            List<User> receivers = userRepository.findAllById(receiverIds);
+
+            Project project = process.getProject();
+            NotificationCommand command = new NotificationCommand(
+                    NotificationType.WORKSPACE_TASK_FEEDBACK,
+                    NotificationClassification.WORK_STATUS,
+                    NotificationScope.WORKSPACE_GLOBAL,
+                    processId,
+                    new Object[]{actor.getName()},
+                    new Object[]{preview(saved.getContent(), 60)},
+                    project
+            );
+
+            // 커밋 이후 전송
+            notifyAfterCommit(receivers, command);
+        }
 
 
         return new ProcessFeedbackCreateResDto(
                 saved.getId(),
                 saved.getContent(),
                 saved.getStatus(),
-                new FeedbackCreatedByResDto(userId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(userId, createdByUserName, createdByNickname, createdByRoleFields),
                 saved.getCreatedAt()
         );
     }
@@ -159,14 +229,6 @@ public class ProcessFeedbackService {
         feedback.updateContent(req.content());
         String afterContent = feedback.getContent();
 
-
-        // TODO(Notification):
-        // - "피드백 수정" 알림 트리거 지점
-        // - 수신자: 프로젝트 멤버 전체 OR 해당 프로세스 관련자(assignee/mention) (유저/멤버십 연동 후)
-        // - NotificationType 예: PROCESS_FEEDBACK_UPDATED
-        // - meta: before/after 또는 "수정됨" 정도만
-        // - 권장: AFTER_COMMIT 이후 알림 전송(이벤트 리스너)
-
         if (!Objects.equals(beforeContent, afterContent)) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("processId", processId);
@@ -184,13 +246,11 @@ public class ProcessFeedbackService {
             );
         }
 
-
-        // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
-
         // createdBy 응답 채우기 (User + ProjectUser fieldIds)
         User createdBy = feedback.getCreatedBy();
         Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
         String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
+        String createdByNickname = (createdBy != null) ? createdBy.getNickname() : null;
 
         List<String> createdByRoleFields = List.of();
         if (createdByUserId != null) {
@@ -202,7 +262,7 @@ public class ProcessFeedbackService {
                 feedback.getId(),
                 feedback.getContent(),
                 feedback.getStatus(),
-                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByNickname, createdByRoleFields),
                 feedback.getCreatedAt(),
                 feedback.getUpdatedAt()
         );

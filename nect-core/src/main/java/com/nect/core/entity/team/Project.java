@@ -4,7 +4,10 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +36,9 @@ public class Project extends BaseEntity {
 
     @Column(name = "notice_text", columnDefinition = "TEXT")
     private String noticeText;
+
+    @Column(name = "image_name")
+    private String imageName;
 
     // 정규 회의
     @Column(name = "regular_meeting_text", columnDefinition = "TEXT")

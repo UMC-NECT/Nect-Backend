@@ -1,5 +1,9 @@
 package com.nect.api.domain.team.chat.controller;
 
+
+import com.nect.api.domain.team.chat.dto.req.ChatRoomInviteRequestDto;
+import com.nect.api.domain.team.chat.dto.res.ChatRoomInviteResponseDto;
+import com.nect.api.domain.team.chat.service.ChatRoomService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
 import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
@@ -21,14 +25,14 @@ import java.util.List;
 public class TeamChatController {
 
     private final TeamChatService teamChatService;
+    private final ChatRoomService chatRoomService;
 
 
     @GetMapping("/{projectId}/users")
     public ApiResponse<List<ProjectMemberResponseDto>> getProjectMembers(
             @PathVariable Long projectId,
-                     @AuthenticationPrincipal UserDetailsImpl userDetails
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-
         Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
         List<ProjectMemberResponseDto> response = teamChatService.getProjectMembers(projectId);
 
@@ -41,9 +45,7 @@ public class TeamChatController {
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-
-
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L; //TODO
 
         ChatRoomResponseDto response = teamChatService.createOneOnOneChatRoom(currentUserId, request);
         return ApiResponse.ok(response);
@@ -56,10 +58,28 @@ public class TeamChatController {
             , @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
+
+        Long currentUserId = userDetails.getUserId();
 
         ChatRoomResponseDto response = teamChatService.createGroupChatRoom(currentUserId, request);
         return ApiResponse.ok(response);
     }
+
+
+    @PostMapping("/{roomId}/invite")
+    public  ApiResponse<ChatRoomInviteResponseDto> inviteMembers(
+            @PathVariable Long roomId,
+            @RequestBody ChatRoomInviteRequestDto request,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        Long currentUserId = userDetails.getUserId();
+        ChatRoomInviteResponseDto response = teamChatService.inviteMembers(
+                roomId,
+                currentUserId,
+                request
+        );
+        return ApiResponse.ok(response);
+    }
+
 
 }

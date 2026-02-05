@@ -12,12 +12,13 @@ import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import com.nect.core.entity.team.chat.enums.MessageType;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
+@Component
 public class ChatConverter {
 
 
@@ -141,15 +142,26 @@ public class ChatConverter {
         return ChatNoticeResponseDto.builder()
                 .messageId(message.getId())
                 .roomId(message.getChatRoom().getId())
+                .userId(message.getUser() != null ? message.getUser().getUserId() : null)
                 .content(message.getContent())
                 .messageType(message.getMessageType())
-                // User가 null일 경우 대비 (시스템 메시지 등)
                 .senderName(message.getUser() != null ? message.getUser().getNickname() : "알 수 없음")
                 .isPinned(message.getIsPinned())
-                .registeredAt(LocalDateTime.now())
+                .registeredAt(message.getCreatedAt())
                 .build();
     }
 
 
+    public static List<ChatRoomUser> toChatRoomUserList(ChatRoom chatRoom, List<User> users) {
+        return users.stream()
+                .map(user -> {
+                    ChatRoomUser chatRoomUser = new ChatRoomUser();
+                    chatRoomUser.setChatRoom(chatRoom);
+                    chatRoomUser.setUser(user);
+                    chatRoomUser.setIsNotificationEnabled(true); //TODO 알람 on/off 수정필요
+                    return chatRoomUser;
+                })
+                .toList();
+    }
 
 }

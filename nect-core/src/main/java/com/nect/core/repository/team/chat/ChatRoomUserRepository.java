@@ -1,5 +1,6 @@
 package com.nect.core.repository.team.chat;
 
+
 import com.nect.core.entity.team.chat.ChatRoomUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -13,11 +14,11 @@ import java.util.Optional;
 @Repository
 public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser,Long> {
 
-    // 사용자의 특정 채팅방 멤버 정보 조회
-    Optional<ChatRoomUser> findByChatRoomIdAndUserUserId(Long chatRoomId, Long userId);
+    boolean existsByChatRoomIdAndUserUserId(Long chatRoomId, Long userId);
 
-    // 사용자가 속한 모든 채팅방 조회
-    List<ChatRoomUser> findByUserUserId(Long userId);
+    int countByChatRoomId(Long chatRoomId);
+
+    Optional<ChatRoomUser> findByChatRoomIdAndUser_UserId(Long chatRoomId, Long userId);
 
     List<ChatRoomUser> findAllByUserUserId(Long userId);
 
@@ -27,5 +28,19 @@ public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser,Long>
             "join fetch cru.user " +
             "where cru.chatRoom.id = :roomId and cru.user.userId = :userId")
     Optional<ChatRoomUser> findMemberInRoom(@Param("roomId") Long roomId, @Param("userId") Long userId);
+
+    @Query("SELECT cru FROM ChatRoomUser cru " +
+            "JOIN FETCH cru.user " +
+            "WHERE cru.chatRoom.id = :roomId AND cru.user.userId = :userId")
+    Optional<ChatRoomUser> findByRoomIdAndUserIdWithFetch(
+            @Param("roomId") Long roomId,
+            @Param("userId") Long userId
+    );
+
+    @Query("SELECT cru.user.userId FROM ChatRoomUser cru " +
+            "WHERE cru.chatRoom.id = :roomId")
+    List<Long> findUserIdsByChatRoomId(@Param("roomId") Long roomId);
+
+
 
 }

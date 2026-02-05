@@ -1,20 +1,13 @@
 package com.nect.api.domain.team.chat.dto.res;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatFileUploadResponseDto {
-    private Long fileId;
-    private String fileName;
-    private String fileUrl;
-    private Long fileSize;
-    private String fileType;
-}
+public record ChatFileUploadResponseDto(
+        Long fileId,
+        String fileName,
+        String fileUrl,
+        Long fileSize,
+        String fileType
+) {}

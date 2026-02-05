@@ -13,9 +13,7 @@ import java.util.Map;
 @Component
 public class PromptLoader {
 
-    /**
-     * 프롬프트 파일을 로드하고 변수를 치환
-     */
+
     public String loadPrompt(String promptPath, Map<String, String> variables) {
         try {
             // 프롬프트 파일 읽기

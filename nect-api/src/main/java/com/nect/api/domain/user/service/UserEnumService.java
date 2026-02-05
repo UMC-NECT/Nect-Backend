@@ -107,4 +107,13 @@ public class UserEnumService {
                 .map(goal -> new EnumValueDto(goal.name(), goal.getDescription()))
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 사용자 상태(UserStatus) 조회
+     */
+    public List<EnumValueDto> getUserStatuses() {
+        return Arrays.stream(UserStatus.values())
+                .map(status -> new EnumValueDto(status.name(), status.getDescription()))
+                .collect(Collectors.toList());
+    }
 }

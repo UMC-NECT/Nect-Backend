@@ -4,6 +4,7 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.SharedDocument;
+import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
@@ -44,6 +45,15 @@ public class Process extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private ProcessStatus status;
+
+    // 일반 프로세스일 경우엔 null
+    @Enumerated(EnumType.STRING)
+    @Column(name = "process_type", length = 30)
+    private ProcessType processType;
+
+    // WEEK_MISSION일 때만 사용
+    @Column(name = "mission_number")
+    private Integer missionNumber;
 
     @Column(name = "start_at")
     private LocalDate startAt;
@@ -102,6 +112,9 @@ public class Process extends BaseEntity {
         this.content = content;
         this.status = ProcessStatus.PLANNING;
         this.statusOrder = 0;
+
+        this.processType = ProcessType.GENERAL;
+        this.missionNumber = null;
     }
 
     public void attachDocument(SharedDocument doc) {
@@ -123,6 +136,7 @@ public class Process extends BaseEntity {
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(this)
                 .document(doc)
+                .attachedAt(LocalDateTime.now())
                 .build();
 
         sharedDocuments.add(psd);
@@ -197,6 +211,10 @@ public class Process extends BaseEntity {
         if (statusOrder != null) this.statusOrder = statusOrder;
     }
 
+    public void markAsWeekMission(Integer missionNumber) {
+        this.processType = ProcessType.WEEK_MISSION;
+        this.missionNumber = missionNumber;
+    }
 
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();

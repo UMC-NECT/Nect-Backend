@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface UserInterestRepository extends JpaRepository<UserInterest, Long> {
+    List<UserInterest> findByUserUserId(Long userId);
+    void deleteByUserUserId(Long userId);
 
     @Query("""
         SELECT u FROM UserInterest ui   
