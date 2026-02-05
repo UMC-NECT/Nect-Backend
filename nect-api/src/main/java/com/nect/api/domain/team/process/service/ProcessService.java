@@ -535,6 +535,7 @@ public class ProcessService {
                     return new AssigneeResDto(
                             u.getUserId(),
                             u.getName(),
+                            u.getNickname(),
                             userImage
                     );
                 })
@@ -1120,7 +1121,8 @@ public class ProcessService {
                 .map(pu -> {
                     User u = pu.getUser();
                     String userImage = null; // TODO: 프로필 컬럼/연동되면 세팅
-                    return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
+                    String nickname = u.getNickname();
+                    return new AssigneeResDto(u.getUserId(), u.getName(), nickname, userImage);
                 })
                 .toList();
 
@@ -1226,7 +1228,7 @@ public class ProcessService {
 
     // 주차별 프로세스 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessWeekResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate) {
+    public ProcessWeeksResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate, int weeks) {
 
         assertActiveProjectMember(projectId, userId);
 
@@ -1237,72 +1239,46 @@ public class ProcessService {
             );
         }
 
+        if (weeks <= 0) weeks = 1;
+        if (weeks > 12) weeks = 12;
 
-        LocalDate weekStart = normalizeWeekStart(startDate);
-        LocalDate weekEnd = weekStart.plusDays(6);
 
-        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd);
+        LocalDate rangeStart = normalizeWeekStart(startDate);
+        LocalDate rangeEnd = rangeStart.plusDays((long) weeks * 7 - 1);
 
-        List<ProcessCardResDto> cards = processes.stream()
-                .map(p -> {
-                    int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
-                    int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
-                            .filter(ProcessTaskItem::isDone)
-                            .count();
+        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, rangeStart, rangeEnd);
 
-                    Integer leftDay = null;
-                    if (p.getEndAt() != null) {
-                        long diff = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), p.getEndAt());
-                        leftDay = (int) Math.max(diff, 0);
-                    }
+        // 프로세스를 주차별로 묶기
+        // startAt이 null이면 rangeStart 주로 보내거나, common 처리 가능
+        Map<LocalDate, List<Process>> byWeek = new LinkedHashMap<>();
+        for (int i = 0; i < weeks; i++) {
+            LocalDate ws = rangeStart.plusWeeks(i);
+            byWeek.put(ws, new java.util.ArrayList<>());
+        }
 
-                    // roleFields / customFields
-                    List<RoleField> roleFields = p.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .map(ProcessField::getRoleField)
-                            .filter(java.util.Objects::nonNull)
-                            .filter(rf -> rf != RoleField.CUSTOM)   // CUSTOM은 customFields로만
-                            .distinct()
+        LocalDate lastWeekStart = rangeStart.plusWeeks(weeks - 1);
+
+        for (Process p : processes) {
+            LocalDate key = (p.getStartAt() == null) ? rangeStart : normalizeWeekStart(p.getStartAt());
+
+            if (key.isBefore(rangeStart)) key = rangeStart;
+            if (key.isAfter(lastWeekStart)) key = lastWeekStart;
+
+            byWeek.get(key).add(p);
+        }
+
+
+        List<ProcessWeekResDto> weekDtos = byWeek.entrySet().stream()
+                .map(entry -> {
+                    LocalDate weekStartKey = entry.getKey();
+                    List<ProcessCardResDto> cards = entry.getValue().stream()
+                            .map(this::toProcessCardResDTO)
                             .toList();
-
-                    List<String> customFields = p.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
-                            .map(ProcessField::getCustomFieldName)
-                            .filter(java.util.Objects::nonNull)
-                            .map(String::trim)
-                            .filter(s -> !s.isBlank())
-                            .distinct()
-                            .toList();
-
-                    // assignees
-                    List<AssigneeResDto> assignees = p.getProcessUsers().stream()
-                            .filter(pu -> pu.getDeletedAt() == null)
-                            .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
-                            .map(pu -> {
-                                User u = pu.getUser();
-                                String userImage = null; // TODO: 프로필 이미지 연결되면 세팅
-                                return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
-                            })
-                            .toList();
-
-                    return new ProcessCardResDto(
-                            p.getId(),
-                            p.getStatus(),
-                            p.getTitle(),
-                            done,
-                            whole,
-                            p.getStartAt(),
-                            p.getEndAt(),
-                            leftDay,
-                            roleFields,
-                            customFields,
-                            assignees
-                    );
+                    return buildWeekDto(weekStartKey, cards);
                 })
                 .toList();
 
-        return buildWeekDto(weekStart, cards);
+        return new ProcessWeeksResDto(weekDtos);
 
     }
 

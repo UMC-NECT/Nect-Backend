@@ -75,14 +75,15 @@ public class ProcessController {
 
     // 주차별 프로세스 조회
     @GetMapping("/week")
-    public ApiResponse<ProcessWeekResDto> getWeekProcesses(
+    public ApiResponse<ProcessWeeksResDto> getWeekProcesses(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(name = "start_date", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "weeks", required = false, defaultValue = "1") int weeks
     ) {
         Long userId = userDetails.getUserId();
-        return ApiResponse.ok(processService.getWeekProcesses(projectId, userId, startDate));
+        return ApiResponse.ok(processService.getWeekProcesses(projectId, userId, startDate, weeks));
     }
 
     // 파트별 작업 현황 조회
