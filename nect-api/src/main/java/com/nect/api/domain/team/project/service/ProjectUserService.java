@@ -89,7 +89,7 @@ public class ProjectUserService {
         ProjectUser projectUser = getProjectUser(projectUserId);
 
         // 로그인한 유저가 리더인지 검증
-        if (userId != projectUserRepository.findLeaderByProject(projectUser.getProject())){
+        if (!userId.equals(projectUserRepository.findLeaderByProject(projectUser.getProject()))){
             throw new ProjectUserException(ProjectUserErrorCode.ONLY_LEADER_ALLOWED);
         }
 
@@ -101,7 +101,7 @@ public class ProjectUserService {
         ProjectUser projectUser = getProjectUser(projectUserId);
 
         // 로그인한 유저가 리더인지 검증
-        if (userId != projectUserRepository.findLeaderByProject(projectUser.getProject())){
+        if (!userId.equals(projectUserRepository.findLeaderByProject(projectUser.getProject()))){
             throw new ProjectUserException(ProjectUserErrorCode.ONLY_LEADER_ALLOWED);
         }
 
