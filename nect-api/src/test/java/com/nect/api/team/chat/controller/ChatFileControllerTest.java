@@ -92,17 +92,18 @@ class ChatFileControllerTest {
         );
 
         // ChatMessageDto 구조로 변경
-        ChatMessageDto response = new ChatMessageDto();
-        response.setMessageId(100L);
-        response.setUserId(1L);
-        response.setRoomId(1L);
-        response.setUserName("테스트유저");
-        response.setProfileImage("https://example.com/profile.jpg");
-        response.setContent("파일 전송");
-        response.setMessageType(MessageType.FILE);
-        response.setIsPinned(false);
-        response.setCreatedAt(LocalDateTime.now());
-        response.setReadCount(0);
+        ChatMessageDto response = ChatMessageDto.builder()
+                .messageId(100L)
+                .userId(1L)
+                .roomId(1L)
+                .userName("테스트유저")
+                .profileImage("https://example.com/profile.jpg")
+                .content("파일 전송")
+                .messageType(MessageType.FILE)
+                .isPinned(false)
+                .createdAt(LocalDateTime.now())
+                .readCount(0)
+                .build();
 
         // fileInfo 추가
         ChatFileUploadResponseDto fileInfo = new ChatFileUploadResponseDto(

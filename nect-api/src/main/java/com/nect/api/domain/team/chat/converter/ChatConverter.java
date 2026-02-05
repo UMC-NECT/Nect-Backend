@@ -25,19 +25,17 @@ public class ChatConverter {
 
     //ChatMessage  -> ChatMessageDto
     public static ChatMessageDto toMessageDto(ChatMessage message) {
-        ChatMessageDto dto = new ChatMessageDto();
-        dto.setMessageId(message.getId());
-        dto.setRoomId(message.getChatRoom().getId());
-        dto.setUserId(message.getUser().getUserId());
-        dto.setUserName(message.getUser().getName());
-
-        dto.setProfileImage(message.getUser().getProfileImageUrl());
-
-        dto.setContent(message.getContent());
-        dto.setMessageType(message.getMessageType());
-        dto.setIsPinned(message.getIsPinned());
-        dto.setCreatedAt(message.getCreatedAt());
-        return dto;
+        return ChatMessageDto.builder()
+                .messageId(message.getId())
+                .roomId(message.getChatRoom().getId())
+                .userId(message.getUser().getUserId())
+                .userName(message.getUser().getName())
+                .profileImage(message.getUser().getProfileImageUrl())
+                .content(message.getContent())
+                .messageType(message.getMessageType())
+                .isPinned(message.getIsPinned())
+                .createdAt(message.getCreatedAt())
+                .build();
     }
 
     //DTO -> ChatMessage
