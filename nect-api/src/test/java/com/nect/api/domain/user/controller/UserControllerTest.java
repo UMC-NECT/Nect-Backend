@@ -112,7 +112,8 @@ class UserControllerTest extends NectDocumentApiTester {
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 System.currentTimeMillis() + 3600000,
-                System.currentTimeMillis() + 86400000
+                System.currentTimeMillis() + 86400000,
+                false
         );
         when(userService.login(any(LoginDto.LoginRequestDto.class))).thenReturn(responseDto);
 
@@ -144,7 +145,8 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.accessToken").type(JsonFieldType.STRING).description("액세스 토큰 (API 요청 시 Authorization 헤더에 사용)"),
                                                 fieldWithPath("body.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰 (액세스 토큰 만료 시 갱신에 사용)"),
                                                 fieldWithPath("body.accessTokenExpiredAt").type(JsonFieldType.NUMBER).description("액세스 토큰 만료 시간 (Unix timestamp)"),
-                                                fieldWithPath("body.refreshTokenExpiredAt").type(JsonFieldType.NUMBER).description("리프레시 토큰 만료 시간 (Unix timestamp)")
+                                                fieldWithPath("body.refreshTokenExpiredAt").type(JsonFieldType.NUMBER).description("리프레시 토큰 만료 시간 (Unix timestamp)"),
+                                                fieldWithPath("body.isOnboardingCompleted").type(JsonFieldType.BOOLEAN).description("온보딩 완료 여부")
                                         )
                                         .build()
                         )
@@ -182,7 +184,7 @@ class UserControllerTest extends NectDocumentApiTester {
     @Test
     void refreshToken() throws Exception {
         // given
-        LoginDto.LoginResponseDto responseDto = LoginDto.LoginResponseDto.of(
+        LoginDto.TokenResponseDto responseDto = LoginDto.TokenResponseDto.of(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 System.currentTimeMillis() + 3600000,
@@ -224,7 +226,7 @@ class UserControllerTest extends NectDocumentApiTester {
     @Test
     void testLogin() throws Exception {
         // given
-        LoginDto.LoginResponseDto responseDto = LoginDto.LoginResponseDto.of(
+        LoginDto.TokenResponseDto responseDto = LoginDto.TokenResponseDto.of(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 System.currentTimeMillis() + 3600000,
@@ -390,6 +392,43 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional()
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getUserInfo() throws Exception {
+        // given
+        ProfileDto.UserInfoResponseDto responseDto = new ProfileDto.UserInfoResponseDto(
+                "김준형",
+                "개발자",
+                "test@example.com"
+        );
+        when(userService.getUserInfo(anyLong())).thenReturn(responseDto);
+
+        // when
+        this.mockMvc.perform(get("/api/v1/users/info")
+                        .contentType("application/json")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."))
+                .andExpect(status().isOk())
+                .andDo(document("user-get-info",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("사용자 기본 정보 조회")
+                                        .description("인증된 사용자의 기본 정보(이름, 역할, 이메일)를 조회합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body.name").type(JsonFieldType.STRING).description("사용자 이름"),
+                                                fieldWithPath("body.role").type(JsonFieldType.STRING).description("사용자 역할 (한국어: 개발자, 디자이너, 기획자, 마케터)"),
+                                                fieldWithPath("body.email").type(JsonFieldType.STRING).description("사용자 이메일")
                                         )
                                         .build()
                         )
