@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -76,6 +77,10 @@ public class ProcessAttachmentService {
         if (req == null || req.url() == null || req.url().isBlank()) {
             throw new AttachmentException(AttachmentErrorCode.INVALID_REQUEST, "url is required");
         }
+
+        if (req.title() == null || req.title().isBlank()) {
+            throw new AttachmentException(AttachmentErrorCode.INVALID_REQUEST, "title is required");
+        }
     }
 
     // 프로세스 파일 첨부 서비스
@@ -98,7 +103,7 @@ public class ProcessAttachmentService {
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(process)
                 .document(doc)
-                .attachedAt(null)
+                .attachedAt(LocalDateTime.now())
                 .build();
 
         processSharedDocumentRepository.save(psd);
@@ -164,18 +169,18 @@ public class ProcessAttachmentService {
 
         Link link = Link.builder()
                 .process(process)
+                .title(req.title().trim())
                 .url(req.url().trim())
                 .build();
 
 
         Link saved = linkRepository.save(link);
 
-        // TODO(Notification): 링크 추가 알림 트리거(AFER_COMMIT 권장)
-
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
         meta.put("linkId", saved.getId());
         meta.put("url", saved.getUrl());
+        meta.put("title", saved.getTitle());
 
         historyPublisher.publish(
                 projectId,
@@ -186,7 +191,7 @@ public class ProcessAttachmentService {
                 meta
         );
 
-        return new ProcessLinkCreateResDto(saved.getId());
+        return new ProcessLinkCreateResDto(saved.getId(), saved.getTitle(), saved.getUrl(), saved.getCreatedAt());
     }
 
     // 프로세스 링크 삭제 서비스
