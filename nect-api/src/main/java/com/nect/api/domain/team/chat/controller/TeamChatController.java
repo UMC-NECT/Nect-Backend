@@ -33,7 +33,7 @@ public class TeamChatController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
+        Long currentUserId = userDetails.getUserId();
         List<ProjectMemberResponseDto> response = teamChatService.getProjectMembers(projectId);
 
         return ApiResponse.ok(response);
@@ -45,7 +45,7 @@ public class TeamChatController {
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
 
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L; //TODO
+        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
 
         ChatRoomResponseDto response = teamChatService.createOneOnOneChatRoom(currentUserId, request);
         return ApiResponse.ok(response);

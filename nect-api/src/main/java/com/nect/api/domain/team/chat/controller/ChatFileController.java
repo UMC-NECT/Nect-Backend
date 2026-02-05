@@ -1,6 +1,7 @@
 package com.nect.api.domain.team.chat.controller;
 
 
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.domain.team.chat.service.ChatFileService;
@@ -21,13 +22,14 @@ public class ChatFileController {
     private final ChatFileService chatFileService;
 
     @PostMapping("/{roomId}/files")
-    public ApiResponse<ChatFileUploadResponseDto> uploadFile(
+    public ApiResponse<ChatMessageDto> uploadFile(
             @PathVariable Long roomId,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        ChatFileUploadResponseDto response =
-                chatFileService.uploadFile(roomId, file, userDetails.getUserId());
+        ChatMessageDto response = chatFileService.uploadAndSendFile(
+                roomId, file, userDetails.getUserId());
+
 
 
         return ApiResponse.ok(response);

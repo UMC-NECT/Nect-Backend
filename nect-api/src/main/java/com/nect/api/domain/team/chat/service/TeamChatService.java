@@ -28,10 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils; // 추가
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -108,7 +105,10 @@ public class TeamChatService {
     @Transactional
     public ChatRoomResponseDto createGroupChatRoom(Long currentUserId, GroupChatRoomCreateRequestDto request) {
 
-        if (request.getTargetUserIds() == null || request.getTargetUserIds().isEmpty()) {
+        Set<Long> uniqueTargetIds = new HashSet<>(request.getTargetUserIds());
+        uniqueTargetIds.remove(currentUserId);
+
+        if (uniqueTargetIds.isEmpty()) {
             throw new ChatException(ChatErrorCode.NO_MEMBERS_SELECTED, "최소 1명 이상 선택해야 합니다.");
         }
 
@@ -132,12 +132,17 @@ public class TeamChatService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND, "현재 사용자를 찾을 수 없습니다."));
 
 
-        List<User> targetUsers = projectUserRepository.findAllUsersByProjectIdAndUserIds(
+        List<User> targetUsers = projectUserRepository.findActiveUsersByProjectIdAndUserIds(
                 request.getProjectId(),
-                request.getTargetUserIds()
+                new ArrayList<>(uniqueTargetIds)
         );
+        // 2. 결과 대조 로그
+        List<Long> foundUserIds = targetUsers.stream().map(User::getUserId).toList();
 
-        if (targetUsers.size() != request.getTargetUserIds().size()) {
+        if (targetUsers.size() != uniqueTargetIds.size()) {
+            Set<Long> missingIds = new HashSet<>(uniqueTargetIds);
+            missingIds.removeAll(foundUserIds);
+
             throw new ChatException(ChatErrorCode.USER_NOT_FOUND, "유저가 프로젝트에 속하지 않습니다");
         }
 
@@ -186,7 +191,7 @@ public class TeamChatService {
 
         // 초대 대상이 프로젝트 멤버인지 확인
         List<Long> validUserIds = projectUserRepository
-                .findAllUsersByProjectIdAndUserIds(projectId, request.getTargetUserIds())
+                .findActiveUsersByProjectIdAndUserIds(projectId, request.getTargetUserIds())
                 .stream()
                 .map(User::getUserId)
                 .toList();

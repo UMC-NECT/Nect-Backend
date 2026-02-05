@@ -25,16 +25,17 @@ public class ChatConverter {
 
     //ChatMessage  -> ChatMessageDto
     public static ChatMessageDto toMessageDto(ChatMessage message) {
-        ChatMessageDto dto = new ChatMessageDto();
-        dto.setMessageId(message.getId());
-        dto.setRoomId(message.getChatRoom().getId());
-
-        dto.setUserName("사용자" + message.getUser().getUserId());  // TODO: User 조회
-        dto.setContent(message.getContent());
-        dto.setMessageType(message.getMessageType());
-        dto.setIsPinned(message.getIsPinned());
-        dto.setCreatedAt(message.getCreatedAt());
-        return dto;
+        return ChatMessageDto.builder()
+                .messageId(message.getId())
+                .roomId(message.getChatRoom().getId())
+                .userId(message.getUser().getUserId())
+                .userName(message.getUser().getName())
+                .profileImage(message.getUser().getProfileImageUrl())
+                .content(message.getContent())
+                .messageType(message.getMessageType())
+                .isPinned(message.getIsPinned())
+                .createdAt(message.getCreatedAt())
+                .build();
     }
 
     //DTO -> ChatMessage

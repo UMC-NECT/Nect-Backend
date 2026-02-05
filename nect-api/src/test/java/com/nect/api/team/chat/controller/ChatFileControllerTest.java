@@ -2,12 +2,14 @@ package com.nect.api.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
 import com.nect.api.domain.team.chat.service.ChatFileService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.team.chat.enums.MessageType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -78,7 +80,6 @@ class ChatFileControllerTest {
                         .build()
         );
     }
-
     @Test
     @DisplayName("작업실 채팅방 파일 업로드 API")
     void uploadFile() throws Exception {
@@ -90,15 +91,31 @@ class ChatFileControllerTest {
                 "test file content".getBytes()
         );
 
-        ChatFileUploadResponseDto response = new ChatFileUploadResponseDto(
+        // ChatMessageDto 구조로 변경
+        ChatMessageDto response = ChatMessageDto.builder()
+                .messageId(100L)
+                .userId(1L)
+                .roomId(1L)
+                .userName("테스트유저")
+                .profileImage("https://example.com/profile.jpg")
+                .content("파일 전송")
+                .messageType(MessageType.FILE)
+                .isPinned(false)
+                .createdAt(LocalDateTime.now())
+                .readCount(0)
+                .build();
+
+        // fileInfo 추가
+        ChatFileUploadResponseDto fileInfo = new ChatFileUploadResponseDto(
                 1L,
                 "test.png",
                 "https://r2.example.com/uuid_test.png",
                 1024L,
                 "image/png"
         );
+        response.setFileInfo(fileInfo);
 
-        given(chatFileService.uploadFile(anyLong(), any(), anyLong()))
+        given(chatFileService.uploadAndSendFile(anyLong(), any(), anyLong()))
                 .willReturn(response);
 
         // When & Then
@@ -107,17 +124,21 @@ class ChatFileControllerTest {
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.file_id").value(1L))
-                .andExpect(jsonPath("$.body.file_name").value("test.png"))
+                .andExpect(jsonPath("$.body.message_id").value(100L))
+                .andExpect(jsonPath("$.body.message_type").value("FILE"))
+                .andExpect(jsonPath("$.body.file_info.file_id").value(1L))
+                .andExpect(jsonPath("$.body.file_info.file_name").value("test.png"))
                 .andDo(document("chat-file-upload",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
                                 .tag("채팅 파일")
-                                .summary("파일 업로드")
-                                .description("채팅 메시지에 첨부할 이미지 파일을 Cloudflare R2에 업로드합니다. " +
+                                .summary("파일 업로드 및 전송")
+                                .description("채팅 메시지에 첨부할 이미지 파일을 Cloudflare R2에 업로드하고 " +
+                                        "실시간으로 채팅방에 전송합니다. " +
                                         "jpg, jpeg, png 형식만 지원하며, 업로드된 파일은 DB에 메타데이터가 저장되고 " +
-                                        "5분 유효한 Presigned URL이 반환됩니다.")
+                                        "5분 유효한 Presigned URL이 반환됩니다. " +
+                                        "Redis를 통해 채팅방의 모든 참여자에게 실시간으로 전달됩니다.")
                                 .requestHeaders(
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
@@ -128,11 +149,22 @@ class ChatFileControllerTest {
                                         fieldWithPath("status.statusCode").description("상태 코드"),
                                         fieldWithPath("status.message").description("상태 메시지"),
                                         fieldWithPath("status.description").description("상세 설명").optional(),
-                                        fieldWithPath("body.file_id").description("생성된 파일 고유 ID"),
-                                        fieldWithPath("body.file_name").description("원본 파일 이름"),
-                                        fieldWithPath("body.file_url").description("Presigned URL (5분 유효)"),
-                                        fieldWithPath("body.file_size").description("파일 크기 (bytes)"),
-                                        fieldWithPath("body.file_type").description("파일 MIME 타입")
+                                        fieldWithPath("body.message_id").description("생성된 메시지 ID"),
+                                        fieldWithPath("body.user_id").description("발신자 ID"),
+                                        fieldWithPath("body.room_id").description("채팅방 ID"),
+                                        fieldWithPath("body.user_name").description("발신자 이름"),
+                                        fieldWithPath("body.profile_image").description("발신자 프로필 이미지").optional(),
+                                        fieldWithPath("body.content").description("메시지 내용"),
+                                        fieldWithPath("body.message_type").description("메시지 타입 (FILE)"),
+                                        fieldWithPath("body.is_pinned").description("고정 여부"),
+                                        fieldWithPath("body.created_at").description("메시지 생성 시간"),
+                                        fieldWithPath("body.read_count").description("읽지 않은 사용자 수"),
+                                        fieldWithPath("body.file_info").description("파일 정보"),
+                                        fieldWithPath("body.file_info.file_id").description("생성된 파일 고유 ID"),
+                                        fieldWithPath("body.file_info.file_name").description("원본 파일 이름"),
+                                        fieldWithPath("body.file_info.file_url").description("Presigned URL (5분 유효)"),
+                                        fieldWithPath("body.file_info.file_size").description("파일 크기 (bytes)"),
+                                        fieldWithPath("body.file_info.file_type").description("파일 MIME 타입")
                                 )
                                 .build()
                         )

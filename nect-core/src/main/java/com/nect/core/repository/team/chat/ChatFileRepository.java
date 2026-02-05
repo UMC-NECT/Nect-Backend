@@ -1,7 +1,7 @@
 package com.nect.core.repository.team.chat;
 
 import com.nect.core.entity.team.chat.ChatFile;
-import com.nect.core.entity.team.chat.ChatRoom;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,21 +21,23 @@ public interface ChatFileRepository extends JpaRepository<ChatFile, Long> {
 
     List<ChatFile> findAllByCreatedAtBefore(LocalDateTime threshold);
 
-
     @Query("SELECT cf FROM ChatFile cf " +
             "WHERE cf.chatRoom.id = :roomId " +
-            "AND cf.createdAt > :after " +
+            "AND cf.createdAt > :createdAt " +
+            "AND cf.fileType LIKE 'image/%' " +
             "ORDER BY cf.createdAt DESC")
-    List<ChatFile> findTopNByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(
+    List<ChatFile> findImageFilesByChatRoomIdAndCreatedAtAfter(
             @Param("roomId") Long roomId,
-            @Param("after") LocalDateTime after,
+            @Param("createdAt") LocalDateTime createdAt,
             Pageable pageable);
 
     @Query("SELECT COUNT(cf) FROM ChatFile cf " +
             "WHERE cf.chatRoom.id = :roomId " +
-            "AND cf.createdAt > :after")
-    int countByChatRoomIdAndCreatedAtAfter(
+            "AND cf.createdAt > :createdAt " +
+            "AND cf.fileType LIKE 'image/%'")
+    int countImageFilesByChatRoomIdAndCreatedAtAfter(
             @Param("roomId") Long roomId,
-            @Param("after") LocalDateTime after);
+            @Param("createdAt") LocalDateTime createdAt);
+
 
 }

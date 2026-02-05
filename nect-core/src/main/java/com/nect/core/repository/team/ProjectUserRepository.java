@@ -65,6 +65,20 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userIds") List<Long> userIds
     );
 
+    @Query("""
+        SELECT u FROM User u 
+        JOIN ProjectUser pu ON u.userId = pu.userId 
+        WHERE pu.project.id = :projectId 
+        AND u.userId IN :userIds 
+        AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+    """)
+    List<User> findActiveUsersByProjectIdAndUserIds(
+                                                      @Param("projectId") Long projectId,
+                                                      @Param("userIds") List<Long> userIds
+    );
+
+
+
 
     @Query("SELECT COUNT(pu) > 0 FROM ProjectUser pu " +
             "WHERE pu.project.id = :projectId " +
