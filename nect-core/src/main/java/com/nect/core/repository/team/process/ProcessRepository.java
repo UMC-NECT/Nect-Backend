@@ -485,5 +485,101 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("date") LocalDate date
     );
 
+    @Query("""
+        select (count(p) > 0)
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
+          and pf.deletedAt is null
+          and pf.roleField = :roleField
+          and p.startAt <= :end
+          and p.endAt >= :start
+    """)
+    boolean existsOverlappingInRoleLane(
+            @Param("projectId") Long projectId,
+            @Param("roleField") RoleField roleField,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+    @Query("""
+        select (count(p) > 0)
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
+          and pf.deletedAt is null
+          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
+          and trim(pf.customFieldName) = :customName
+          and p.startAt <= :end
+          and p.endAt >= :start
+    """)
+    boolean existsOverlappingInCustomLane(
+            @Param("projectId") Long projectId,
+            @Param("customName") String customName,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+    interface MissionPeriodRow {
+        LocalDate getStartAt();
+        LocalDate getEndAt();
+    }
+
+    @Query("""
+        select p.startAt as startAt, p.endAt as endAt
+        from Process p
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
+          and p.missionNumber = :missionNumber
+    """)
+    Optional<MissionPeriodRow> findWeekMissionPeriodByMissionNumber(
+            @Param("projectId") Long projectId,
+            @Param("missionNumber") Integer missionNumber
+    );
+
+    @Query("""
+        select case when count(p) > 0 then true else false end
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.id <> :excludeProcessId
+          and pf.deletedAt is null
+          and pf.roleField = :roleField
+          and not (p.endAt < :start or p.startAt > :end)
+    """)
+    boolean existsOverlappingInRoleLaneExcludingProcess(
+            @Param("projectId") Long projectId,
+            @Param("roleField") RoleField roleField,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end,
+            @Param("excludeProcessId") Long excludeProcessId
+    );
+
+    @Query("""
+        select case when count(p) > 0 then true else false end
+        from Process p
+        join p.processFields pf
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.id <> :excludeProcessId
+          and pf.deletedAt is null
+          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
+          and pf.customFieldName = :customName
+          and not (p.endAt < :start or p.startAt > :end)
+    """)
+    boolean existsOverlappingInCustomLaneExcludingProcess(
+            @Param("projectId") Long projectId,
+            @Param("customName") String customName,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end,
+            @Param("excludeProcessId") Long excludeProcessId
+    );
+
 }
 

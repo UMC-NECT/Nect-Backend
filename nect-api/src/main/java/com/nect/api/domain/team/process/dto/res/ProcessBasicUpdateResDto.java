@@ -36,6 +36,9 @@ public record ProcessBasicUpdateResDto(
         @JsonProperty("assignee_ids")
         List<Long> assigneeIds,
 
+        @JsonProperty("assignees")
+        List<AssigneeResDto> assignees,
+
         @JsonProperty("mention_user_ids")
         List<Long> mentionUserIds,
 
