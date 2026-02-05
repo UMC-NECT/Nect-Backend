@@ -154,6 +154,24 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userIds") List<Long> userIds
     );
 
+    @Query("""
+        select count(pu) > 0
+        from ProjectUser pu
+        where pu.project = :project
+            and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEAD
+            and pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+            and pu.roleField = :roleField
+            and (
+                :roleField <> com.nect.core.entity.user.enums.RoleField.CUSTOM
+                or pu.customRoleFieldName = :customRoleFieldName
+                )
+    """)
+    boolean existsActiveLeadInProject(
+            @Param("project") Project project,
+            @Param("roleField") RoleField roleField,
+            @Param("customRoleFieldName") String customRoleFieldName
+    );
+
     interface UserFieldIdsRow {
         Long getUserId();
         Long getFieldId();

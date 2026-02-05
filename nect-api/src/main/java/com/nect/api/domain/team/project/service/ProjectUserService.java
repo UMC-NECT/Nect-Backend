@@ -85,13 +85,41 @@ public class ProjectUserService {
                 .toList();
     }
 
-    public ProjectUserResDto kickProjectUser(Long projectUserId) {
+    public ProjectUserResDto kickProjectUser(Long userId, Long projectUserId) {
         ProjectUser projectUser = getProjectUser(projectUserId);
 
+        // 로그인한 유저가 리더인지 검증
+        if (userId != projectUserRepository.findLeaderByProject(projectUser.getProject())){
+            throw new ProjectUserException(ProjectUserErrorCode.ONLY_LEADER_ALLOWED);
+        }
+
         projectUser.kick();
-        return ProjectUserResDto.builder()
-                .id(projectUser.getId())
-                .memberStatus(projectUser.getMemberStatus())
-                .build();
+        return ProjectUserConverter.toProjectUserResDto(projectUser);
+    }
+
+    public ProjectUserResDto changeProjectUserTypeInProject(Long userId, Long projectUserId, ProjectMemberType memberType) {
+        ProjectUser projectUser = getProjectUser(projectUserId);
+
+        // 로그인한 유저가 리더인지 검증
+        if (userId != projectUserRepository.findLeaderByProject(projectUser.getProject())){
+            throw new ProjectUserException(ProjectUserErrorCode.ONLY_LEADER_ALLOWED);
+        }
+
+        // 한 프로젝트, 같은 분야에서 LEAD는 한명만 설정 가능하도록 검증
+        if (memberType == ProjectMemberType.LEAD) {
+            RoleField roleField = projectUser.getRoleField();
+            boolean anotherLeadExists = projectUserRepository.existsActiveLeadInProject(
+                    projectUser.getProject(),
+                    roleField,
+                    projectUser.getCustomRoleFieldName()
+            );
+
+            if (anotherLeadExists && projectUser.getMemberType() != ProjectMemberType.LEADER) {
+                throw new ProjectUserException(ProjectUserErrorCode.ONLY_LEADER_ALLOWED);
+            }
+        }
+
+        projectUser.changeType(memberType);
+        return ProjectUserConverter.toProjectUserResDto(projectUser);
     }
 }

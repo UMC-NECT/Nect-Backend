@@ -1,9 +1,6 @@
 package com.nect.api.domain.team.project.controller;
 
-import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
-import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
-import com.nect.api.domain.team.project.dto.ProjectUserResDto;
-import com.nect.api.domain.team.project.dto.UserProjectDto;
+import com.nect.api.domain.team.project.dto.*;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -39,8 +36,23 @@ public class ProjectUserController {
 
     @PatchMapping("/{projectUserId}/kick")
     public ApiResponse<ProjectUserResDto> kickProjectUser(
-            @PathVariable @Positive Long projectUserId
+            @PathVariable @Positive Long projectUserId,
+            @AuthenticationPrincipal UserDetailsImpl user
     ) {
-        return ApiResponse.ok(projectUserService.kickProjectUser(projectUserId));
+        return ApiResponse.ok(projectUserService.kickProjectUser(user.getUserId(), projectUserId));
+    }
+
+    @PatchMapping("/{projectUserId}/type")
+    public ApiResponse<ProjectUserResDto> updateProjectUserType(
+            @PathVariable @Positive Long projectUserId,
+            @RequestBody @Valid ProjectUserTypeReqDto req,
+            @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        return ApiResponse.ok(projectUserService.changeProjectUserTypeInProject(
+                user.getUserId(),
+                projectUserId,
+                req.memberType()
+            )
+        );
     }
 }
