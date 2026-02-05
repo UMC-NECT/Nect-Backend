@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+
 public class RedisSubscriber implements MessageListener { // MessageListener 인터페이스 구현
 
     private final ObjectMapper objectMapper;
@@ -22,23 +22,17 @@ public class RedisSubscriber implements MessageListener { // MessageListener 인
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            //  Redis에서 온 메시지 String으로 변환
             String publishMessage = new String(message.getBody());
 
-            log.info(" Redis Subscriber 수신 - Message: {}", publishMessage);
 
-            //  JSON 문자열 -> DTO 변환
             ChatMessageDto chatMessage = objectMapper.readValue(publishMessage, ChatMessageDto.class);
 
-            //  WebSocket 구독자들에게 전송
             String destination = "/topic/chatroom/" + chatMessage.getRoomId();
 
             messagingTemplate.convertAndSend(destination, chatMessage);
 
-            log.info(" WebSocket 전송 완료 - Destination: {}", destination);
 
         } catch (Exception e) {
-            log.error(" Redis 메시지 처리 실패", e);
             throw new ChatException(ChatErrorCode.REDIS_SUBSCRIBE_FAILED, "Message handling failed", e);
         }
     }

@@ -95,12 +95,12 @@ class ChatFileControllerTest {
         ChatMessageDto response = new ChatMessageDto();
         response.setMessageId(100L);
         response.setUserId(1L);
-        response.setRoomId(1L);  // ✅ 추가
+        response.setRoomId(1L);
         response.setUserName("테스트유저");
-        response.setProfileImage("https://example.com/profile.jpg");  // ✅ 추가 (null이 아닌 값)
+        response.setProfileImage("https://example.com/profile.jpg");
         response.setContent("파일 전송");
         response.setMessageType(MessageType.FILE);
-        response.setIsPinned(false);  // ✅ 추가
+        response.setIsPinned(false);
         response.setCreatedAt(LocalDateTime.now());
         response.setReadCount(0);
 

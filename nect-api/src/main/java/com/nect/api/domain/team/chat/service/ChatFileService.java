@@ -52,49 +52,42 @@ public class ChatFileService {
     @Transactional
     public ChatMessageDto uploadAndSendFile(Long roomId, MultipartFile file, Long userId) {
 
-        // 1. 사용자의 채팅방 멤버십 확인
         ChatRoomUser chatRoomUser = chatRoomUserRepository.findMemberInRoom(roomId, userId)
                 .orElseThrow(() -> new StorageException(StorageErrorCode.NOT_CHAT_ROOM_MEMBER));
 
         ChatRoom chatRoom = chatRoomUser.getChatRoom();
         User user = chatRoomUser.getUser();
 
-        // 2. 파일 검증 (이미지만 허용)
+
         FileValidator.validateFile(file);
 
         try {
-            // 3. S3 업로드 (전송 확정 시점!)
             String storedFileName = s3Service.uploadFile(file);
             String fileUrl = s3Service.getPresignedGetUrl(storedFileName);
 
-            // 4. ChatMessage 생성 및 저장
             ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
             chatMessageRepository.save(message);
 
-            // 5. ChatFile 생성 및 저장 (Message와 연결)
             ChatFile chatFile = FileConverter.toFileEntity(
                     file.getOriginalFilename(),
                     storedFileName,
                     fileUrl,
                     file.getSize(),
-                    file.getContentType(),  // 파일 타입 저장 (image/jpeg, image/png 등)
+                    file.getContentType(),
                     chatRoom
             );
-            chatFile.setChatMessage(message);  // 메시지와 연결
+            chatFile.setChatMessage(message);
             chatFileRepository.save(chatFile);
 
-            // 6. 발신자의 lastReadMessageId 업데이트 (본인은 이미 읽음)
             chatRoomUser.setLastReadMessageId(message.getId());
             chatRoomUser.setLastReadAt(LocalDateTime.now());
 
             // 7. DTO 변환
             ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
 
-            // 8. readCount 설정 (전체 인원 - 1(본인))
             int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
             messageDto.setReadCount(totalMembers - 1);
 
-            // 9. Redis 발행 (실시간 전달)
             String channel = "chatroom:" + roomId;
             redisPublisher.publish(channel, messageDto);
 
