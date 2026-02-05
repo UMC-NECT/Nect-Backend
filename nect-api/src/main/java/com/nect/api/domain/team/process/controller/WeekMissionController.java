@@ -4,6 +4,7 @@ import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
+import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
 import com.nect.api.domain.team.process.service.WeekMissionService;
 import com.nect.api.global.response.ApiResponse;
@@ -70,6 +71,17 @@ public class WeekMissionController {
     ) {
         return ApiResponse.ok(
                 weekMissionService.updateWeekMissionTaskItem(projectId, userDetails.getUserId(), processId, taskItemId, req)
+        );
+    }
+
+    // 멤버형 모달 미션 주차 선택 드롭다운 조회
+    @GetMapping("/missions")
+    public ApiResponse<WeekMissionDropdownResDto> readMissionDropdown(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return ApiResponse.ok(
+                weekMissionService.getMissionDropdown(projectId, userDetails.getUserId())
         );
     }
 
