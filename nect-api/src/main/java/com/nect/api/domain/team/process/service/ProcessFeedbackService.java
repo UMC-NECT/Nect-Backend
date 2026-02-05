@@ -158,6 +158,7 @@ public class ProcessFeedbackService {
         List<String> createdByRoleFields = roleFieldLabelsMap.getOrDefault(userId, List.of());
 
         String createdByUserName = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getName() : null;
+        String createdByNickname = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getNickname() : null;
 
         // 히스토리
         Map<String, Object> meta = new LinkedHashMap<>();
@@ -206,7 +207,7 @@ public class ProcessFeedbackService {
                 saved.getId(),
                 saved.getContent(),
                 saved.getStatus(),
-                new FeedbackCreatedByResDto(userId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(userId, createdByUserName, createdByNickname, createdByRoleFields),
                 saved.getCreatedAt()
         );
     }
@@ -249,6 +250,7 @@ public class ProcessFeedbackService {
         User createdBy = feedback.getCreatedBy();
         Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
         String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
+        String createdByNickname = (createdBy != null) ? createdBy.getNickname() : null;
 
         List<String> createdByRoleFields = List.of();
         if (createdByUserId != null) {
@@ -260,7 +262,7 @@ public class ProcessFeedbackService {
                 feedback.getId(),
                 feedback.getContent(),
                 feedback.getStatus(),
-                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByNickname, createdByRoleFields),
                 feedback.getCreatedAt(),
                 feedback.getUpdatedAt()
         );

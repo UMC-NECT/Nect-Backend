@@ -9,6 +9,7 @@ import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.user.enums.RoleField;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,11 +30,11 @@ public class ProcessController {
     public ApiResponse<ProcessCreateResDto> createProcess(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestBody ProcessCreateReqDto request
+            @Valid @RequestBody ProcessCreateReqDto request
     ) {
         Long userId = userDetails.getUserId();
-        Long processId = processService.createProcess(projectId, userId, request);
-        return ApiResponse.ok(new ProcessCreateResDto(processId));
+        ProcessCreateResDto res = processService.createProcess(projectId, userId, request);
+        return ApiResponse.ok(res);
     }
 
     // 프로세스 상세 조회
