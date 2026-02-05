@@ -14,7 +14,7 @@ import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.team.process.ProcessTaskItem;
-import com.nect.core.entity.team.process.ProjectTeamRole;
+import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.analysis.*;

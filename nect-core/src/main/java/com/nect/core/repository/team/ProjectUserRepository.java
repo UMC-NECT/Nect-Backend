@@ -220,4 +220,29 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     }
 
     Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
+
+    boolean existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(Long projectId, Long userId, ProjectMemberType projectMemberType, ProjectMemberStatus projectMemberStatus);
+
+    interface ProjectLeaderProfileRow {
+        Long getUserId();
+        String getNickname();
+        String getProfileImageUrl();
+    }
+
+    @Query("""
+        select
+          u.userId as userId,
+          u.nickname as nickname,
+          u.profileImageUrl as profileImageUrl
+        from ProjectUser pu
+        join User u
+          on u.userId = pu.userId
+        where pu.project.id = :projectId
+          and pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+          and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
+    """)
+    Optional<ProjectLeaderProfileRow> findActiveLeaderProfile(@Param("projectId") Long projectId);
+
+
+
 }
