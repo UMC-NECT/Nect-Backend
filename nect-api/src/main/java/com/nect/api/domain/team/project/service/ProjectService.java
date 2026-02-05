@@ -19,6 +19,7 @@ import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.analysis.*;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;

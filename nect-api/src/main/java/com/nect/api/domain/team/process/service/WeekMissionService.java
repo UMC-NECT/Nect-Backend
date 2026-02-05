@@ -7,6 +7,7 @@ import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
+import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
@@ -500,6 +501,38 @@ public class WeekMissionService {
                 item.getSortOrder(),
                 item.getDoneAt()
         );
+    }
+
+    // 위크미션 드롭 다운용 조화
+    @Transactional(readOnly = true)
+    public WeekMissionDropdownResDto getMissionDropdown(Long projectId, Long userId) {
+        assertActiveProjectMember(projectId, userId);
+        assertProjectExists(projectId);
+
+        var rows = processRepository.findWeekMissionRanges(projectId);
+
+        LocalDate today = LocalDate.now();
+
+        List<WeekMissionDropdownResDto.MissionDto> missions = rows.stream()
+                .map(r -> {
+                    LocalDate start = r.getStartDate();
+                    LocalDate end = r.getEndDate();
+
+                    boolean isCurrent = false;
+                    if (start != null && end != null) {
+                        isCurrent = (!today.isBefore(start) && !today.isAfter(end));
+                    }
+
+                    return new WeekMissionDropdownResDto.MissionDto(
+                            r.getMissionNumber(),
+                            start,
+                            end,
+                            isCurrent
+                    );
+                })
+                .toList();
+
+        return new WeekMissionDropdownResDto(missions);
     }
 
     private LocalDate toMonday(LocalDate date) {
