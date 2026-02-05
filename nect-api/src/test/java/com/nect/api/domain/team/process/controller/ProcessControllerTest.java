@@ -119,6 +119,18 @@ class ProcessControllerTest {
         long userId = 1L;
         long createdProcessId = 10L;
 
+        ProcessCreateResDto response = new ProcessCreateResDto(
+                createdProcessId,
+                LocalDateTime.of(2026, 1, 19, 0, 0, 0),
+                new ProcessCreateResDto.WriterDto(
+                        userId,
+                        "작성자이름",
+                        "작성자닉네임",
+                        RoleField.BACKEND,
+                        null
+                )
+        );
+
         ProcessCreateReqDto request = new ProcessCreateReqDto(
                 "1주차 미션",
                 "로그인/회원가입 API 초안 + 문서화",
@@ -139,8 +151,11 @@ class ProcessControllerTest {
                 // file_ids
                 List.of(),
 
-                // links
-                List.of("https://github.com/nect/nect-backend", "https://figma.com/file/xxxxx"),
+                // links (변경됨)
+                List.of(
+                        new ProcessCreateReqDto.ProcessLinkItemReqDto("백엔드 Repo", "https://github.com/nect/nect-backend"),
+                        new ProcessCreateReqDto.ProcessLinkItemReqDto("피그마", "https://figma.com/file/xxxxx")
+                ),
 
                 List.of(
                         new ProcessTaskItemReqDto("요구사항 정리", false, 1),
@@ -150,7 +165,7 @@ class ProcessControllerTest {
         );
 
         given(processService.createProcess(eq(projectId), eq(userId), any(ProcessCreateReqDto.class)))
-                .willReturn(createdProcessId);
+                .willReturn(response);
 
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes", projectId)
                         .with(mockUser(userId))
@@ -181,18 +196,22 @@ class ProcessControllerTest {
                                                 fieldWithPath("role_fields").type(ARRAY).description("분야 목록 (예: BACKEND, FRONTEND 등)"),
                                                 fieldWithPath("custom_field_name").optional().type(STRING).description("커스텀 분야명(null 가능)"),
 
-                                                fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+                                                // start/deadline은 네 DTO에서 @NotNull이라 optional 빼는게 맞음
+                                                fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
 
                                                 fieldWithPath("mention_user_ids").type(ARRAY).description("멘션된 유저 ID 목록"),
                                                 fieldWithPath("file_ids").type(ARRAY).description("첨부 파일 ID 목록"),
 
+                                                // links 변경
                                                 fieldWithPath("links").type(ARRAY).description("첨부 링크 목록").optional(),
+                                                fieldWithPath("links[].title").type(STRING).description("링크 제목"),
+                                                fieldWithPath("links[].url").type(STRING).description("링크 URL"),
 
                                                 fieldWithPath("task_items").type(ARRAY).description("업무 항목(TaskItem) 목록"),
-                                                fieldWithPath("task_items[].content").optional().type(STRING).description("업무 항목 내용"),
-                                                fieldWithPath("task_items[].is_done").optional().type(BOOLEAN).description("완료 여부"),
-                                                fieldWithPath("task_items[].sort_order").optional().type(NUMBER).description("정렬 순서")
+                                                fieldWithPath("task_items[].content").type(STRING).description("업무 항목 내용"),
+                                                fieldWithPath("task_items[].is_done").type(BOOLEAN).description("완료 여부"),
+                                                fieldWithPath("task_items[].sort_order").type(NUMBER).description("정렬 순서")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").description("응답 상태"),
@@ -201,8 +220,18 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.description").optional().description("상세 설명(주로 에러 시)"),
 
                                                 fieldWithPath("body").description("응답 바디"),
-                                                fieldWithPath("body.process_id").description("생성된 프로세스 ID")
+                                                fieldWithPath("body.process_id").type(NUMBER).description("생성된 프로세스 ID"),
+
+                                                fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)"),
+
+                                                fieldWithPath("body.writer").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.writer.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
+                                                fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할 분야(RoleField)"),
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 분야명(null 가능)")
                                         )
+
                                         .build()
                         )
                 ));
@@ -220,6 +249,7 @@ class ProcessControllerTest {
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 1L,
                 "작성자",
+                "패트",
                 List.of("DESIGNER", "CUSTOM:UX Writer")
         );
 
@@ -243,29 +273,43 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 25),
                 0,
 
-                List.of(),
-                List.of("디자인"),
+                List.of(),                // role_fields
+                List.of("디자인"),        // custom_fields
 
                 List.of(
-                        new AssigneeResDto(1L, "유저1", "https://img.com/1.png"),
-                        new AssigneeResDto(2L, "유저2", "https://img.com/2.png")
+                        new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png"),
+                        new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png")
                 ),
                 List.of(3L, 4L),
 
-                List.of(
-                        new FileResDto(1001L, "spec.pdf", "https://s3.amazonaws.com/nect/spec.pdf", FileExt.PDF, 1024L),
-                        new FileResDto(1002L, "image.jpg", "https://s3.amazonaws.com/nect/image.jpg", FileExt.JPG, 2048L)
-                ),
-                List.of(
-                        new LinkResDto(1L, "https://a.com"),
-                        new LinkResDto(2L, "https://b.com")
-                ),
                 List.of(
                         new ProcessTaskItemResDto(1L, "세부작업1", false, 0, null),
                         new ProcessTaskItemResDto(2L, "세부작업2", true, 1, LocalDate.of(2026, 1, 20))
                 ),
 
                 feedbacks,
+
+                // attachments (FILE + LINK 통합)
+                List.of(
+                        new ProcessDetailResDto.AttachmentDto(
+                                com.nect.api.domain.team.process.enums.AttachmentType.FILE,
+                                1001L,
+                                LocalDateTime.of(2026, 1, 23, 12, 0),
+                                null, null,
+                                "spec.pdf",
+                                "https://s3.amazonaws.com/nect/spec.pdf",
+                                FileExt.PDF,
+                                1024L
+                        ),
+                        new ProcessDetailResDto.AttachmentDto(
+                                com.nect.api.domain.team.process.enums.AttachmentType.LINK,
+                                2001L,
+                                LocalDateTime.of(2026, 1, 22, 9, 0),
+                                "Backend Repo",
+                                "https://github.com/nect/nect-backend",
+                                null, null, null, null
+                        )
+                ),
 
                 LocalDateTime.of(2026, 1, 19, 0, 0, 0),
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0),
@@ -319,20 +363,24 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.assignees").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.assignees[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.assignees[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.assignees[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.assignees[].user_image").type(STRING).description("담당자 이미지 URL"),
 
                                                 fieldWithPath("body.mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
 
-                                                fieldWithPath("body.files").type(ARRAY).description("첨부 파일 목록"),
-                                                fieldWithPath("body.files[].file_id").type(NUMBER).description("파일 ID"),
-                                                fieldWithPath("body.files[].file_name").type(STRING).description("파일명"),
-                                                fieldWithPath("body.files[].file_url").type(STRING).description("파일 URL"),
-                                                fieldWithPath("body.files[].file_type").type(STRING).description("파일 확장자(FileExt)"),
-                                                fieldWithPath("body.files[].file_size").type(NUMBER).description("파일 크기(byte)"),
+                                                fieldWithPath("body.attachments").type(ARRAY).description("첨부 목록(파일/링크 통합)"),
 
-                                                fieldWithPath("body.links").type(ARRAY).description("링크 목록"),
-                                                fieldWithPath("body.links[].link_id").type(NUMBER).description("링크 ID"),
-                                                fieldWithPath("body.links[].url").type(STRING).description("링크 URL"),
+                                                fieldWithPath("body.attachments[].type").type(STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.attachments[].id").type(NUMBER).description("첨부 식별자(파일이면 file_id, 링크면 link_id)"),
+                                                fieldWithPath("body.attachments[].created_at").type(STRING).description("첨부 생성/첨부 시각"),
+
+                                                fieldWithPath("body.attachments[].title").optional().type(STRING).description("링크 제목(LINK 전용)"),
+                                                fieldWithPath("body.attachments[].url").optional().type(STRING).description("링크 URL(LINK 전용)"),
+
+                                                fieldWithPath("body.attachments[].file_name").optional().type(STRING).description("파일명(FILE 전용)"),
+                                                fieldWithPath("body.attachments[].file_url").optional().type(STRING).description("파일 URL(FILE 전용)"),
+                                                fieldWithPath("body.attachments[].file_type").optional().type(STRING).description("파일 확장자(FileExt, FILE 전용)"),
+                                                fieldWithPath("body.attachments[].file_size").optional().type(NUMBER).description("파일 크기(byte, FILE 전용)"),
 
                                                 fieldWithPath("body.task_items").type(ARRAY).description("업무 항목 목록"),
                                                 fieldWithPath("body.task_items[].task_item_id").type(NUMBER).description("업무 항목 ID"),
@@ -349,6 +397,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.feedbacks[].created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.feedbacks[].created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.feedbacks[].created_by.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.feedbacks[].created_by.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.feedbacks[].created_by.role_fields").type(ARRAY).description("작성자 역할 분야 목록(RoleField/CUSTOM)"),
 
                                                 fieldWithPath("body.feedbacks[].created_at").type(STRING).description("피드백 생성일시"),
@@ -397,7 +446,15 @@ class ProcessControllerTest {
                 List.of(1L, 2L),
                 List.of(3L, 4L),
 
-                LocalDateTime.of(2026, 1, 24, 0, 0, 0)
+                LocalDateTime.of(2026, 1, 24, 0, 0, 0),
+
+                new ProcessBasicUpdateResDto.WriterDto(
+                        1L,
+                        "작성자이름",
+                        "작성자닉네임",
+                        RoleField.BACKEND,
+                        null
+                )
         );
 
         given(processService.updateProcessBasic(eq(projectId), eq(userId), eq(processId), any(ProcessBasicUpdateReqDto.class)))
@@ -459,7 +516,14 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body.assignee_ids").type(ARRAY).description("담당자 ID 목록"),
                                                 fieldWithPath("body.mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
-                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)")
+                                                fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)"),
+
+                                                fieldWithPath("body.writer").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.writer.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
+                                                fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할(RoleField)"),
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)")
                                         )
                                         .build()
                         )
@@ -511,24 +575,33 @@ class ProcessControllerTest {
     }
 
     @Test
-    @DisplayName("주차별 프로세스 조회")
+    @DisplayName("주차별 프로세스 조회(weeks 지원)")
     void getWeekProcesses() throws Exception {
         long projectId = 1L;
         long userId = 1L;
 
-        ProcessWeekResDto response = new ProcessWeekResDto(
+        ProcessWeekResDto w1 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 19),
                 List.of(),
                 List.of()
         );
 
-        given(processService.getWeekProcesses(eq(projectId), eq(userId), any()))
+        ProcessWeekResDto w2 = new ProcessWeekResDto(
+                LocalDate.of(2026, 1, 26),
+                List.of(),
+                List.of()
+        );
+
+        ProcessWeeksResDto response = new ProcessWeeksResDto(List.of(w1, w2));
+
+        given(processService.getWeekProcesses(eq(projectId), eq(userId), any(LocalDate.class), eq(2)))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/processes/week", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("start_date", "2026-01-19")
+                        .param("weeks", "2")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("process-week",
@@ -537,13 +610,14 @@ class ProcessControllerTest {
                         resource(
                                 ResourceSnippetParameters.builder()
                                         .tag("Process")
-                                        .summary("프로세스 목록 조회(주차별)")
-                                        .description("프로젝트의 프로세스를 주차 기준으로 조회합니다. start_date 미입력 시 현재 주차 기준.")
+                                        .summary("프로세스 목록 조회(주차별/범위)")
+                                        .description("프로젝트의 프로세스를 주차 기준으로 조회합니다. weeks를 통해 여러 주차를 한번에 조회할 수 있습니다. start_date 미입력 시 현재 주차 기준.")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .queryParameters(
-                                                parameterWithName("start_date").optional().description("주 시작일(yyyy-MM-dd)")
+                                                parameterWithName("start_date").optional().description("기준 주 시작일(yyyy-MM-dd)"),
+                                                parameterWithName("weeks").optional().description("조회할 주 개수(기본 1, 최대 12)")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -555,16 +629,17 @@ class ProcessControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks").type(ARRAY).description("주차별 결과 목록"),
 
-                                                subsectionWithPath("body.common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
-                                                subsectionWithPath("body.by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
+                                                fieldWithPath("body.weeks[].start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
+                                                subsectionWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
+                                                subsectionWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processService).getWeekProcesses(eq(projectId), eq(userId), any());
+        verify(processService).getWeekProcesses(eq(projectId), eq(userId), any(LocalDate.class), eq(2));
     }
 
     @Test
@@ -574,8 +649,8 @@ class ProcessControllerTest {
         long userId = 1L;
 
         // assignee 샘플
-        AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "https://img.com/1.png");
-        AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "https://img.com/2.png");
+        AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png");
+        AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png");
 
         // IN_PROGRESS 카드 2개
         ProcessCardResDto p10 = new ProcessCardResDto(
@@ -736,6 +811,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.groups[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_image").type(STRING).description("담당자 이미지 URL")
                                         )
                                         .build()

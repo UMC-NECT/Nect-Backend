@@ -123,6 +123,7 @@ public class Process extends BaseEntity {
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(this)
                 .document(doc)
+                .attachedAt(LocalDateTime.now())
                 .build();
 
         sharedDocuments.add(psd);

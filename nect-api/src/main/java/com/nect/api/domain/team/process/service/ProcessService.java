@@ -4,6 +4,7 @@ import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.AttachmentType;
 import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
@@ -11,6 +12,7 @@ import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
+import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
@@ -34,10 +36,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -182,7 +186,7 @@ public class ProcessService {
 
     // 프로세스 생성 서비스
     @Transactional
-    public Long createProcess(Long projectId, Long userId, ProcessCreateReqDto req) {
+    public ProcessCreateResDto createProcess(Long projectId, Long userId, ProcessCreateReqDto req) {
 
         assertActiveProjectMember(projectId, userId);
         validateProcessTitle(req.processTitle());
@@ -197,7 +201,7 @@ public class ProcessService {
                         "projectId = " + projectId
                 ));
 
-        User user = userRepository.findById(userId)
+        User writer = userRepository.findById(userId)
                 .orElseThrow(() -> new ProcessException(
                         ProcessErrorCode.USER_NOT_FOUND,
                         "userId = " + userId
@@ -206,7 +210,7 @@ public class ProcessService {
         // Process 기본 생성
         Process process = Process.builder()
                 .project(project)
-                .createdBy(user)
+                .createdBy(writer)
                 .title(req.processTitle())
                 .content(req.processContent())
                 .build();
@@ -219,7 +223,15 @@ public class ProcessService {
         LocalDate start = req.startDate();
         LocalDate end = req.deadLine();
 
-        if (start != null && end != null && start.isAfter(end)) {
+        if (start == null || end == null) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "startDate and deadLine are required"
+            );
+        }
+
+
+        if (start.isAfter(end)) {
             throw new ProcessException(
                     ProcessErrorCode.INVALID_PROCESS_PERIOD,
                     "startDate = " + start + ", deadLine = " + end
@@ -256,18 +268,27 @@ public class ProcessService {
         }
 
         // links
-        List<String> links = Optional.ofNullable(req.links()).orElse(List.of()).stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .distinct()
-                .toList();
+        List<ProcessCreateReqDto.ProcessLinkItemReqDto> links =
+                Optional.ofNullable(req.links()).orElse(List.of());
 
-        for (String url : links) {
+        for (var l : links) {
+            if (l == null) continue;
+
+            String title = (l.title() == null) ? "" : l.title().trim();
+            String url = (l.url() == null) ? "" : l.url().trim();
+
+            if (title.isBlank() || url.isBlank()) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "link title and url are required"
+                );
+            }
+
             Link link = Link.builder()
-                    .process(process)
+                    .title(title)
                     .url(url)
                     .build();
+
             process.addLink(link);
         }
 
@@ -337,7 +358,7 @@ public class ProcessService {
         // 멘션된 사람들에게 알림
         notifyWorkspaceMention(
                 project,
-                user,
+                writer,
                 saved.getId(),
                 mentionReceivers,
                 saved.getTitle()
@@ -359,7 +380,15 @@ public class ProcessService {
         meta.put("assigneeIds", assigneeIds);
         meta.put("mentionUserIds", mentionIds);
         meta.put("fileIds", fileIds);
-        meta.put("links", links);
+        List<Map<String, String>> linkMetas = links.stream()
+                .filter(Objects::nonNull)
+                .map(l -> Map.of(
+                        "title", l.title() == null ? "" : l.title().trim(),
+                        "url", l.url() == null ? "" : l.url().trim()
+                ))
+                .toList();
+
+        meta.put("links", linkMetas);
 
         historyPublisher.publish(
                 projectId,
@@ -370,7 +399,23 @@ public class ProcessService {
                 meta
         );
 
-        return saved.getId();
+        ProjectUser writerMember = projectUserRepository.findByUserIdAndProject(writer.getUserId(), project)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "writer must be active project member. projectId=" + projectId + ", userId=" + userId
+                ));
+
+        return new ProcessCreateResDto(
+                saved.getId(),
+                saved.getCreatedAt(),
+                new ProcessCreateResDto.WriterDto(
+                        writer.getUserId(),
+                        writer.getName(),
+                        writer.getNickname(),
+                        writerMember.getRoleField(),
+                        writerMember.getCustomRoleFieldName()
+                )
+        );
     }
 
 
@@ -410,10 +455,49 @@ public class ProcessService {
                 ))
                 .toList();
 
+        List<ProcessDetailResDto.AttachmentDto> fileAttachments =
+                process.getSharedDocuments().stream()
+                        .filter(psd -> psd.getDeletedAt() == null)
+                        .map(psd -> {
+                            SharedDocument doc = psd.getDocument();
+                            if (doc == null) return null;
 
-        List<LinkResDto> links = process.getLinks().stream()
-                .map(l -> new LinkResDto(l.getId(), l.getUrl()))
-                .toList();
+                            // 정렬 기준 시간: attachedAt 우선, 없으면 psd createdAt fallback
+                            LocalDateTime at =
+                                    psd.getAttachedAt() != null ? psd.getAttachedAt() : psd.getCreatedAt();
+
+                            return new ProcessDetailResDto.AttachmentDto(
+                                    AttachmentType.FILE,
+                                    doc.getId(),
+                                    at,
+                                    null, null,
+                                    doc.getFileName(),
+                                    doc.getFileUrl(),
+                                    doc.getFileExt(),
+                                    doc.getFileSize()
+                            );
+                        })
+                        .filter(Objects::nonNull)
+                        .toList();
+
+        List<ProcessDetailResDto.AttachmentDto> linkAttachments =
+                process.getLinks().stream()
+                        .filter(l -> l.getDeletedAt() == null)
+                        .map(l -> new ProcessDetailResDto.AttachmentDto(
+                                AttachmentType.LINK,
+                                l.getId(),
+                                l.getCreatedAt(),
+                                l.getTitle(),
+                                l.getUrl(),
+                                null, null, null, null
+                        ))
+                        .toList();
+
+        List<ProcessDetailResDto.AttachmentDto> attachments =
+                Stream.concat(fileAttachments.stream(), linkAttachments.stream())
+                        .filter(a -> a.createdAt() != null)
+                        .sorted(Comparator.comparing(ProcessDetailResDto.AttachmentDto::createdAt).reversed())
+                        .toList();
 
         List<Long> mentionUserIds = process.getMentions().stream()
                 .map(ProcessMention::getMentionedUserId)
@@ -451,23 +535,13 @@ public class ProcessService {
                     return new AssigneeResDto(
                             u.getUserId(),
                             u.getName(),
+                            u.getNickname(),
                             userImage
                     );
                 })
                 .toList();
 
-        List<FileResDto> files = process.getSharedDocuments().stream()
-                .filter(psd -> psd.getDeletedAt() == null)
-                .map(ProcessSharedDocument::getDocument)
-                .filter(Objects::nonNull)
-                .map(doc -> new FileResDto(
-                        doc.getId(),
-                        doc.getFileName(),
-                        doc.getFileUrl(),
-                        doc.getFileExt(),
-                        doc.getFileSize()
-                ))
-                .toList();
+
 
         // feedbacks 채우기
         List<Long> feedbackCreatedByUserIds = process.getFeedbacks().stream()
@@ -511,6 +585,7 @@ public class ProcessService {
                     FeedbackCreatedByResDto createdByRes = new FeedbackCreatedByResDto(
                             createdById,
                             createdBy == null ? null : createdBy.getName(),
+                            createdBy == null ? null : createdBy.getNickname(),
                             createdByRoleFieldLabels
                     );
 
@@ -536,10 +611,9 @@ public class ProcessService {
                 customFields,
                 assignees,
                 mentionUserIds,
-                files,
-                links,
                 taskItems,
                 feedbacks,
+                attachments,
                 process.getCreatedAt(),
                 process.getUpdatedAt(),
                 process.getDeletedAt()
@@ -550,7 +624,7 @@ public class ProcessService {
         // null이면 언급 변경 안 함
         if (requestedUserIds == null) return null;
 
-        // 빈 리스트면 언급 전부 제거 의미로 해석
+        // 빈 리스트면 언급 전부 제거 의미(=req가 빈 리스트)
         List<Long> req = requestedUserIds.stream()
                 .filter(Objects::nonNull)
                 .distinct()
@@ -559,14 +633,29 @@ public class ProcessService {
         // 삭제 포함 전체 조회
         List<ProcessMention> all = processMentionRepository.findAllByProcessId(process.getId());
 
+        // 기존 mention을 userId 기준으로 맵핑 (null/중복 방어)
         Map<Long, ProcessMention> byUserId = new HashMap<>();
         for (ProcessMention m : all) {
-            byUserId.put(m.getMentionedUserId(), m);
+            Long mid = m.getMentionedUserId();
+            if (mid == null) continue;
+
+            ProcessMention prev = byUserId.putIfAbsent(mid, m);
+            if (prev != null) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "duplicated mention row. mentionedUserId=" + mid + ", processId=" + process.getId()
+                );
+            }
         }
+
+        Set<Long> reqSet = new HashSet<>(req);
 
         // 요청에 없는 기존 mention -> soft delete
         for (ProcessMention m : all) {
-            if (!req.contains(m.getMentionedUserId())) {
+            Long mid = m.getMentionedUserId();
+            if (mid == null) continue;
+
+            if (!reqSet.contains(mid)) {
                 m.softDelete();
             }
         }
@@ -587,6 +676,7 @@ public class ProcessService {
 
         return req;
     }
+
 
     // 프로세스 기본 정보 수정
     @Transactional
@@ -919,6 +1009,15 @@ public class ProcessService {
             );
         }
 
+        User writer = process.getCreatedBy();
+
+        ProjectUser writerMember = projectUserRepository
+                .findByUserIdAndProject(writer.getUserId(), process.getProject())
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "writer must be active project member. projectId=" + projectId + ", userId=" + writer.getUserId()
+                ));
+
         return new ProcessBasicUpdateResDto(
                 process.getId(),
                 process.getTitle(),
@@ -930,7 +1029,14 @@ public class ProcessService {
                 afterCustomFields,
                 afterAssigneeIds,
                 (afterMentionIds == null) ? beforeMentionIds : afterMentionIds,
-                process.getUpdatedAt()
+                process.getUpdatedAt(),
+                new ProcessBasicUpdateResDto.WriterDto(
+                        writer.getUserId(),
+                        writer.getName(),
+                        writer.getNickname(),
+                        writerMember.getRoleField(),
+                        writerMember.getCustomRoleFieldName()
+                )
         );
 
     }
@@ -1015,7 +1121,8 @@ public class ProcessService {
                 .map(pu -> {
                     User u = pu.getUser();
                     String userImage = null; // TODO: 프로필 컬럼/연동되면 세팅
-                    return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
+                    String nickname = u.getNickname();
+                    return new AssigneeResDto(u.getUserId(), u.getName(), nickname, userImage);
                 })
                 .toList();
 
@@ -1121,7 +1228,7 @@ public class ProcessService {
 
     // 주차별 프로세스 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessWeekResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate) {
+    public ProcessWeeksResDto getWeekProcesses(Long projectId, Long userId, LocalDate startDate, int weeks) {
 
         assertActiveProjectMember(projectId, userId);
 
@@ -1132,72 +1239,46 @@ public class ProcessService {
             );
         }
 
+        if (weeks <= 0) weeks = 1;
+        if (weeks > 12) weeks = 12;
 
-        LocalDate weekStart = normalizeWeekStart(startDate);
-        LocalDate weekEnd = weekStart.plusDays(6);
 
-        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, weekStart, weekEnd);
+        LocalDate rangeStart = normalizeWeekStart(startDate);
+        LocalDate rangeEnd = rangeStart.plusDays((long) weeks * 7 - 1);
 
-        List<ProcessCardResDto> cards = processes.stream()
-                .map(p -> {
-                    int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
-                    int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
-                            .filter(ProcessTaskItem::isDone)
-                            .count();
+        List<Process> processes = processRepository.findAllInRangeOrdered(projectId, rangeStart, rangeEnd);
 
-                    Integer leftDay = null;
-                    if (p.getEndAt() != null) {
-                        long diff = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), p.getEndAt());
-                        leftDay = (int) Math.max(diff, 0);
-                    }
+        // 프로세스를 주차별로 묶기
+        // startAt이 null이면 rangeStart 주로 보내거나, common 처리 가능
+        Map<LocalDate, List<Process>> byWeek = new LinkedHashMap<>();
+        for (int i = 0; i < weeks; i++) {
+            LocalDate ws = rangeStart.plusWeeks(i);
+            byWeek.put(ws, new java.util.ArrayList<>());
+        }
 
-                    // roleFields / customFields
-                    List<RoleField> roleFields = p.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .map(ProcessField::getRoleField)
-                            .filter(java.util.Objects::nonNull)
-                            .filter(rf -> rf != RoleField.CUSTOM)   // CUSTOM은 customFields로만
-                            .distinct()
+        LocalDate lastWeekStart = rangeStart.plusWeeks(weeks - 1);
+
+        for (Process p : processes) {
+            LocalDate key = (p.getStartAt() == null) ? rangeStart : normalizeWeekStart(p.getStartAt());
+
+            if (key.isBefore(rangeStart)) key = rangeStart;
+            if (key.isAfter(lastWeekStart)) key = lastWeekStart;
+
+            byWeek.get(key).add(p);
+        }
+
+
+        List<ProcessWeekResDto> weekDtos = byWeek.entrySet().stream()
+                .map(entry -> {
+                    LocalDate weekStartKey = entry.getKey();
+                    List<ProcessCardResDto> cards = entry.getValue().stream()
+                            .map(this::toProcessCardResDTO)
                             .toList();
-
-                    List<String> customFields = p.getProcessFields().stream()
-                            .filter(pf -> pf.getDeletedAt() == null)
-                            .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
-                            .map(ProcessField::getCustomFieldName)
-                            .filter(java.util.Objects::nonNull)
-                            .map(String::trim)
-                            .filter(s -> !s.isBlank())
-                            .distinct()
-                            .toList();
-
-                    // assignees
-                    List<AssigneeResDto> assignees = p.getProcessUsers().stream()
-                            .filter(pu -> pu.getDeletedAt() == null)
-                            .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
-                            .map(pu -> {
-                                User u = pu.getUser();
-                                String userImage = null; // TODO: 프로필 이미지 연결되면 세팅
-                                return new AssigneeResDto(u.getUserId(), u.getName(), userImage);
-                            })
-                            .toList();
-
-                    return new ProcessCardResDto(
-                            p.getId(),
-                            p.getStatus(),
-                            p.getTitle(),
-                            done,
-                            whole,
-                            p.getStartAt(),
-                            p.getEndAt(),
-                            leftDay,
-                            roleFields,
-                            customFields,
-                            assignees
-                    );
+                    return buildWeekDto(weekStartKey, cards);
                 })
                 .toList();
 
-        return buildWeekDto(weekStart, cards);
+        return new ProcessWeeksResDto(weekDtos);
 
     }
 
@@ -1337,7 +1418,7 @@ public class ProcessService {
 
     // 파트별 작업 진행률 조회 서비스
     @Transactional(readOnly = true)
-    public ProcessProgressSummaryResDto getPartProgressSummary(Long projectId, Long userId) {
+    public ProcessProgressSummaryResDto  getPartProgressSummary(Long projectId, Long userId) {
         assertActiveProjectMember(projectId, userId);
 
         if (!projectRepository.existsById(projectId)) {

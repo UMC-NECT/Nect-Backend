@@ -56,7 +56,7 @@ public class ProcessLaneOrderService {
         List<ProcessLaneOrder> toSave = new ArrayList<>();
         for (Process p : missing) {
             ProcessLaneOrder row = ProcessLaneOrder.builder()
-                    .projectId(projectId) // 엔티티 구조에 따라 project 엔티티면 .project(...)로 바꿔줘
+                    .projectId(projectId)
                     .process(p)
                     .laneKey(laneKey)
                     .status(status)

@@ -3,13 +3,17 @@ package com.nect.api.domain.team.process.dto.req;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.user.enums.RoleField;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public record ProcessCreateReqDto(
-        // TODO : @Valid 나중에 필수값 확정되면 사용하기
 
+        @NotBlank
         @JsonProperty("process_title")
         String processTitle,
 
@@ -28,9 +32,11 @@ public record ProcessCreateReqDto(
         @JsonProperty("custom_field_name")
         String customFieldName,
 
+        @NotNull
         @JsonProperty("start_date")
         LocalDate startDate,
 
+        @NotNull
         @JsonProperty("dead_line")
         LocalDate deadLine,
 
@@ -41,8 +47,11 @@ public record ProcessCreateReqDto(
         List<Long> fileIds,
 
         @JsonProperty("links")
-        List<String> links,
+        @Valid
+        List<ProcessLinkItemReqDto> links,
 
+        @NotNull
+        @Size(min = 1)
         @JsonProperty("task_items")
         List<ProcessTaskItemReqDto> taskItems
 
@@ -56,4 +65,14 @@ public record ProcessCreateReqDto(
         links = (links == null) ? List.of() : links;
         taskItems = (taskItems == null) ? List.of() : taskItems;
     }
+
+    public record ProcessLinkItemReqDto(
+            @NotBlank
+            @JsonProperty("title")
+            String title,
+
+            @NotBlank
+            @JsonProperty("url")
+            String url
+    ) {}
 }

@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -108,8 +109,17 @@ class ProcessLinkControllerTest {
         long processId = 10L;
         long userId = 1L;
 
-        ProcessLinkCreateReqDto request = new ProcessLinkCreateReqDto("https://example.com");
-        ProcessLinkCreateResDto response = new ProcessLinkCreateResDto(100L);
+        ProcessLinkCreateReqDto request = new ProcessLinkCreateReqDto(
+                "예시 링크",
+                "https://example.com"
+        );
+
+        ProcessLinkCreateResDto response = new ProcessLinkCreateResDto(
+                100L,
+                "예시 링크",
+                "https://example.com",
+                LocalDateTime.of(2026, 1, 25, 10, 0, 0)
+        );
 
         given(processAttachmentService.createLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class)))
                 .willReturn(response);
@@ -136,6 +146,7 @@ class ProcessLinkControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
+                                                fieldWithPath("title").type(STRING).description("링크 제목"),
                                                 fieldWithPath("url").type(STRING).description("추가할 링크 URL")
                                         )
                                         .responseFields(
@@ -145,7 +156,10 @@ class ProcessLinkControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.link_id").type(NUMBER).description("링크 ID")
+                                                fieldWithPath("body.link_id").type(NUMBER).description("링크 ID"),
+                                                fieldWithPath("body.title").type(STRING).description("링크 제목"),
+                                                fieldWithPath("body.url").type(STRING).description("링크 URL"),
+                                                fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)")
                                         )
                                         .build()
                         )
@@ -153,6 +167,7 @@ class ProcessLinkControllerTest {
 
         verify(processAttachmentService).createLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class));
     }
+
 
     @Test
     @DisplayName("링크 삭제")
