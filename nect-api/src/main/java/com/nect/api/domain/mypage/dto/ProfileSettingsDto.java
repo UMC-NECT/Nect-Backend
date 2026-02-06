@@ -22,7 +22,9 @@ public class ProfileSettingsDto {
             List<CareerDto> careers,
             List<PortfolioDto> portfolios,
             List<ProjectHistoryDto> projectHistories,
-            List<SkillDto> skills
+            List<SkillDto> skills,
+            String profileType,
+            List<String> tags
     ) {}
 
     public record ProfileSettingsRequestDto(
@@ -82,5 +84,10 @@ public class ProfileSettingsDto {
             String skill,
             String skillLabel,
             Boolean isSelected
+    ) {}
+
+    public record ProfileAnalysisResponseDto(
+            String profileType,
+            List<String> tags
     ) {}
 }

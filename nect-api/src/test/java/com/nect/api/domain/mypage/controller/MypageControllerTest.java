@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.payload.JsonFieldType;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,7 +45,9 @@ class MypageControllerTest extends NectDocumentApiTester {
                 new ArrayList<>(),  // careers
                 new ArrayList<>(),  // portfolios
                 new ArrayList<>(),  // projectHistories
-                new ArrayList<>()   // skills
+                new ArrayList<>(),  // skills
+                "기술 주도형 개발자",  // profileType
+                List.of("#프로그래밍전문가", "#금융애플리케이션", "#백엔드개발자", "#효율적협업", "#기술적창의성")  // tags
         );
         given(mypageService.getProfile(1L)).willReturn(mockResponse);
 
@@ -77,7 +80,9 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.careers").type(JsonFieldType.ARRAY).description("경력 목록"),
                                                 fieldWithPath("body.portfolios").type(JsonFieldType.ARRAY).description("포트폴리오 목록"),
                                                 fieldWithPath("body.projectHistories").type(JsonFieldType.ARRAY).description("프로젝트 히스토리 목록"),
-                                                fieldWithPath("body.skills").type(JsonFieldType.ARRAY).description("스킬 목록")
+                                                fieldWithPath("body.skills").type(JsonFieldType.ARRAY).description("스킬 목록"),
+                                                fieldWithPath("body.profileType").type(JsonFieldType.STRING).description("AI 프로필 분석 타입 (예: 기술 주도형 개발자)").optional(),
+                                                fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("프로필 분석 키워드 태그 (예: #프로그래밍전문가, #백엔드개발자)").optional()
                                         )
                                         .build()
                         )
@@ -227,6 +232,37 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("projectHistories[].projectDescription").type(JsonFieldType.STRING).description("프로젝트 설명. 프로젝트에 대한 상세한 설명 (예: 팀 협업 플랫폼 개발)").optional(),
                                                 fieldWithPath("projectHistories[].startYearMonth").type(JsonFieldType.STRING).description("시작 년월. 프로젝트 시작 시간 (형식: YYYY.MM, 예: 2024.1)").optional(),
                                                 fieldWithPath("projectHistories[].endYearMonth").type(JsonFieldType.STRING).description("종료 년월. 프로젝트 종료 시간 (형식: YYYY.MM, 예: 2024.12)").optional()
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getProfileAnalysis() throws Exception {
+        // given
+        ProfileSettingsDto.ProfileAnalysisResponseDto mockResponse = new ProfileSettingsDto.ProfileAnalysisResponseDto(
+                "기술 주도형 개발자",
+                List.of("#프로그래밍전문가", "#금융애플리케이션", "#백엔드개발자", "#효율적협업", "#기술적창의성")
+        );
+        given(mypageService.getProfileAnalysis(1L)).willReturn(mockResponse);
+
+        // when & then
+        this.mockMvc.perform(get("/api/v1/mypage/profile-analysis")
+                        .header("Authorization", "Bearer mock-token"))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-get-profile-analysis",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("mypage")
+                                        .summary("마이페이지 프로필 분석 불러오기")
+                                        .description("데이터베이스에 저장된 AI 프로필 분석 결과를 조회합니다. 분석 결과가 없으면 profileType과 tags는 null입니다.")
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body.profileType").type(JsonFieldType.STRING).description("AI 프로필 분석 타입 (예: 기술 주도형 개발자)").optional(),
+                                                fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("프로필 분석 키워드 태그 (예: #프로그래밍전문가, #백엔드개발자)").optional()
                                         )
                                         .build()
                         )
