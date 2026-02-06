@@ -10,6 +10,7 @@ import com.nect.core.entity.dm.DirectMessage;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.dm.DmRepository;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -17,8 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,18 +25,22 @@ public class DmService {
 
     private final DmRepository dmRepository;
     private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
     private final DmRedisPublisher dmRedisPublisher;
     private final DmPresenceRegistry dmPresenceRegistry;
 
     @Transactional
     public DirectMessageDto sendMessage(Long senderId, Long receiverId, String content) {
 
+        // 검증
         User sender = userRepository.findById(senderId).orElseThrow(UserNotFoundException::new);
         User receiver = userRepository.findById(receiverId).orElseThrow(UserNotFoundException::new);
 
+        // 채팅방 정보
         String roomId = buildChannelId(senderId, receiverId);
         boolean isRead = dmPresenceRegistry.bothPresent(roomId, senderId, receiverId);
 
+        // DM 생성
         DirectMessage message = DirectMessage.builder()
                 .sender(sender)
                 .receiver(receiver)
@@ -45,17 +48,13 @@ public class DmService {
                 .isRead(isRead)
                 .build();
 
+        // DM 저장
         DirectMessage saved = dmRepository.save(message);
 
-        DirectMessageDto dto = DirectMessageDto.builder()
-                .messageId(saved.getId())
-                .senderId(senderId)
-                .receiverId(receiverId)
-                .content(saved.getContent())
-                .createdAt(saved.getCreatedAt())
-                .isRead(saved.getIsRead())
-                .build();
+        // DM -> DTO
+        DirectMessageDto dto = DirectMessageDto.fromDm(saved);
 
+        // 상대에게 전송
         dmRedisPublisher.publish(roomId, dto);
 
         return dto;
@@ -63,16 +62,21 @@ public class DmService {
 
     @Transactional
     public DmMessageListResponse getMessages(Long userId, Long otherUserId, Long cursor, int size) {
+
+        // 검증
         userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         userRepository.findById(otherUserId).orElseThrow(UserNotFoundException::new);
 
+        // 채팅방 정보
         String roomId = buildChannelId(userId, otherUserId);
         dmPresenceRegistry.enter(roomId, userId);
 
+        // 채팅방 채팅 읽음처리
         dmRepository.markAsRead(userId, otherUserId, null);
 
         int safeSize = Math.max(1, size);
 
+        // 채팅 조회
         List<DirectMessage> messages = dmRepository.findConversation(
                 userId,
                 otherUserId,
@@ -80,23 +84,20 @@ public class DmService {
                 PageRequest.of(0, safeSize)
         );
 
+        // 커서 정보
         Long nextCursor = (messages.size() == safeSize)
-                ? messages.get(messages.size() - 1).getId()
+                ? messages.getLast().getId()
                 : null;
 
+        // 정렬
         Collections.reverse(messages);
 
+        // DM -> Dto
         List<DirectMessageDto> list = messages.stream()
-                .map(message -> DirectMessageDto.builder()
-                        .messageId(message.getId())
-                        .senderId(message.getSender().getUserId())
-                        .receiverId(message.getReceiver().getUserId())
-                        .content(message.getContent())
-                        .createdAt(message.getCreatedAt())
-                        .isRead(message.getIsRead())
-                        .build())
+                .map(DirectMessageDto::fromDm)
                 .toList();
 
+        // 응답값 생성 후 반환
         return DmMessageListResponse.builder()
                 .messages(list)
                 .nextCursor(nextCursor)
@@ -105,45 +106,25 @@ public class DmService {
 
     @Transactional(readOnly = true)
     public DmRoomListResponse getRooms(Long userId, Long cursor, int size) {
-        userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
 
+        // 검증
+        userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
         int safeSize = Math.max(1, size);
 
-        List<DirectMessage> latest = dmRepository.findLatestMessagesByUser(
-                userId,
-                cursor,
-                PageRequest.of(0, safeSize)
-        );
+        // 각 개인 채팅에 대한 마지막 메시지
+        List<DirectMessage> latest = dmRepository.findLatestMessagesByUser(userId, cursor, PageRequest.of(0, safeSize));
 
-        Long nextCursor = (latest.size() == safeSize)
-                ? latest.get(latest.size() - 1).getId()
-                : null;
+        // 채팅룸 커서 정보
+        Long nextCursor = (latest.size() == safeSize) ? latest.getLast().getId() : null;
 
-        Map<Long, Long> unreadBySender = dmRepository.countUnreadBySender(userId).stream()
-                .collect(Collectors.toMap(
-                        DmRepository.UnreadCountRow::getSenderId,
-                        DmRepository.UnreadCountRow::getUnreadCount,
-                        (a, b) -> a
-                ));
-
-        List<DmRoomSummaryDto> rooms = latest.stream()
-                .map(message -> {
-                    Long senderId = message.getSender().getUserId();
-                    Long receiverId = message.getReceiver().getUserId();
-                    Long otherUserId = userId.equals(senderId) ? receiverId : senderId;
-                    long unread = unreadBySender.getOrDefault(otherUserId, 0L);
-                    return DmRoomSummaryDto.builder()
-                            .otherUserId(otherUserId)
-                            .lastMessageId(message.getId())
-                            .lastMessage(message.getContent())
-                            .lastMessageAt(message.getCreatedAt())
-                            .unreadCount(unread)
-                            .build();
-                })
+        // List<DM> -> List<DTO>
+        List<DmRoomSummaryDto> messages = latest.stream()
+                .map(message -> DmRoomSummaryDto.fromOtherUser(userId, message))
                 .toList();
 
+        // 응답값 생성 후 반환
         return DmRoomListResponse.builder()
-                .rooms(rooms)
+                .messages(messages)
                 .nextCursor(nextCursor)
                 .build();
     }

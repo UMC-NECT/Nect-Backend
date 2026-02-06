@@ -5,6 +5,7 @@ import com.nect.api.domain.dm.dto.DmRoomListResponse;
 import com.nect.api.domain.dm.service.DmService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +25,7 @@ public class DmQueryController {
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam("userId") Long otherUserId,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") @Min(1) int size
     ) {
         DmMessageListResponse response = dmService.getMessages(userDetails.getUserId(), otherUserId, cursor, size);
         return ApiResponse.ok(response);
@@ -34,7 +35,7 @@ public class DmQueryController {
     public ApiResponse<DmRoomListResponse> getRooms(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) Long cursor,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") @Min(1) int size
     ) {
         DmRoomListResponse response = dmService.getRooms(userDetails.getUserId(), cursor, size);
         return ApiResponse.ok(response);

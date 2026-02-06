@@ -12,7 +12,7 @@ public class DmRedisPublisher {
 
     private final RedisPublisher redisPublisher;
 
-    public void publish(String channelId, DirectMessageDto message) {
-        redisPublisher.publish(CHANNEL_PREFIX + channelId, message);
+    public void publish(String roomId, DirectMessageDto message) {
+        redisPublisher.publish(CHANNEL_PREFIX + roomId, message);
     }
 }

@@ -21,11 +21,16 @@ public class HomeController {
     private final MainHomeFacade mainHomeFacade;
     private final HomeMemberQueryService homeMemberQueryService;
 
-    // 모집 중인 프로젝트 조회
+    // 모집 중인 프로젝트 조회, role, interest 필수 x
     @GetMapping("/projects")
-    public ApiResponse<HomeProjectResponse> recruitingProjects(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){
+    public ApiResponse<HomeProjectResponse> recruitingProjects(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam("count") int count,
+            @RequestParam(value = "role", required = false) Role role,
+            @RequestParam(value = "interest", required = false) InterestField interest
+            ){
         Long userId = (userDetails == null) ? null : userDetails.getUserId();
-        HomeProjectResponse projects = mainHomeFacade.getRecruitingProjects(userId, count);
+        HomeProjectResponse projects = mainHomeFacade.getRecruitingProjects(userId, count, role, interest);
         return ApiResponse.ok(projects);
     }
 

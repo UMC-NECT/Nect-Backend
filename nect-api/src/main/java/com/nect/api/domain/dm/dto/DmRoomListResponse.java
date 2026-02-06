@@ -6,7 +6,7 @@ import java.util.List;
 
 @Builder
 public record DmRoomListResponse(
-        List<DmRoomSummaryDto> rooms,
+        List<DmRoomSummaryDto> messages,
         Long nextCursor
 ) {
 }

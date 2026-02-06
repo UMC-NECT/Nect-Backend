@@ -31,11 +31,30 @@ public class MainHomeFacade {
 
     private final HomeProjectQueryService homeQueryService;
     private final HomeMemberQueryService homeMemberQueryService;
+    private final HomeProjectQueryService homeProjectQueryService;
     private final S3Service s3Service;
 
     // 모집 중인 프로젝트
-    public HomeProjectResponse getRecruitingProjects(Long userId, int count){
+    public HomeProjectResponse getRecruitingProjects(Long userId, int count, Role role, InterestField interest){
+
+        // 페이징 정보
         PageRequest pageRequest = PageRequest.of(0, count);
+
+        // List<Project> 미리 생성
+//        List<Project> projects = new ArrayList<>();
+
+//        // 둘 중 하나가 null일 수는 없음
+//        if ((role == null && interest != null) || (role != null && interest == null)) {
+//            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
+//        }
+//
+//        // role이 null일 때
+//        if (role == null) {
+//
+//        }else{
+//
+//        }
+
         List<Project> projects = homeQueryService.getProjects(userId, pageRequest);
 
         if (projects.isEmpty()) {
@@ -60,10 +79,10 @@ public class MainHomeFacade {
     }
 
     // 홈화면 매칭 가능한 넥터
-    public HomeMembersResponse getMatchableMembers(Long userId, int count, Role role, InterestField interset) {
+    public HomeMembersResponse getMatchableMembers(Long userId, int count, Role role, InterestField interest) {
 
         // 둘 중 하나가 null일 수는 없음
-        if ((role == null && interset != null) || (role != null && interset == null)) {
+        if ((role == null && interest != null) || (role != null && interest == null)) {
             throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
         }
 
@@ -71,7 +90,7 @@ public class MainHomeFacade {
         List<User> users;
 
         if (role != null) { // 둘 다 null이 아니면 필터링해서 반환
-            users = homeMemberQueryService.getFilteredMembers(userId, count, role, interset);
+            users = homeMemberQueryService.getFilteredMembers(userId, count, role, interest);
         }
         else{ // 둘 모두 null이면 모두 조회하여 반환
             users = homeMemberQueryService.getAllUsersWithoutUser(userId, count);
