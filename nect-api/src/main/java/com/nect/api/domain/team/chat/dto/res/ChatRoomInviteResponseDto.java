@@ -10,5 +10,6 @@ import java.util.List;
 public record ChatRoomInviteResponseDto(
         Long roomId,
         Integer invitedCount,
-        List<String> invitedUserNames
+        List<String> invitedUserNames,
+        List<String> profileImages
 ) {}

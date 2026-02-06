@@ -30,8 +30,6 @@ public class ChatFileController {
         ChatMessageDto response = chatFileService.uploadAndSendFile(
                 roomId, file, userDetails.getUserId());
 
-
-
         return ApiResponse.ok(response);
     }
 
@@ -59,7 +57,6 @@ public class ChatFileController {
         return ApiResponse.ok(response);
     }
 
-    //TODO : WF 페이징처리가 없지만 채팅방별 클라우드 이미지 파일 조회 시 필요예상
     @GetMapping("/rooms/{roomId}/album")
     public ApiResponse<ChatRoomAlbumDetailDto> getChatRoomAlbumDetail(
             @PathVariable Long roomId,
