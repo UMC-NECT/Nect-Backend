@@ -73,7 +73,13 @@ class UserControllerTest extends NectDocumentApiTester {
     @Test
     void signUp() throws Exception {
         // given
-        doNothing().when(userService).signUp(any(SignUpDto.SignUpRequestDto.class));
+        LoginDto.TokenResponseDto responseDto = LoginDto.TokenResponseDto.of(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                System.currentTimeMillis() + 3600000,
+                System.currentTimeMillis() + 86400000
+        );
+        when(userService.signUp(any(SignUpDto.SignUpRequestDto.class))).thenReturn(responseDto);
 
         // when
         this.mockMvc.perform(post("/api/v1/users/signup")
@@ -91,7 +97,7 @@ class UserControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
                                         .summary("회원가입")
-                                        .description("새로운 계정을 생성합니다. 닉네임, 생년월일, 직업, 역할 등은 프로필 설정 API에서 입력합니다.")
+                                        .description("새로운 계정을 생성합니다. 성공 시 액세스 토큰과 리프레시 토큰을 발급합니다. 닉네임, 생년월일, 직업, 역할 등은 프로필 설정 API에서 입력합니다.")
                                         .requestFields(
                                                 fieldWithPath("email").type(JsonFieldType.STRING).description("이메일 (고유값, 이메일 형식)"),
                                                 fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호 (최소 8자)"),
@@ -102,7 +108,12 @@ class UserControllerTest extends NectDocumentApiTester {
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
-                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional()
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body.grantType").type(JsonFieldType.STRING).description("토큰 타입 (Bearer)"),
+                                                fieldWithPath("body.accessToken").type(JsonFieldType.STRING).description("액세스 토큰 (API 요청 시 Authorization 헤더에 사용)"),
+                                                fieldWithPath("body.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰 (액세스 토큰 만료 시 갱신에 사용)"),
+                                                fieldWithPath("body.accessTokenExpiredAt").type(JsonFieldType.NUMBER).description("액세스 토큰 만료 시간 (Unix timestamp)"),
+                                                fieldWithPath("body.refreshTokenExpiredAt").type(JsonFieldType.NUMBER).description("리프레시 토큰 만료 시간 (Unix timestamp)")
                                         )
                                         .build()
                         )

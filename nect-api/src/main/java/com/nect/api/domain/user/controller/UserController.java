@@ -51,11 +51,11 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ApiResponse<Void> signUp(
+    public ApiResponse<LoginDto.TokenResponseDto> signUp(
             @RequestBody SignUpDto.SignUpRequestDto request
     ) {
-        userService.signUp(request);
-        return ApiResponse.ok();
+        LoginDto.TokenResponseDto response = userService.signUp(request);
+        return ApiResponse.ok(response);
     }
 
     @PostMapping("/login")

@@ -108,7 +108,7 @@ public class UserService {
     }
 
     @Transactional
-    public void signUp(SignUpDto.SignUpRequestDto request) {
+    public LoginDto.TokenResponseDto signUp(SignUpDto.SignUpRequestDto request) {
         validateSignUpRequest(request);
 
         String encodedPassword = passwordEncoder.encode(request.password());
@@ -133,6 +133,15 @@ public class UserService {
                 .build();
 
         userRepository.save(user);
+
+        TokenDataDto tokenData = jwtUtil.createTokenData(user.getUserId());
+
+        return LoginDto.TokenResponseDto.of(
+                tokenData.getAccessToken(),
+                tokenData.getRefreshToken(),
+                tokenData.getAccessTokenExpiredAt(),
+                tokenData.getRefreshTokenExpiredAt()
+        );
     }
 
     @Transactional
