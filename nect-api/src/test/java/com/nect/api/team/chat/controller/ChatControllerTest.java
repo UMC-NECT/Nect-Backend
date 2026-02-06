@@ -2,29 +2,34 @@ package com.nect.api.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.team.chat.controller.ChatMessageController;
+import com.nect.api.domain.team.chat.controller.TeamChatController;
 import com.nect.api.domain.team.chat.dto.req.*;
 import com.nect.api.domain.team.chat.dto.res.*;
+import com.nect.api.domain.team.chat.facade.ChatFacade;
 import com.nect.api.domain.team.chat.service.ChatRoomService;
 import com.nect.api.domain.team.chat.service.ChatService;
 import com.nect.api.domain.team.chat.service.TeamChatService;
-import com.nect.api.global.jwt.JwtUtil;
-import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
-import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import com.nect.core.entity.team.chat.enums.MessageType;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -35,7 +40,6 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -43,10 +47,10 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(controllers = {ChatMessageController.class, TeamChatController.class})
+@ContextConfiguration(classes = {ChatMessageController.class, TeamChatController.class})
+@AutoConfigureMockMvc(addFilters = false)
 @AutoConfigureRestDocs
-@Transactional
 class ChatControllerTest {
 
     @Autowired
@@ -62,31 +66,36 @@ class ChatControllerTest {
     private ChatService chatService;
 
     @MockitoBean
+    private ChatFacade chatFacade;
+
+    @MockitoBean
     private TeamChatService teamChatService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserDetailsServiceImpl userDetailsService;
-
-    @MockitoBean
-    private TokenBlacklistService tokenBlacklistService;
 
     private static final String AUTH_HEADER = "Authorization";
     private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
 
-    @BeforeEach
-    void setUpAuth() {
-        doNothing().when(jwtUtil).validateToken(anyString());
-        given(tokenBlacklistService.isBlacklisted(anyString())).willReturn(false);
-        given(jwtUtil.getUserIdFromToken(anyString())).willReturn(1L);
-        given(userDetailsService.loadUserByUsername(anyString())).willReturn(
-                UserDetailsImpl.builder()
-                        .userId(1L)
-                        .roles(List.of("ROLE_USER"))
-                        .build()
-        );
+    private RequestPostProcessor mockUser(Long userId) {
+        UserDetailsImpl principal = UserDetailsImpl.builder()
+                .userId(userId)
+                .roles(List.of("ROLE_USER"))
+                .build();
+
+        return request -> {
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                    principal,
+                    null,
+                    principal.getAuthorities()
+            );
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+            return request;
+        };
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     // ========== 1. 프로젝트 멤버 조회 ==========
@@ -107,6 +116,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/members", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -155,6 +165,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/members", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .param("keyword", keyword)
                                 .accept(MediaType.APPLICATION_JSON)
                 )
@@ -218,6 +229,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         post("/api/v1/chats/rooms/group")
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                                 .accept(MediaType.APPLICATION_JSON)
@@ -274,6 +286,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/rooms", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -342,6 +355,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         get("/api/v1/chats/rooms/{room_id}/messages", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .param("size", "20")
                                 .accept(MediaType.APPLICATION_JSON)
                 )
@@ -423,6 +437,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         get("/api/v1/chats/rooms/{room_id}/messages/search", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .param("keyword", keyword)
                                 .param("page", "0")
                                 .param("size", "20")
@@ -500,6 +515,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         patch("/api/v1/chats/message/{message_id}/notice", messageId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                                 .accept(MediaType.APPLICATION_JSON)
@@ -561,6 +577,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         RestDocumentationRequestBuilders.delete("/api/v1/chats/{room_id}/leave", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -621,6 +638,7 @@ class ChatControllerTest {
         mockMvc.perform(
                         post("/api/v1/chats/rooms/{roomId}/invite", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
                                 .accept(MediaType.APPLICATION_JSON)

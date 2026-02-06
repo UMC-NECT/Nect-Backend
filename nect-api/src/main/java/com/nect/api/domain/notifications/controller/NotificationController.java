@@ -1,5 +1,6 @@
 package com.nect.api.domain.notifications.controller;
 
+import com.nect.api.domain.notifications.enums.code.NotificationSearchFilter;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.domain.notifications.dto.NotificationListResponse;
 import com.nect.api.domain.notifications.service.NotificationDispatchService;
@@ -52,11 +53,11 @@ public class NotificationController {
     @GetMapping
     public ApiResponse<NotificationListResponse> notifications(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestParam("scope") NotificationScope scope,
+            @RequestParam("filter") NotificationSearchFilter filter,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
-        NotificationListResponse response = notificationService.getNotifications(userDetails.getUserId(), scope, cursor, size);
+        NotificationListResponse response = notificationService.getNotifications(userDetails.getUserId(), filter, cursor, size);
         return ApiResponse.ok(response);
     }
 

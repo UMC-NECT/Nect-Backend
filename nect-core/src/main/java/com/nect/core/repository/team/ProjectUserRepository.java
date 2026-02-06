@@ -54,6 +54,14 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
 
 
     @Query("""
+        SELECT pu.project
+        FROM ProjectUser pu
+        WHERE pu.userId = :userId
+          AND pu.memberStatus = 'ACTIVE'
+    """)
+    List<Project> findActiveProjectsByUserId(@Param("userId") Long userId);
+
+    @Query("""
         SELECT u FROM User u 
         JOIN ProjectUser pu ON u.userId = pu.userId 
         WHERE pu.project.id = :projectId 

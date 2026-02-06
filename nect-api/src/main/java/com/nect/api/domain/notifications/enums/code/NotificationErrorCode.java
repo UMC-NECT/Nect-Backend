@@ -15,6 +15,7 @@ public enum NotificationErrorCode implements ResponseCode {
     NOTIFICATION_NOT_FOUND("N003", "알림을 찾을 수 없습니다"),
     INVALID_NOTIFICATION_SCOPE("N004", "유효하지 않은 알림 범위입니다"),
     EMITTER_NOT_FOUND("N005", "알림 연결 정보가 존재하지 않습니다"),
+    INVALID_NOTIFICATION_FILTER("N006", "유효하지 않은 알림 필터입니다"),
 
     // 비즈니스 차원
     NOTIFICATION_LENGTH_EXCEED("N006", "알림 내용 길이가 초과했습니다. 관리자에게 문의해주세요"),
