@@ -1,8 +1,14 @@
-package com.nect.api.domain.user.service;
+package com.nect.api.domain.home.service;
 
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
+import com.nect.api.domain.user.exception.UserNotFoundException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserRole;
+import com.nect.core.entity.user.enums.InterestField;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
+import com.nect.core.repository.user.UserInterestRepository;
 import com.nect.core.repository.user.UserRepository;
 import com.nect.core.repository.user.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +28,19 @@ public class HomeMemberQueryService {
 
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
+    private final UserInterestRepository userInterestRepository;
+    private final S3Service s3Service;
+
+    public List<User> getFilteredMembers(Long userId, int count, Role role, InterestField interest) {
+        PageRequest pageRequest = PageRequest.of(0, count);
+        return userInterestRepository.findUsersByInterestAndRoleExcludingUser(interest, role, userId, pageRequest);
+    }
 
     public List<User> getAllUsersWithoutUser(Long userId, int count) {
         PageRequest pageRequest = PageRequest.of(0, count);
-        return userRepository.findByUserIdNot(userId, pageRequest);
+        return (userId == null)
+                ? userRepository.findAll(pageRequest).getContent()
+                : userRepository.findByUserIdNot(userId, pageRequest);
     }
 
     public Map<Long, List<String>> partsByUsers(List<User> users) {
@@ -53,5 +68,25 @@ public class HomeMemberQueryService {
                 .distinct()
                 .toList();
     }
-}
 
+    public HomeHeaderResponse getHeaderProfile(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("유저를 찾을 수 없습니다."));
+
+        // 역할들
+        List<UserRole> userRoles = userRoleRepository.findByUser(user);
+
+        // 역할 ( 개발자, 디자이너, 기획자 등 )
+        Role role = userRoles.getFirst().getRoleField().getRole();
+
+        return HomeHeaderResponse.of(
+                user.getUserId(),
+                s3Service.getPresignedGetUrl(user.getProfileImageName()),
+                user.getName(),
+                user.getEmail(),
+                role
+        );
+    }
+
+}

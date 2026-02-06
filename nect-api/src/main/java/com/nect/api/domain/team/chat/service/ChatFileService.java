@@ -2,10 +2,11 @@ package com.nect.api.domain.team.chat.service;
 import com.nect.api.domain.team.chat.converter.FileConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
+import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
 import com.nect.api.domain.team.chat.util.FileValidator;
 import com.nect.api.domain.user.enums.UserErrorCode;
+import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.S3Service;
-import com.nect.api.global.infra.exception.StorageErrorCode;
 import com.nect.api.global.infra.exception.StorageException;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
@@ -42,7 +43,7 @@ public class ChatFileService {
     private final UserRepository userRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
-    private final RedisPublisher redisPublisher;
+    private final ChatRedisPublisher redisPublisher;
     private final S3Service s3Service;
     private final ProjectUserRepository projectUserRepository;
 
@@ -89,7 +90,7 @@ public class ChatFileService {
             messageDto.setReadCount(totalMembers - 1);
 
             String channel = "chatroom:" + roomId;
-            redisPublisher.publish(channel, messageDto);
+            redisPublisher.publish(roomId, messageDto);
 
             return messageDto;
 
@@ -146,7 +147,7 @@ public class ChatFileService {
 
     @Transactional(readOnly = true)
     public ChatRoomAlbumDetailDto getChatRoomAlbumDetail(Long roomId, int page, int size, Long userId) {
-        validateRoomMember(roomId, userId);
+validateRoomMember(roomId, userId);
 
         LocalDateTime fifteenDaysAgo = LocalDateTime.now().minusDays(15);
 

@@ -1,7 +1,6 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
-import com.nect.api.domain.team.chat.dto.req.ChatRoomCreateRequestDto;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomInviteRequestDto;
 import com.nect.api.domain.team.chat.dto.req.GroupChatRoomCreateRequestDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomInviteResponseDto;
@@ -10,6 +9,7 @@ import com.nect.api.domain.team.chat.dto.res.ProjectMemberDto;
 import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -42,14 +42,12 @@ public class TeamChatService {
     private final ProjectUserRepository projectUserRepository;
     private final ProjectRepository projectRepository;
     private final ChatService chatService;
+    private final S3Service s3Service;
 
     public List<ProjectMemberResponseDto> getProjectMembers(Long projectId) {
         List<User> members = projectUserRepository.findAllUsersByProjectId(projectId);
         return ChatConverter.toProjectMemberResponseDTOList(members);
     }
-
-
-
 
     // 팀 채팅방 생성
     @Transactional
@@ -114,7 +112,7 @@ public class TeamChatService {
         chatRoomUserRepository.saveAll(members);
 
         List<String> profileImages = members.stream()
-                .map(member -> member.getUser().getProfileImageUrl())
+                .map(member -> s3Service.getPresignedGetUrl(member.getUser().getProfileImageName()))
                 .filter(StringUtils::hasText)
                 .limit(4)
                 .collect(Collectors.toList());
@@ -198,7 +196,7 @@ public class TeamChatService {
                 .collect(Collectors.toList());
 
         List<String> profileImages = newMembers.stream()
-                .map(User::getProfileImageUrl)
+                .map( u -> s3Service.getPresignedGetUrl(u.getProfileImageName()))
                 .collect(Collectors.toList());
 
         return ChatRoomInviteResponseDto.builder()
@@ -251,7 +249,7 @@ public class TeamChatService {
                         .userId(user.getUserId())
                         .nickname(user.getNickname())
                         .name(user.getName())
-                        .profileImage(user.getProfileImageUrl())
+                        .profileImage(s3Service.getPresignedGetUrl(user.getProfileImageName()))
                         .build())
                 .collect(Collectors.toList());
     }

@@ -1,20 +1,18 @@
 package com.nect.api.domain.team.chat.service;
 
-import com.nect.api.domain.team.chat.converter.ChatConverter;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomLeaveResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomListDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.chat.enums.MessageType;
 import com.nect.core.entity.user.User;
-import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
 import com.nect.core.repository.team.chat.ChatRoomUserRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
-import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,10 +32,8 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final ProjectUserRepository projectUserRepository;
-    private final UserRepository userRepository;
     private final ChatService chatService;
-    private  final ChatConverter chatConverter;
+    private final S3Service s3Service;
 
     public List<ChatRoomListDto> getMyChatRooms(Long user_id) {
 
@@ -154,7 +149,7 @@ public class ChatRoomService {
 
         return roomUsers.stream()
                 .map(ChatRoomUser::getUser)
-                .map(User::getProfileImageUrl)
+                .map(u -> s3Service.getPresignedGetUrl(u.getProfileImageName()))
                 .filter(StringUtils::hasText)
                 .limit(4)
                 .collect(Collectors.toList());
