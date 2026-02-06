@@ -1,6 +1,6 @@
 package com.nect.api.domain.team.chat.util;
 
-import com.nect.api.global.infra.exception.StorageErrorCode;
+import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.exception.StorageException;
 import org.springframework.web.multipart.MultipartFile;
 

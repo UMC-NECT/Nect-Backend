@@ -7,6 +7,7 @@ import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.exception.HomeInvalidParametersException;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.domain.home.service.HomeProjectQueryService;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.InterestField;
@@ -30,6 +31,7 @@ public class MainHomeFacade {
 
     private final HomeProjectQueryService homeQueryService;
     private final HomeMemberQueryService homeMemberQueryService;
+    private final S3Service s3Service;
 
     // 모집 중인 프로젝트
     public HomeProjectResponse getRecruitingProjects(Long userId, int count){
@@ -104,10 +106,10 @@ public class MainHomeFacade {
 
                     return new HomeProjectItem(
                             projectId,
-                            null,
+                            p.getImageName() != null ? s3Service.getPresignedGetUrl(p.getImageName()) : null,
                             p.getTitle(),
                             author == null ? null : author.getName(),
-                            null,
+                            author != null ? author.getRole().name() : null,
                             p.getDescription(),
                             dDay,
                             maxMemberCount,
@@ -130,11 +132,11 @@ public class MainHomeFacade {
 
                     return new HomeMemberItem(
                             user.getUserId(),
-                            null,
+                            user.getProfileImageUrl() != null ? s3Service.getPresignedGetUrl(user.getProfileImageUrl()) : null,
                             user.getName(),
                             user.getRole().name(),
                             null,
-                            null,
+                            user.getUserStatus().name(),
                             false,
                             parts
                     );

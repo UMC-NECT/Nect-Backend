@@ -240,7 +240,7 @@ class HomeControllerTest {
         return new HomeProjectResponse(List.of(
                 new HomeProjectItem(
                         10L,
-                        1001L,
+                        "https://imageUrl",
                         "AI 협업툴 개발",
                         "홍길동",
                         "Backend",
@@ -254,7 +254,7 @@ class HomeControllerTest {
                 ),
                 new HomeProjectItem(
                         11L,
-                        1002L,
+                        "https://imageUrl",
                         "모바일 일정 관리",
                         "김철수",
                         "PM",

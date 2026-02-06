@@ -4,7 +4,7 @@ import java.util.Map;
 
 public record HomeProjectItem(
     Long projectId,
-    Long imageUrl,
+    String imageUrl,
     String projectName,
     String authorName,
     String authorPart,

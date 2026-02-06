@@ -83,7 +83,7 @@ public class HomeMemberQueryService {
                 .userId(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
-                .imageUrl(null) // TODO: image URL 추가
+                .imageUrl(user.getProfileImageUrl())
                 .role(role)
                 .build();
     }
