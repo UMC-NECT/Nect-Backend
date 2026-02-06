@@ -125,7 +125,7 @@ public class MyPageProjectService {
                             return MyProjectsResponseDto.LeaderInfo.builder()
                                     .userId(leader.getUserId())
                                     .name(leader.getName())
-                                    .profileImageUrl(leader.getProfileImageUrl())
+                                    .profileImageUrl(leader.getProfileImageName())
                                     .build();
                         }
                 ));
