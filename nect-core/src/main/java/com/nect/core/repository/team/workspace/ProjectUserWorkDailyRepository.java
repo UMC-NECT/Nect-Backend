@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProjectUserWorkDailyRepository extends JpaRepository<ProjectUserWorkDaily, Long> {
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         select w
@@ -29,10 +28,15 @@ public interface ProjectUserWorkDailyRepository extends JpaRepository<ProjectUse
         select w
         from ProjectUserWorkDaily w
         where w.project.id = :projectId
+          and w.user.userId = :userId
           and w.workDate = :workDate
     """)
-    List<ProjectUserWorkDaily> findAllByProjectIdAndWorkDate(
+    Optional<ProjectUserWorkDaily> findToday(
             @Param("projectId") Long projectId,
+            @Param("userId") Long userId,
             @Param("workDate") LocalDate workDate
     );
+
+
+    List<ProjectUserWorkDaily> findAllByProjectIdAndWorkDate(Long projectId, LocalDate workDate);
 }

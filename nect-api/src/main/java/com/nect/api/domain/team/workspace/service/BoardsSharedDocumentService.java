@@ -66,7 +66,7 @@ public class BoardsSharedDocumentService {
                             u.getUserId(),
                             u.getName(),
                             u.getNickname(),
-                            null // TODO: profile_image_url
+                            u.getProfileImageUrl()
                     )
             );
         }).toList();

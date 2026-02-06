@@ -148,6 +148,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             pu.userId as userId,
             u.name as name,
             u.nickname as nickname,
+            u.profileImageUrl as profileImageUrl, 
             pu.roleField as roleField,
             pu.customRoleFieldName as customRoleFieldName,
             pu.memberType as memberType
@@ -222,6 +223,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getUserId();
         String getName();
         String getNickname();
+        String getProfileImageUrl();
         RoleField getRoleField();
         String getCustomRoleFieldName();
         ProjectMemberType getMemberType();

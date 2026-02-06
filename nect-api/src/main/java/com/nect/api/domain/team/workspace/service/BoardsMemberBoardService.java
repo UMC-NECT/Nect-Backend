@@ -104,7 +104,7 @@ public class BoardsMemberBoardService {
                     m.getUserId(),
                     m.getName(),
                     m.getNickname(),
-                    null, // profile_image_url (TODO)
+                    m.getProfileImageUrl(),
                     fieldDto,
                     m.getMemberType(),
                     new MemberBoardResDto.CountsDto(arr[0], arr[1], arr[2]),

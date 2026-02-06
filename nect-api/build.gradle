@@ -54,6 +54,18 @@ test {
 	outputs.dir snippetsDir
 }
 
+tasks.withType(Test).configureEach {
+    maxHeapSize = "2g"
+    jvmArgs(
+            "-XX:+HeapDumpOnOutOfMemoryError",
+            "-XX:HeapDumpPath=${rootProject.projectDir}/build/heapdumps"
+    )
+
+    doFirst {
+        file("${rootProject.projectDir}/build/heapdumps").mkdirs()
+    }
+}
+
 asciidoctor {
 	inputs.dir snippetsDir
 	dependsOn test
