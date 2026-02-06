@@ -4,6 +4,7 @@ import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.home.exception.HomeInvalidParametersException;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.domain.home.service.HomeProjectQueryService;
@@ -29,16 +30,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MainHomeFacade {
 
-    private final HomeProjectQueryService homeQueryService;
-    private final HomeMemberQueryService homeMemberQueryService;
     private final HomeProjectQueryService homeProjectQueryService;
+    private final HomeMemberQueryService homeMemberQueryService;
     private final S3Service s3Service;
 
     // 모집 중인 프로젝트
     public HomeProjectResponse getRecruitingProjects(Long userId, int count, Role role, InterestField interest){
 
+        int safeCount = safeCount(count);
+
         // 페이징 정보
-        PageRequest pageRequest = PageRequest.of(0, count);
+        PageRequest pageRequest = PageRequest.of(0, safeCount);
 
         // List<Project> 미리 생성
 //        List<Project> projects = new ArrayList<>();
@@ -55,27 +57,24 @@ public class MainHomeFacade {
 //
 //        }
 
-        List<Project> projects = homeQueryService.getProjects(userId, pageRequest);
+        List<Project> projects = homeProjectQueryService.getProjects(userId, pageRequest);
 
-        if (projects.isEmpty()) {
-            return new HomeProjectResponse(List.of());
-        }
-
-        return new HomeProjectResponse(responsesFromProjects(projects));
+        return buildProjectResponse(projects);
     }
 
     // 홈화면 추천 프로젝트들
     public HomeProjectResponse getRecommendedProjects(Long userId, int count) {
-        List<Project> projects = homeQueryService.getProjects(userId);
+        int safeCount = safeCount(count);
+        List<Project> projects = homeProjectQueryService.getProjects(userId, PageRequest.of(0, safeCount));
 
         if (projects.isEmpty()) {
-            return new HomeProjectResponse(List.of());
+            return HomeProjectResponse.of(List.of());
         }
 
         Collections.shuffle(projects);
-        List<Project> randomProjects = projects.subList(0, Math.min(count, projects.size()));
+        List<Project> randomProjects = projects.subList(0, Math.min(safeCount, projects.size()));
 
-        return new HomeProjectResponse(responsesFromProjects(randomProjects));
+        return buildProjectResponse(randomProjects);
     }
 
     // 홈화면 매칭 가능한 넥터
@@ -88,47 +87,54 @@ public class MainHomeFacade {
 
         // List 선언
         List<User> users;
+        int safeCount = safeCount(count);
 
         if (role != null) { // 둘 다 null이 아니면 필터링해서 반환
-            users = homeMemberQueryService.getFilteredMembers(userId, count, role, interest);
+            users = homeMemberQueryService.getFilteredMembers(userId, safeCount, role, interest);
         }
         else{ // 둘 모두 null이면 모두 조회하여 반환
-            users = homeMemberQueryService.getAllUsersWithoutUser(userId, count);
+            users = homeMemberQueryService.getAllUsersWithoutUser(userId, safeCount);
         }
 
-        return new HomeMembersResponse(responsesFromMembers(users));
+        return buildMemberResponse(users);
     }
 
     // 홈화면 추천 넥터
     public HomeMembersResponse getRecommendedMembers(Long userId, int count) {
-        List<User> users = homeMemberQueryService.getAllUsersWithoutUser(userId, count);
+        int safeCount = safeCount(count);
+        List<User> users = homeMemberQueryService.getAllUsersWithoutUser(userId, safeCount);
 
         List<HomeMemberItem> items = new ArrayList<>(responsesFromMembers(users));
         Collections.shuffle(items);
 
-        return new HomeMembersResponse(items);
+        return HomeMembersResponse.of(items);
+    }
+
+    // 홈화면 헤더 프로필
+    public HomeHeaderResponse getHeaderProfile(Long userId) {
+        return homeMemberQueryService.getHeaderProfile(userId);
     }
 
     // List<Project> -> List<HomeProjectItem>
     private List<HomeProjectItem> responsesFromProjects(List<Project> projects) {
-        HomeProjectQueryService.HomeProjectBatch batch = homeQueryService.loadHomeProjectBatch(projects);
+        HomeProjectQueryService.HomeProjectBatch batch = homeProjectQueryService.loadHomeProjectBatch(projects);
 
         return projects.stream()
                 .map(p -> {
                     Long projectId = p.getId();
 
                     User author = batch.authorByProjectId().get(projectId);
-                    Integer dDay = homeQueryService.getDDay(p);
+                    Integer dDay = homeProjectQueryService.getDDay(p);
                     Integer maxMemberCount = batch.maxMemberCountByProjectId().getOrDefault(projectId, 0);
                     Integer currentMemberCount = batch.activeCountByProjectId().getOrDefault(projectId, 0);
                     Map<String, Integer> partCounts = batch.partCountsByProjectId().getOrDefault(projectId, Map.of());
 
-                    return new HomeProjectItem(
+                    return HomeProjectItem.of(
                             projectId,
-                            p.getImageName() != null ? s3Service.getPresignedGetUrl(p.getImageName()) : null,
+                            resolveProjectImage(p),
                             p.getTitle(),
                             author == null ? null : author.getName(),
-                            author != null ? author.getRole().name() : null,
+                            author == null ? null : author.getRole().name(),
                             p.getDescription(),
                             dDay,
                             maxMemberCount,
@@ -149,9 +155,9 @@ public class MainHomeFacade {
                 .map(user -> {
                     List<String> parts = partsByUserId.getOrDefault(user.getUserId(), List.of());
 
-                    return new HomeMemberItem(
+                    return HomeMemberItem.of(
                             user.getUserId(),
-                            user.getProfileImageUrl() != null ? s3Service.getPresignedGetUrl(user.getProfileImageUrl()) : null,
+                            resolveUserImage(user),
                             user.getName(),
                             user.getRole().name(),
                             null,
@@ -161,5 +167,31 @@ public class MainHomeFacade {
                     );
                 })
                 .toList();
+    }
+
+    private HomeProjectResponse buildProjectResponse(List<Project> projects) {
+        if (projects.isEmpty()) {
+            return HomeProjectResponse.of(List.of());
+        }
+
+        return HomeProjectResponse.of(responsesFromProjects(projects));
+    }
+
+    private HomeMembersResponse buildMemberResponse(List<User> users) {
+        return HomeMembersResponse.of(responsesFromMembers(users));
+    }
+
+    private int safeCount(int count) {
+        return Math.max(1, count);
+    }
+
+    private String resolveProjectImage(Project project) {
+        String imageName = project.getImageName();
+        return imageName == null ? null : s3Service.getPresignedGetUrl(imageName);
+    }
+
+    private String resolveUserImage(User user) {
+        String imageUrl = user.getProfileImageUrl();
+        return imageUrl == null ? null : s3Service.getPresignedGetUrl(imageUrl);
     }
 }

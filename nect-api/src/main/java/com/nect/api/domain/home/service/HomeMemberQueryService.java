@@ -31,15 +31,14 @@ public class HomeMemberQueryService {
 
     public List<User> getFilteredMembers(Long userId, int count, Role role, InterestField interest) {
         PageRequest pageRequest = PageRequest.of(0, count);
-        List<User> filtered = userInterestRepository.findUsersByInterest(interest, pageRequest);
-        return filtered.stream()
-                .filter(u -> u.getRole().equals(role) && !u.getUserId().equals(userId))
-                .toList();
+        return userInterestRepository.findUsersByInterestAndRoleExcludingUser(interest, role, userId, pageRequest);
     }
 
     public List<User> getAllUsersWithoutUser(Long userId, int count) {
         PageRequest pageRequest = PageRequest.of(0, count);
-        return userRepository.findByUserIdNot(userId, pageRequest);
+        return (userId == null)
+                ? userRepository.findAll(pageRequest).getContent()
+                : userRepository.findByUserIdNot(userId, pageRequest);
     }
 
     public Map<Long, List<String>> partsByUsers(List<User> users) {
@@ -79,14 +78,13 @@ public class HomeMemberQueryService {
         // 역할 ( 개발자, 디자이너, 기획자 등 )
         Role role = userRoles.getFirst().getRoleField().getRole();
 
-        return HomeHeaderResponse.builder()
-                .userId(user.getUserId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .imageUrl(user.getProfileImageUrl())
-                .role(role)
-                .build();
+        return HomeHeaderResponse.of(
+                user.getUserId(),
+                user.getProfileImageUrl(),
+                user.getName(),
+                user.getEmail(),
+                role
+        );
     }
 
 }
-
