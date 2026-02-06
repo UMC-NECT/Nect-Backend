@@ -5,26 +5,31 @@ import com.nect.api.NectDocumentApiTester;
 import com.nect.api.domain.user.dto.AgreeDto;
 import com.nect.api.domain.user.dto.DuplicateCheckDto;
 import com.nect.api.domain.user.dto.LoginDto;
+import com.nect.api.domain.user.dto.ProfileAnalysisDto;
 import com.nect.api.domain.user.dto.ProfileDto;
 import com.nect.api.domain.user.dto.SignUpDto;
 import com.nect.api.domain.user.enums.CheckType;
+import com.nect.api.global.ai.dto.OnboardingAnalysisScheme;
 import com.nect.core.entity.user.enums.SkillCategory;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.restdocs.payload.JsonFieldType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
-import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
+import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -69,7 +74,13 @@ class UserControllerTest extends NectDocumentApiTester {
     @Test
     void signUp() throws Exception {
         // given
-        doNothing().when(userService).signUp(any(SignUpDto.SignUpRequestDto.class));
+        LoginDto.TokenResponseDto responseDto = LoginDto.TokenResponseDto.of(
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                System.currentTimeMillis() + 3600000,
+                System.currentTimeMillis() + 86400000
+        );
+        when(userService.signUp(any(SignUpDto.SignUpRequestDto.class))).thenReturn(responseDto);
 
         // when
         this.mockMvc.perform(post("/api/v1/users/signup")
@@ -87,7 +98,7 @@ class UserControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
                                         .summary("회원가입")
-                                        .description("새로운 계정을 생성합니다. 닉네임, 생년월일, 직업, 역할 등은 프로필 설정 API에서 입력합니다.")
+                                        .description("새로운 계정을 생성합니다. 성공 시 액세스 토큰과 리프레시 토큰을 발급합니다. 닉네임, 생년월일, 직업, 역할 등은 프로필 설정 API에서 입력합니다.")
                                         .requestFields(
                                                 fieldWithPath("email").type(JsonFieldType.STRING).description("이메일 (고유값, 이메일 형식)"),
                                                 fieldWithPath("password").type(JsonFieldType.STRING).description("비밀번호 (최소 8자)"),
@@ -98,7 +109,12 @@ class UserControllerTest extends NectDocumentApiTester {
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
-                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional()
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body.grantType").type(JsonFieldType.STRING).description("토큰 타입 (Bearer)"),
+                                                fieldWithPath("body.accessToken").type(JsonFieldType.STRING).description("액세스 토큰 (API 요청 시 Authorization 헤더에 사용)"),
+                                                fieldWithPath("body.refreshToken").type(JsonFieldType.STRING).description("리프레시 토큰 (액세스 토큰 만료 시 갱신에 사용)"),
+                                                fieldWithPath("body.accessTokenExpiredAt").type(JsonFieldType.NUMBER).description("액세스 토큰 만료 시간 (Unix timestamp)"),
+                                                fieldWithPath("body.refreshTokenExpiredAt").type(JsonFieldType.NUMBER).description("리프레시 토큰 만료 시간 (Unix timestamp)")
                                         )
                                         .build()
                         )
@@ -429,6 +445,256 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.name").type(JsonFieldType.STRING).description("사용자 이름"),
                                                 fieldWithPath("body.role").type(JsonFieldType.STRING).description("사용자 역할 (한국어: 개발자, 디자이너, 기획자, 마케터)"),
                                                 fieldWithPath("body.email").type(JsonFieldType.STRING).description("사용자 이메일")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void analyzeProfile() throws Exception {
+        // given
+        OnboardingAnalysisScheme.CollaborationStyle style = new OnboardingAnalysisScheme.CollaborationStyle();
+        style.planning = 3;
+        style.logic = 4;
+        style.leadership = 2;
+        style.empathy = 3;
+        style.execution = 4;
+
+        OnboardingAnalysisScheme.SkillCategory skillCat = new OnboardingAnalysisScheme.SkillCategory();
+        skillCat.category = "Design";
+        skillCat.skill_names = List.of("Figma", "Photoshop");
+
+        OnboardingAnalysisScheme.RoleRecommendation roleRec = new OnboardingAnalysisScheme.RoleRecommendation();
+        roleRec.leader = "설계 역할에서 팀을 주도할 수 있습니다.";
+        roleRec.team_member = "디자인 팀원으로 세부사항에 집중하세요.";
+
+        OnboardingAnalysisScheme.GrowthGuide guide = new OnboardingAnalysisScheme.GrowthGuide();
+        guide.order = 1;
+        guide.tip = "포트폴리오를 꾸준히 업데이트하세요.";
+
+        ProfileAnalysisDto responseDto = ProfileAnalysisDto.builder()
+                .profileType("창의형 디자이너")
+                .tags(List.of("#포트폴리오집중", "#신중한설계자"))
+                .collaborationStyle(style)
+                .skills(List.of(skillCat))
+                .roleRecommendation(roleRec)
+                .growthGuide(List.of(guide))
+                .build();
+
+        when(userService.analyzeProfile(anyLong())).thenReturn(responseDto);
+
+        // when
+        this.mockMvc.perform(get("/api/v1/users/profile/analysis")
+                        .contentType("application/json")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."))
+                .andExpect(status().isOk())
+                .andDo(document("profile-analysis",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("프로필 AI 분석")
+                                        .description("사용자의 프로필 정보를 AI로 분석합니다. 타입, 태그, 협업스타일(5개 차원), 스킬, 역할별 추천, 성장가이드를 제공합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 본문"),
+                                                fieldWithPath("body.profileType").type(JsonFieldType.STRING).description("사용자 타입"),
+                                                fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("사용자 특성 태그"),
+                                                fieldWithPath("body.collaborationStyle.planning").type(JsonFieldType.NUMBER).description("협업스타일 - 계획형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.logic").type(JsonFieldType.NUMBER).description("협업스타일 - 논리형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.leadership").type(JsonFieldType.NUMBER).description("협업스타일 - 리더형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.empathy").type(JsonFieldType.NUMBER).description("협업스타일 - 공감형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.execution").type(JsonFieldType.NUMBER).description("협업스타일 - 실행형 (1-5)"),
+                                                fieldWithPath("body.skills[].category").type(JsonFieldType.STRING).description("스킬 카테고리"),
+                                                fieldWithPath("body.skills[].skill_names").type(JsonFieldType.ARRAY).description("보유 스킬"),
+                                                fieldWithPath("body.roleRecommendation.leader").type(JsonFieldType.STRING).description("리더로서의 역할 추천"),
+                                                fieldWithPath("body.roleRecommendation.team_member").type(JsonFieldType.STRING).description("팀원으로서의 역할 추천"),
+                                                fieldWithPath("body.growthGuide[].order").type(JsonFieldType.NUMBER).description("성장가이드 순서"),
+                                                fieldWithPath("body.growthGuide[].tip").type(JsonFieldType.STRING).description("성장 팁")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getRecommendedProjects() throws Exception {
+        // given
+        List<ProfileAnalysisDto.RecommendedProjectInfo> projects = List.of(
+                ProfileAnalysisDto.RecommendedProjectInfo.builder()
+                        .projectId(1L)
+                        .projectTitle("Nect 사용자 매칭 시스템")
+                        .recruitmentPeriod("D-30")
+                        .recruitmentStatus("모집 중")
+                        .description("AI 기반 사용자 매칭 플랫폼")
+                        .participantRoles(List.of("FRONTEND", "BACKEND", "UI_UX"))
+                        .build(),
+                ProfileAnalysisDto.RecommendedProjectInfo.builder()
+                        .projectId(2L)
+                        .projectTitle("팀 협업 관리 도구")
+                        .recruitmentPeriod("D-55")
+                        .recruitmentStatus("모집 중")
+                        .description("실시간 팀 협업 플랫폼")
+                        .participantRoles(List.of("FRONTEND", "BACKEND"))
+                        .build(),
+                ProfileAnalysisDto.RecommendedProjectInfo.builder()
+                        .projectId(3L)
+                        .projectTitle("포트폴리오 플랫폼")
+                        .recruitmentPeriod("모집 완료")
+                        .recruitmentStatus("모집 종료")
+                        .description("사용자 포트폴리오 관리 시스템")
+                        .participantRoles(List.of("UI_UX"))
+                        .build()
+        );
+
+        Pageable pageable = PageRequest.of(0, 3);
+        Page<ProfileAnalysisDto.RecommendedProjectInfo> page = new PageImpl<>(projects, pageable, projects.size());
+        ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedProjectInfo> response = ProfileAnalysisDto.PaginatedResponse.from(page);
+
+        when(userService.getRecommendedProjects(anyLong(), any(Pageable.class))).thenReturn(response);
+
+        // when
+        this.mockMvc.perform(get("/api/v1/users/profile/analysis/projects")
+                        .param("page", "0")
+                        .param("size", "3")
+                        .contentType("application/json")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."))
+                .andExpect(status().isOk())
+                .andDo(document("recommended-projects",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("추천 프로젝트 조회")
+                                        .description("사용자 프로필에 맞는 추천 프로젝트를 페이징으로 조회합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("page").description("페이지 번호 (0부터 시작)"),
+                                                parameterWithName("size").description("페이지 크기 (몇개씩 출력할껀지)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 본문"),
+                                                fieldWithPath("body.content[].projectId").type(JsonFieldType.NUMBER).description("프로젝트 ID"),
+                                                fieldWithPath("body.content[].projectTitle").type(JsonFieldType.STRING).description("프로젝트명"),
+                                                fieldWithPath("body.content[].recruitmentPeriod").type(JsonFieldType.STRING).description("모집 남은 기간 (예: D-30, 모집 완료)"),
+                                                fieldWithPath("body.content[].recruitmentStatus").type(JsonFieldType.STRING).description("모집 상태 (모집 중, 모집 예정, 모집 종료)"),
+                                                fieldWithPath("body.content[].description").type(JsonFieldType.STRING).description("프로젝트 설명"),
+                                                fieldWithPath("body.content[].participantRoles").type(JsonFieldType.ARRAY).description("프로젝트가 모집 중인 역할 (FRONTEND, BACKEND, UI_UX 등 - capacity > 0인 역할만)"),
+                                                fieldWithPath("body.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
+                                                fieldWithPath("body.pageSize").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                                                fieldWithPath("body.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
+                                                fieldWithPath("body.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getRecommendedTeamMembers() throws Exception {
+        // given
+        List<ProfileAnalysisDto.RecommendedTeamMemberInfo> teamMembers = List.of(
+                ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
+                        .userId(2L)
+                        .nickname("이방토니")
+                        .role("DESIGNER")
+                        .bio("UI/UX 디자인에 능한 디자이너입니다")
+                        .matched(false)
+                        .build(),
+                ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
+                        .userId(3L)
+                        .nickname("김웹개발")
+                        .role("DEVELOPER")
+                        .bio("React 기반의 프론트엔드 개발자입니다")
+                        .matched(false)
+                        .build(),
+                ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
+                        .userId(4L)
+                        .nickname("박서버")
+                        .role("DEVELOPER")
+                        .bio("Spring Boot 기반 백엔드 개발에 경험 많습니다")
+                        .matched(false)
+                        .build()
+        );
+
+        Pageable pageable = PageRequest.of(0, 3);
+        Page<ProfileAnalysisDto.RecommendedTeamMemberInfo> page = new PageImpl<>(teamMembers, pageable, 7);
+        ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedTeamMemberInfo> response = ProfileAnalysisDto.PaginatedResponse.from(page);
+
+        when(userService.getRecommendedTeamMembers(anyLong(), any(Pageable.class))).thenReturn(response);
+
+        // when
+        this.mockMvc.perform(get("/api/v1/users/profile/analysis/team-members")
+                        .param("page", "0")
+                        .param("size", "3")
+                        .contentType("application/json")
+                        .header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."))
+                .andExpect(status().isOk())
+                .andDo(document("recommended-team-members",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("추천 팀원 조회")
+                                        .description("사용자와 시너지가 좋은 팀원을 페이징으로 조회합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .queryParameters(
+                                                parameterWithName("page").description("페이지 번호 (0부터 시작)"),
+                                                parameterWithName("size").description("페이지 크기 (몇개씩 출력할껀지)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 본문"),
+                                                fieldWithPath("body.content[].userId").type(JsonFieldType.NUMBER).description("사용자 ID"),
+                                                fieldWithPath("body.content[].nickname").type(JsonFieldType.STRING).description("사용자 닉네임"),
+                                                fieldWithPath("body.content[].role").type(JsonFieldType.STRING).description("사용자 역할 (DESIGNER, DEVELOPER, PM 등)"),
+                                                fieldWithPath("body.content[].bio").type(JsonFieldType.STRING).description("사용자 자기소개").optional(),
+                                                fieldWithPath("body.content[].matched").type(JsonFieldType.BOOLEAN).description("이미 매칭 여부"),
+                                                fieldWithPath("body.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
+                                                fieldWithPath("body.pageSize").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                                                fieldWithPath("body.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
+                                                fieldWithPath("body.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void deleteProfileAnalysis() throws Exception {
+        // given
+        doNothing().when(userService).deleteProfileAnalysis(1L);
+
+        // when & then
+        this.mockMvc.perform(delete("/api/v1/users/profile/analysis")
+                        .header("Authorization", "Bearer mock-token"))
+                .andExpect(status().isOk())
+                .andDo(document("delete-profile-analysis",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("프로필 분석 삭제")
+                                        .description("사용자의 프로필 분석 결과를 삭제합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body").type(JsonFieldType.NULL).description("응답 본문 (null)").optional()
                                         )
                                         .build()
                         )

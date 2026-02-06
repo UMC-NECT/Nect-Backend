@@ -16,7 +16,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                         "http://localhost:5173",
                         "http://localhost:8080",
-                        "https://getnect.tech"
+                        "https://getnect.tech",
+                        "https://umc-nect.netlify.app"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
