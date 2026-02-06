@@ -1,5 +1,6 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.global.response.ApiResponse;
@@ -35,5 +36,15 @@ public class MypageController {
     ) {
         mypageService.updateProfile(userDetails.getUserId(), request);
         return ApiResponse.ok();
+    }
+
+    /**
+     * 프로필 분석 불러오기
+     */
+    @GetMapping("/profile-analysis")
+    public ApiResponse<ProfileSettingsDto.ProfileAnalysisResponseDto> getProfileAnalysis(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return ApiResponse.ok(mypageService.getProfileAnalysis(userDetails.getUserId()));
     }
 }

@@ -1,6 +1,7 @@
 
 package com.nect.api.domain.mypage.service;
 
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.exception.InvalidUserStatusException;
 import com.nect.api.domain.mypage.exception.UserNotFoundException;
@@ -24,6 +25,8 @@ public class MypageService {
     private final UserPortfolioRepository userPortfolioRepository;
     private final UserProjectHistoryRepository userProjectHistoryRepository;
     private final UserSkillRepository userSkillRepository;
+    private final UserProfileAnalysisRepository userProfileAnalysisRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public ProfileSettingsResponseDto getProfile(Long userId) {
@@ -99,6 +102,24 @@ public class MypageService {
                 })
                 .collect(Collectors.toList());
 
+        // 프로필 분석 정보 조회
+        String profileType = null;
+        List<String> tags = null;
+
+        var profileAnalysis = userProfileAnalysisRepository.findByUser(user);
+        if (profileAnalysis.isPresent()) {
+            profileType = profileAnalysis.get().getProfileType();
+            if (profileAnalysis.get().getTags() != null) {
+                try {
+                    tags = objectMapper.readValue(profileAnalysis.get().getTags(),
+                            objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+                } catch (Exception e) {
+                    // JSON 파싱 실패 시 null
+                    tags = null;
+                }
+            }
+        }
+
         return new ProfileSettingsResponseDto(
                 user.getUserId(),
                 user.getName(),
@@ -116,7 +137,9 @@ public class MypageService {
                 careerDto,
                 portfolioDto,
                 projectHistoryDto,
-                skillDto
+                skillDto,
+                profileType,
+                tags
         );
     }
 
@@ -215,6 +238,32 @@ public class MypageService {
                 userProjectHistoryRepository.saveAll(newProjectHistories);
             }
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileSettingsDto.ProfileAnalysisResponseDto getProfileAnalysis(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+
+        var profileAnalysis = userProfileAnalysisRepository.findByUser(user);
+
+        if (profileAnalysis.isEmpty()) {
+            return new ProfileSettingsDto.ProfileAnalysisResponseDto(null, null);
+        }
+
+        String profileType = profileAnalysis.get().getProfileType();
+        List<String> tags = null;
+
+        if (profileAnalysis.get().getTags() != null) {
+            try {
+                tags = objectMapper.readValue(profileAnalysis.get().getTags(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+            } catch (Exception e) {
+                tags = null;
+            }
+        }
+
+        return new ProfileSettingsDto.ProfileAnalysisResponseDto(profileType, tags);
     }
 
     private UserStatus parseUserStatus(String userStatusStr) {
