@@ -180,6 +180,7 @@ public class ChatService {
         return ChatConverter.toNoticeResponseDTO(message);
     }
 
+
     @Transactional(readOnly = true)
     public ChatMessageSearchResponseDto searchMessages(
             Long roomId,

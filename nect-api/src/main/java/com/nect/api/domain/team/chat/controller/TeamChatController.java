@@ -39,18 +39,6 @@ public class TeamChatController {
         return ApiResponse.ok(response);
     }
 
-    @PostMapping("/personal")
-    public ApiResponse<ChatRoomResponseDto> createPersonalChatRoom(
-            @RequestBody ChatRoomCreateRequestDto request,
-            @AuthenticationPrincipal UserDetailsImpl userDetails
-    ) {
-
-        Long currentUserId = (userDetails != null) ? userDetails.getUserId() : 1L;
-
-        ChatRoomResponseDto response = teamChatService.createOneOnOneChatRoom(currentUserId, request);
-        return ApiResponse.ok(response);
-    }
-
 
     @PostMapping("/group")
     public ApiResponse<ChatRoomResponseDto> createGroupChatRoom(
