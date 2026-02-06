@@ -2,12 +2,12 @@ package com.nect.api.domain.team.chat.service;
 import com.nect.api.domain.team.chat.converter.FileConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
-import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
 import com.nect.api.domain.team.chat.util.FileValidator;
 import com.nect.api.domain.user.enums.UserErrorCode;
 import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.S3Service;
 import com.nect.api.global.infra.exception.StorageException;
+import com.nect.api.global.infra.redis.RedisPublisher;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -43,7 +43,7 @@ public class ChatFileService {
     private final UserRepository userRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
-    private final ChatRedisPublisher redisPublisher;
+    private final RedisPublisher redisPublisher;
     private final S3Service s3Service;
     private final ProjectUserRepository projectUserRepository;
 
@@ -90,7 +90,7 @@ public class ChatFileService {
             messageDto.setReadCount(totalMembers - 1);
 
             String channel = "chatroom:" + roomId;
-            redisPublisher.publish(roomId, messageDto);
+            redisPublisher.publish(channel, messageDto);
 
             return messageDto;
 

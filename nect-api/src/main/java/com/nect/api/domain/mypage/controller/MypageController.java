@@ -2,6 +2,7 @@ package com.nect.api.domain.mypage.controller;
 
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.service.MyPageProjectService;
 import com.nect.api.domain.mypage.service.MypageService;
