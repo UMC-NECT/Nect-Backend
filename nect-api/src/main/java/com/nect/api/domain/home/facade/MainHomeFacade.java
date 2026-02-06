@@ -140,7 +140,7 @@ public class MainHomeFacade {
                             maxMemberCount,
                             currentMemberCount,
                             false,
-                            p.getRecruitmentStatus().getStatus(),
+                            p.getRecruitmentStatus() != null ? p.getRecruitmentStatus().getStatus() : null,
                             partCounts
                     );
                 })
@@ -159,9 +159,9 @@ public class MainHomeFacade {
                             user.getUserId(),
                             s3Service.getPresignedGetUrl(user.getProfileImageName()),
                             user.getName(),
-                            user.getRole().name(),
+                            user.getRole() != null ?  user.getRole().name() : null,
                             null,
-                            user.getUserStatus().name(),
+                            user.getUserStatus() != null ? user.getUserStatus().name() : null,
                             false,
                             parts
                     );
