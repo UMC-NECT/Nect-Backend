@@ -503,7 +503,7 @@ public class WeekMissionService {
         );
     }
 
-    // 위크미션 드롭 다운용 조화
+    // 위크미션 드롭 다운용 조회
     @Transactional(readOnly = true)
     public WeekMissionDropdownResDto getMissionDropdown(Long projectId, Long userId) {
         assertActiveProjectMember(projectId, userId);
