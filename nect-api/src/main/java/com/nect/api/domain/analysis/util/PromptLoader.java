@@ -3,6 +3,7 @@ package com.nect.api.domain.analysis.util;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -18,8 +19,7 @@ public class PromptLoader {
         try {
             // 프롬프트 파일 읽기
             ClassPathResource resource = new ClassPathResource(promptPath);
-            String template = Files.readString(resource.getFile().toPath(), StandardCharsets.UTF_8);
-
+            String template = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
             // 변수 치환
             String result = template;
             for (Map.Entry<String, String> entry : variables.entrySet()) {

@@ -39,7 +39,6 @@ public class S3Service {
         metadata.setContentLength(file.getSize());
 
         PutObjectRequest putObjectRequest = new PutObjectRequest(bucket, fileName, file.getInputStream(), metadata);
-
         amazonS3.putObject(putObjectRequest);
 
         return fileName; // DB 저장 값 (Key)
