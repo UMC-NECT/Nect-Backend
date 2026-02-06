@@ -2,6 +2,7 @@ package com.nect.api.domain.home.service;
 
 import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.user.exception.UserNotFoundException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserRole;
 import com.nect.core.entity.user.enums.InterestField;
@@ -28,6 +29,7 @@ public class HomeMemberQueryService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final UserInterestRepository userInterestRepository;
+    private final S3Service s3Service;
 
     public List<User> getFilteredMembers(Long userId, int count, Role role, InterestField interest) {
         PageRequest pageRequest = PageRequest.of(0, count);
@@ -80,7 +82,7 @@ public class HomeMemberQueryService {
 
         return HomeHeaderResponse.of(
                 user.getUserId(),
-                user.getProfileImageUrl(),
+                s3Service.getPresignedGetUrl(user.getProfileImageName()),
                 user.getName(),
                 user.getEmail(),
                 role

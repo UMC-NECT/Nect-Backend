@@ -7,6 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum StorageErrorCode implements ResponseCode {
 
+    S3_EXCEPTION("400_0", "S3 호출 중 오류 발생"),
     EMPTY_FILE("400_1", "파일이 비어있습니다."),
     EMPTY_FILE_NAME("400_2", "파일 이름이 비어있습니다."),
     INVALID_FILE_TYPE("400_3", "이미지 파일(jpg, jpeg, png)만 업로드 가능합니다."),

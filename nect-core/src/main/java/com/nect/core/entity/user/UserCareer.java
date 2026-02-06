@@ -34,6 +34,7 @@ public class UserCareer extends BaseEntity {
     private String endDate;
 
     @Column(name = "is_ongoing", nullable = false)
+    @Builder.Default
     private Boolean isOngoing = false;
 
     @Column(name = "role")

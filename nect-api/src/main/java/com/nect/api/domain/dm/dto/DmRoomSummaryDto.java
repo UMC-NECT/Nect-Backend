@@ -5,23 +5,28 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.nect.core.entity.dm.DirectMessage;
 import com.nect.core.entity.user.User;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+@Getter
 @Builder(access = AccessLevel.PRIVATE)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public record DmRoomSummaryDto(
+@AllArgsConstructor
+@NoArgsConstructor
+public class DmRoomSummaryDto{
 
-        Long otherUserId,
-        Long otherUserName,
-        String otherUserImageUrl,
-        String otherUserRoleField,
-        Long lastMessageId,
-        String lastMessage,
-        LocalDate lastMessageAt,
-        Boolean isRead
-) {
+    private Long otherUserId;
+    private Long otherUserName;
+    private String otherUserImageUrl;
+    private String otherUserRoleField;
+    private Long lastMessageId;
+    private String lastMessage;
+    private LocalDate lastMessageAt;
+    private Boolean isRead;
 
     // 로그인한 유저의 userId와 dm을 파리미터로 넣음
     public static DmRoomSummaryDto fromOtherUser(Long userId, DirectMessage message) {
@@ -36,13 +41,16 @@ public record DmRoomSummaryDto(
         return DmRoomSummaryDto.builder()
                 .otherUserId(sender.getUserId())
                 .otherUserName(sender.getUserId())
-                .otherUserImageUrl(sender.getProfileImageUrl())
                 .otherUserRoleField(sender.getName())
                 .lastMessageId(message.getId())
                 .lastMessage(message.getContent())
                 .lastMessageAt(message.getCreatedAt().toLocalDate())
                 .isRead(isRead)
                 .build();
+    }
+
+    public void setImageUrl(String url) {
+        this.otherUserImageUrl = url;
     }
 
 }

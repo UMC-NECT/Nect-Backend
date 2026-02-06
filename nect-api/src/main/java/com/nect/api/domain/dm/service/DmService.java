@@ -6,6 +6,7 @@ import com.nect.api.domain.dm.dto.DmRoomListResponse;
 import com.nect.api.domain.dm.dto.DmRoomSummaryDto;
 import com.nect.api.domain.dm.infra.DmRedisPublisher;
 import com.nect.api.domain.user.exception.UserNotFoundException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.dm.DirectMessage;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.dm.DmRepository;
@@ -28,6 +29,7 @@ public class DmService {
     private final UserRoleRepository userRoleRepository;
     private final DmRedisPublisher dmRedisPublisher;
     private final DmPresenceRegistry dmPresenceRegistry;
+    private final S3Service s3Service;
 
     @Transactional
     public DirectMessageDto sendMessage(Long senderId, Long receiverId, String content) {
@@ -53,6 +55,7 @@ public class DmService {
 
         // DM -> DTO
         DirectMessageDto dto = DirectMessageDto.fromDm(saved);
+        dto.setImageUrl(s3Service.getPresignedGetUrl(saved.getSender().getProfileImageName()));
 
         // 상대에게 전송
         dmRedisPublisher.publish(roomId, dto);
@@ -119,7 +122,11 @@ public class DmService {
 
         // List<DM> -> List<DTO>
         List<DmRoomSummaryDto> messages = latest.stream()
-                .map(message -> DmRoomSummaryDto.fromOtherUser(userId, message))
+                .map(message -> {
+                    DmRoomSummaryDto dto = DmRoomSummaryDto.fromOtherUser(userId, message);
+                    dto.setImageUrl(s3Service.getPresignedGetUrl(message.getSender().getProfileImageName()));
+                    return dto;
+                })
                 .toList();
 
         // 응답값 생성 후 반환

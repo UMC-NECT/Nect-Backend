@@ -157,7 +157,7 @@ public class MainHomeFacade {
 
                     return HomeMemberItem.of(
                             user.getUserId(),
-                            resolveUserImage(user),
+                            s3Service.getPresignedGetUrl(user.getProfileImageName()),
                             user.getName(),
                             user.getRole().name(),
                             null,
@@ -190,8 +190,5 @@ public class MainHomeFacade {
         return imageName == null ? null : s3Service.getPresignedGetUrl(imageName);
     }
 
-    private String resolveUserImage(User user) {
-        String imageUrl = user.getProfileImageUrl();
-        return imageUrl == null ? null : s3Service.getPresignedGetUrl(imageUrl);
-    }
+
 }

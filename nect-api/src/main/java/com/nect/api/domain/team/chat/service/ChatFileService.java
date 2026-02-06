@@ -147,7 +147,7 @@ public class ChatFileService {
 
     @Transactional(readOnly = true)
     public ChatRoomAlbumDetailDto getChatRoomAlbumDetail(Long roomId, int page, int size, Long userId) {
-        validateRoomMember(roomId, userId);
+validateRoomMember(roomId, userId);
 
         LocalDateTime fifteenDaysAgo = LocalDateTime.now().minusDays(15);
 

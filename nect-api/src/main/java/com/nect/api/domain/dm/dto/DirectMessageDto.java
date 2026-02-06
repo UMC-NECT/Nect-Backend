@@ -33,12 +33,16 @@ public class DirectMessageDto {
                 .messageId(dm.getId())
                 .senderId(sender.getUserId())
                 .senderName(sender.getName())
-                .senderProfileImage(sender.getProfileImageUrl())
+                .senderProfileImage(sender.getProfileImageName())
                 .content(dm.getContent())
                 .isPinned(false)
                 .createdAt(dm.getCreatedAt())
                 .isRead(dm.getIsRead())
                 .build();
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.senderProfileImage = imageUrl;
     }
 
 }
