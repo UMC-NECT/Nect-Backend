@@ -432,7 +432,7 @@ public class ProcessService {
         String customName = (req.customFieldName() == null) ? null : req.customFieldName().trim();
 
         // 프로젝트에 등록된 파트인지 검증 (CUSTOM 포함)
-        validateProjectTeamRolesOrThrow(projectId, roleFields, req.customFieldName());
+        validateProjectTeamRolesOrThrow(projectId, roleFields, customName);
 
         // 미션 N 검증: "시작일만" 미션 기간에 포함되면 요구사항 일치
         validateStartDateInSelectedMission(projectId, req.missionNumber(), start);
