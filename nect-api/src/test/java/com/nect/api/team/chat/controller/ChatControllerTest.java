@@ -202,8 +202,13 @@ class ChatControllerTest {
 
         ChatRoomResponseDto response = ChatRoomResponseDto.builder()
                 .roomId(10L)
+                .projectId(1L)
                 .roomName("개발팀 채팅방")
                 .roomType(ChatRoomType.GROUP)
+                .profileImages(Arrays.asList(
+                        "https://example.com/profile1.jpg",
+                        "https://example.com/profile2.jpg"
+                ))
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -243,7 +248,7 @@ class ChatControllerTest {
                                         fieldWithPath("body.room_name").description("채팅방 이름"),
                                         fieldWithPath("body.room_type").description("채팅방 타입 (GROUP)"),
                                         fieldWithPath("body.project_id").description("프로젝트 ID").optional(),
-                                        fieldWithPath("body.profile_image").description("프로필 이미지").optional(),
+                                        fieldWithPath("body.profile_images").description("참여자 프로필 이미지 목록 (최대 4개)").optional(),
                                         fieldWithPath("body.created_at").description("생성 시간")
                                 )
                                 .build()
@@ -603,7 +608,11 @@ class ChatControllerTest {
         ChatRoomInviteResponseDto response = new ChatRoomInviteResponseDto(
                 roomId,
                 2,
-                Arrays.asList("새멤버1", "새멤버2")
+                Arrays.asList("새멤버1", "새멤버2"),
+                Arrays.asList(
+                        "https://example.com/profile5.jpg",
+                        "https://example.com/profile6.jpg"
+                )
         );
 
         given(teamChatService.inviteMembers(eq(roomId), eq(1L), any(ChatRoomInviteRequestDto.class)))
@@ -640,7 +649,8 @@ class ChatControllerTest {
                                         fieldWithPath("status.description").description("상세 설명").optional(),
                                         fieldWithPath("body.room_id").description("채팅방 ID"),
                                         fieldWithPath("body.invited_count").description("실제 초대된 인원 수"),
-                                        fieldWithPath("body.invited_user_names").description("초대된 사용자 이름 목록")
+                                        fieldWithPath("body.invited_user_names").description("초대된 사용자 이름 목록"),
+                                        fieldWithPath("body.profile_images").description("초대된 사용자 프로필 이미지 목록")
                                 )
                                 .build()
                         )

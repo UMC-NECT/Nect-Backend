@@ -103,23 +103,13 @@ public class ChatConverter {
         return member;
     }
 
-    public static ChatRoomResponseDto toResponseDTO(ChatRoom chatRoom, User targetUser) {
-
-        String roomName = chatRoom.getName();
-        String profileImage = null;
-
-
-        if (chatRoom.getType() == ChatRoomType.DIRECT && targetUser != null) {
-            roomName = targetUser.getNickname();
-            // profileImage = targetUser.getProfileImage(); // TODO: 나중에 프로필 이미지 생기면 추가
-        }
-
+    public static ChatRoomResponseDto toResponseDTO(ChatRoom chatRoom, List<String> profileImages) {
         return ChatRoomResponseDto.builder()
                 .roomId(chatRoom.getId())
                 .projectId(chatRoom.getProject() != null ? chatRoom.getProject().getId() : null)
-                .roomName(roomName)
+                .roomName(chatRoom.getName())
                 .roomType(chatRoom.getType())
-                .profileImage(profileImage)
+                .profileImages(profileImages)
                 .createdAt(chatRoom.getCreatedAt() != null ? chatRoom.getCreatedAt() : LocalDateTime.now())
                 .build();
     }
