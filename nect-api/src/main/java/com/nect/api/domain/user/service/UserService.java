@@ -1,14 +1,22 @@
 package com.nect.api.domain.user.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.user.dto.*;
 import com.nect.api.domain.user.exception.*;
+import com.nect.api.global.ai.dto.OnboardingAnalysisScheme;
+import com.nect.api.global.ai.service.OnboardingAnalysisServiceImpl;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.dto.TokenDataDto;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.client.openai.dto.OpenAiResponse;
 import com.nect.core.entity.user.*;
 import com.nect.core.entity.user.enums.*;
 import com.nect.core.repository.user.*;
+import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.entity.user.UserProfileAnalysis;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +27,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,9 +41,13 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final UserSkillRepository userSkillRepository;
     private final UserInterestRepository userInterestRepository;
+    private final UserProfileAnalysisRepository userProfileAnalysisRepository;
+    private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
+    private final OnboardingAnalysisServiceImpl onboardingAnalysisService;
+    private final ProfileAnalysisMatchingService profileAnalysisMatchingService;
 
     @Value("${app.auth.key}")
     private String authKey;
@@ -502,7 +516,133 @@ public class UserService {
                 user.getEmail()
         );
     }
-      
+
+    @Transactional
+    public ProfileAnalysisDto analyzeProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        ProfileDto.ProfileSetupRequestDto profileRequest = buildProfileRequestFromUser(user);
+
+        OpenAiResponse openAiResponse = onboardingAnalysisService.analyzeProfile(profileRequest);
+
+        String analysisJson = openAiResponse.getFirstOutputText();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        OnboardingAnalysisScheme analysisResult;
+        try {
+            analysisResult = objectMapper.readValue(analysisJson, OnboardingAnalysisScheme.class);
+        } catch (Exception e) {
+            throw new RuntimeException("프로필 분석 결과 파싱 실패", e);
+        }
+
+        saveProfileAnalysis(user, analysisResult, objectMapper);
+
+        return ProfileAnalysisDto.builder()
+                .profileType(analysisResult.profile_type)
+                .tags(analysisResult.tags)
+                .collaborationStyle(analysisResult.collaboration_style)
+                .skills(analysisResult.skills)
+                .roleRecommendation(analysisResult.role_recommendation)
+                .growthGuide(analysisResult.growth_guide)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedProjectInfo> getRecommendedProjects(Long userId, Pageable pageable) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        OnboardingAnalysisScheme analysisResult = getAnalysisResult(user);
+        Page<ProfileAnalysisDto.RecommendedProjectInfo> page = profileAnalysisMatchingService.matchProjects(user, analysisResult, pageable);
+        return ProfileAnalysisDto.PaginatedResponse.from(page);
+    }
+
+    @Transactional(readOnly = true)
+    public ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedTeamMemberInfo> getRecommendedTeamMembers(Long userId, Pageable pageable) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        OnboardingAnalysisScheme analysisResult = getAnalysisResult(user);
+        Page<ProfileAnalysisDto.RecommendedTeamMemberInfo> page = profileAnalysisMatchingService.matchTeamMembers(user, analysisResult, pageable);
+        return ProfileAnalysisDto.PaginatedResponse.from(page);
+    }
+
+    private OnboardingAnalysisScheme getAnalysisResult(User user) {
+        UserProfileAnalysis analysis = userProfileAnalysisRepository.findByUser(user)
+                .orElseThrow(UserProfileAnalysisNotFound::new);
+
+        OnboardingAnalysisScheme analysisResult = profileAnalysisMatchingService.parseProfileAnalysis(analysis);
+        if (analysisResult == null) {
+            throw new UserProfileAnalysisParsingFailed();
+        }
+
+        return analysisResult;
+    }
+
+    protected void saveProfileAnalysis(User user, OnboardingAnalysisScheme analysisResult, ObjectMapper objectMapper) {
+        try {
+            userProfileAnalysisRepository.findByUser(user)
+                    .ifPresent(userProfileAnalysisRepository::delete);
+
+            UserProfileAnalysis profileAnalysis = UserProfileAnalysis.builder()
+                    .user(user)
+                    .profileType(analysisResult.profile_type)
+                    .tags(objectMapper.writeValueAsString(analysisResult.tags))
+                    .collaborationStyle(objectMapper.writeValueAsString(analysisResult.collaboration_style))
+                    .skills(objectMapper.writeValueAsString(analysisResult.skills))
+                    .roleRecommendation(objectMapper.writeValueAsString(analysisResult.role_recommendation))
+                    .growthGuide(objectMapper.writeValueAsString(analysisResult.growth_guide))
+                    .build();
+
+            userProfileAnalysisRepository.save(profileAnalysis);
+        } catch (Exception e) {
+            log.warn("프로필 분석 결과 저장 실패 (userId: {}): {}", user.getUserId(), e.getMessage());
+            throw new UserProfileAnalysisSaveFailed(e.getMessage());
+        }
+    }
+
+    private ProfileDto.ProfileSetupRequestDto buildProfileRequestFromUser(User user) {
+        List<ProfileDto.FieldDto> fields = userRoleRepository.findByUser(user)
+                .stream()
+                .map(userRole -> new ProfileDto.FieldDto(
+                        userRole.getRoleField().name(),
+                        userRole.getCustomField()
+                ))
+                .collect(Collectors.toList());
+
+        List<ProfileDto.SkillDto> skills = userSkillRepository.findByUserUserId(user.getUserId())
+                .stream()
+                .map(userSkill -> new ProfileDto.SkillDto(
+                        userSkill.getSkillCategory(),
+                        userSkill.getSkill().name(),
+                        userSkill.getCustomSkillName()
+                ))
+                .collect(Collectors.toList());
+
+        List<String> interests = userInterestRepository.findByUserUserId(user.getUserId())
+                .stream()
+                .map(userInterest -> userInterest.getInterestField().name())
+                .collect(Collectors.toList());
+
+        return new ProfileDto.ProfileSetupRequestDto(
+                user.getNickname(),
+                user.getBirthDate() != null ? user.getBirthDate().toString().replace("-", "") : null,
+                user.getJob() != null ? user.getJob().name() : null,
+                user.getRole() != null ? user.getRole().name() : null,
+                fields,
+                skills,
+                interests,
+                user.getFirstGoal() != null ? user.getFirstGoal().name() : null,
+                user.getCollaborationStylePlanning() != null ?
+                        new ProfileDto.CollaborationStyleDto(
+                                user.getCollaborationStylePlanning(),
+                                user.getCollaborationStyleLogic(),
+                                user.getCollaborationStyleLeadership()
+                        ) : null
+        );
+    }
+
     public User getUser(Long userId){
         return userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
