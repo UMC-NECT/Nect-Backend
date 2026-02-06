@@ -79,7 +79,7 @@ public class IdeaAnalysisService {
             return response;
 
         } catch (Exception e) {
-            throw new IdeaAnalysisException(IdeaAnalysisErrorCode.ANALYSIS_FAILED, "AI 분석 중 예기치 못한 오류가 발생했습니다.", e);       }
+            throw new IdeaAnalysisException(IdeaAnalysisErrorCode.ANALYSIS_FAILED, "AI 분석 중  오류가 발생했습니다.", e);       }
     }
 
     /**
