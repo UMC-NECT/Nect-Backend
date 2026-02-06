@@ -42,8 +42,6 @@ public class ProfileAnalysisDto {
         private String nickname;
         private String role;
         private String bio;
-        private String mainSkill;
-        private int mainSkillCount;
         private boolean matched;
     }
 

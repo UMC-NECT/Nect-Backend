@@ -127,4 +127,12 @@ public class UserController {
                 userService.getRecommendedTeamMembers(userDetails.getUserId(), pageable);
         return ApiResponse.ok(teamMembers);
     }
+
+    @DeleteMapping("/profile/analysis")
+    public ApiResponse<Void> deleteProfileAnalysis(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        userService.deleteProfileAnalysis(userDetails.getUserId());
+        return ApiResponse.ok();
+    }
 }

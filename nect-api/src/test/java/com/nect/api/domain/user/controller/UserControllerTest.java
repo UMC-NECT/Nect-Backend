@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.delete;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
@@ -531,7 +532,7 @@ class UserControllerTest extends NectDocumentApiTester {
                         .recruitmentPeriod("D-30")
                         .recruitmentStatus("모집 중")
                         .description("AI 기반 사용자 매칭 플랫폼")
-                        .participantRoles(List.of("DESIGNER", "DEVELOPER", "PM"))
+                        .participantRoles(List.of("FRONTEND", "BACKEND", "UI_UX"))
                         .build(),
                 ProfileAnalysisDto.RecommendedProjectInfo.builder()
                         .projectId(2L)
@@ -539,7 +540,7 @@ class UserControllerTest extends NectDocumentApiTester {
                         .recruitmentPeriod("D-55")
                         .recruitmentStatus("모집 중")
                         .description("실시간 팀 협업 플랫폼")
-                        .participantRoles(List.of("DESIGNER", "DEVELOPER"))
+                        .participantRoles(List.of("FRONTEND", "BACKEND"))
                         .build(),
                 ProfileAnalysisDto.RecommendedProjectInfo.builder()
                         .projectId(3L)
@@ -547,7 +548,7 @@ class UserControllerTest extends NectDocumentApiTester {
                         .recruitmentPeriod("모집 완료")
                         .recruitmentStatus("모집 종료")
                         .description("사용자 포트폴리오 관리 시스템")
-                        .participantRoles(List.of("DESIGNER"))
+                        .participantRoles(List.of("UI_UX"))
                         .build()
         );
 
@@ -587,7 +588,7 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.content[].recruitmentPeriod").type(JsonFieldType.STRING).description("모집 남은 기간 (예: D-30, 모집 완료)"),
                                                 fieldWithPath("body.content[].recruitmentStatus").type(JsonFieldType.STRING).description("모집 상태 (모집 중, 모집 예정, 모집 종료)"),
                                                 fieldWithPath("body.content[].description").type(JsonFieldType.STRING).description("프로젝트 설명"),
-                                                fieldWithPath("body.content[].participantRoles").type(JsonFieldType.ARRAY).description("참여 가능한 역할 (DESIGNER, DEVELOPER, PM 등)"),
+                                                fieldWithPath("body.content[].participantRoles").type(JsonFieldType.ARRAY).description("프로젝트가 모집 중인 역할 (FRONTEND, BACKEND, UI_UX 등 - capacity > 0인 역할만)"),
                                                 fieldWithPath("body.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
                                                 fieldWithPath("body.pageSize").type(JsonFieldType.NUMBER).description("페이지 크기"),
                                                 fieldWithPath("body.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
@@ -607,8 +608,6 @@ class UserControllerTest extends NectDocumentApiTester {
                         .nickname("이방토니")
                         .role("DESIGNER")
                         .bio("UI/UX 디자인에 능한 디자이너입니다")
-                        .mainSkill("DESIGN")
-                        .mainSkillCount(3)
                         .matched(false)
                         .build(),
                 ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
@@ -616,8 +615,6 @@ class UserControllerTest extends NectDocumentApiTester {
                         .nickname("김웹개발")
                         .role("DEVELOPER")
                         .bio("React 기반의 프론트엔드 개발자입니다")
-                        .mainSkill("FRONTEND")
-                        .mainSkillCount(2)
                         .matched(false)
                         .build(),
                 ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
@@ -625,8 +622,6 @@ class UserControllerTest extends NectDocumentApiTester {
                         .nickname("박서버")
                         .role("DEVELOPER")
                         .bio("Spring Boot 기반 백엔드 개발에 경험 많습니다")
-                        .mainSkill("BACKEND")
-                        .mainSkillCount(2)
                         .matched(false)
                         .build()
         );
@@ -666,13 +661,40 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.content[].nickname").type(JsonFieldType.STRING).description("사용자 닉네임"),
                                                 fieldWithPath("body.content[].role").type(JsonFieldType.STRING).description("사용자 역할 (DESIGNER, DEVELOPER, PM 등)"),
                                                 fieldWithPath("body.content[].bio").type(JsonFieldType.STRING).description("사용자 자기소개").optional(),
-                                                fieldWithPath("body.content[].mainSkill").type(JsonFieldType.STRING).description("메인 스킬 카테고리 (DESIGN, FRONTEND, BACKEND 등)").optional(),
-                                                fieldWithPath("body.content[].mainSkillCount").type(JsonFieldType.NUMBER).description("메인 스킬 카테고리의 스킬 개수"),
                                                 fieldWithPath("body.content[].matched").type(JsonFieldType.BOOLEAN).description("이미 매칭 여부"),
                                                 fieldWithPath("body.pageNumber").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
                                                 fieldWithPath("body.pageSize").type(JsonFieldType.NUMBER).description("페이지 크기"),
                                                 fieldWithPath("body.totalElements").type(JsonFieldType.NUMBER).description("전체 요소 수"),
                                                 fieldWithPath("body.totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+                                        )
+                                        .build()
+                        )
+                ));
+    }
+
+    @Test
+    void deleteProfileAnalysis() throws Exception {
+        // given
+        doNothing().when(userService).deleteProfileAnalysis(1L);
+
+        // when & then
+        this.mockMvc.perform(delete("/api/v1/users/profile/analysis")
+                        .header("Authorization", "Bearer mock-token"))
+                .andExpect(status().isOk())
+                .andDo(document("delete-profile-analysis",
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("users")
+                                        .summary("프로필 분석 삭제")
+                                        .description("사용자의 프로필 분석 결과를 삭제합니다.")
+                                        .requestHeaders(
+                                                headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                                fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
+                                                fieldWithPath("body").type(JsonFieldType.NULL).description("응답 본문 (null)").optional()
                                         )
                                         .build()
                         )

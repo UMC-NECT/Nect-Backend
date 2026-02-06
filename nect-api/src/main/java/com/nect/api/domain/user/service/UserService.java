@@ -656,4 +656,17 @@ public class UserService {
         return userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
     }
+
+    @Transactional
+    public void deleteProfileAnalysis(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserProfileAnalysisNotFound("사용자를 찾을 수 없습니다."));
+
+        var profileAnalysis = userProfileAnalysisRepository.findByUser(user);
+        if (profileAnalysis.isPresent()) {
+            userProfileAnalysisRepository.delete(profileAnalysis.get());
+        } else {
+            throw new UserProfileAnalysisNotFound("프로필 분석 결과를 찾을 수 없습니다.");
+        }
+    }
 }

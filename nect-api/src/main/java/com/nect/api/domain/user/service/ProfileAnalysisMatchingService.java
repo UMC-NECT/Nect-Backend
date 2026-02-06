@@ -3,11 +3,13 @@ package com.nect.api.domain.user.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.user.dto.ProfileAnalysisDto;
 import com.nect.api.global.ai.dto.OnboardingAnalysisScheme;
+import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserProfileAnalysis;
+import com.nect.core.repository.matching.RecruitmentRepository;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserProfileAnalysisRepository;
@@ -34,6 +36,7 @@ public class ProfileAnalysisMatchingService {
 
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
+    private final RecruitmentRepository recruitmentRepository;
     private final UserRepository userRepository;
     private final UserProfileAnalysisRepository userProfileAnalysisRepository;
     private final UserSkillRepository userSkillRepository;
@@ -51,9 +54,11 @@ public class ProfileAnalysisMatchingService {
                     RecruitmentStatus.OPEN
             );
 
+            String userRole = user.getRole() != null ? user.getRole().toString() : null;
+
             List<ProfileAnalysisDto.RecommendedProjectInfo> projects = availableProjects.stream()
                     .map(project -> {
-                        List<String> participantRoles = extractProjectParticipantRoles(project);
+                        List<String> recruitmentRoles = extractProjectRecruitmentRoles(project);
                         String recruitmentPeriod = formatRecruitmentPeriod(project);
                         return ProfileAnalysisDto.RecommendedProjectInfo.builder()
                                 .projectId(project.getId())
@@ -61,8 +66,18 @@ public class ProfileAnalysisMatchingService {
                                 .recruitmentPeriod(recruitmentPeriod)
                                 .recruitmentStatus(project.getRecruitmentStatus().getStatus())
                                 .description(project.getDescription())
-                                .participantRoles(participantRoles)
+                                .participantRoles(recruitmentRoles)
                                 .build();
+                    })
+                    .sorted((p1, p2) -> {
+                        // 사용자 역할과 모집 역할이 일치하는 프로젝트를 우선순위로
+                        boolean p1Match = userRole != null && p1.getParticipantRoles().contains(userRole);
+                        boolean p2Match = userRole != null && p2.getParticipantRoles().contains(userRole);
+
+                        if (p1Match != p2Match) {
+                            return Boolean.compare(p2Match, p1Match); // 일치하는 것을 먼저
+                        }
+                        return 0;
                     })
                     .collect(Collectors.toList());
 
@@ -101,14 +116,14 @@ public class ProfileAnalysisMatchingService {
         return "D-" + remainingDays;
     }
 
-    private List<String> extractProjectParticipantRoles(Project project) {
-        List<ProjectUser> projectUsers = projectUserRepository.findByProject(project);
-        return projectUsers.stream()
-                .map(pu -> {
-                    if (pu.getRoleField().toString().equals("CUSTOM")) {
-                        return pu.getCustomRoleFieldName();
+    private List<String> extractProjectRecruitmentRoles(Project project) {
+        List<Recruitment> recruitments = recruitmentRepository.findOpenFieldsByProject(project);
+        return recruitments.stream()
+                .map(recruitment -> {
+                    if (recruitment.getField().toString().equals("CUSTOM")) {
+                        return recruitment.getCustomField();
                     }
-                    return pu.getRoleField().toString();
+                    return recruitment.getField().toString();
                 })
                 .distinct()
                 .collect(Collectors.toList());
@@ -129,39 +144,14 @@ public class ProfileAnalysisMatchingService {
                         }
                         return u1.getNickname().compareTo(u2.getNickname());
                     })
-                    .map(otherUser -> {
-                        List<com.nect.core.entity.user.UserSkill> userSkills = userSkillRepository.findByUserUserId(otherUser.getUserId());
-
-                        String mainSkill = null;
-                        int mainSkillCount = 0;
-
-                        if (!userSkills.isEmpty()) {
-                            var skillCategoryMap = userSkills.stream()
-                                    .collect(Collectors.groupingBy(
-                                            us -> us.getSkillCategory() != null ? us.getSkillCategory().name() : "OTHER",
-                                            Collectors.counting()
-                                    ));
-
-                            var maxEntry = skillCategoryMap.entrySet().stream()
-                                    .max(java.util.Map.Entry.comparingByValue())
-                                    .orElse(null);
-
-                            if (maxEntry != null) {
-                                mainSkill = maxEntry.getKey();
-                                mainSkillCount = (int) (long) maxEntry.getValue();
-                            }
-                        }
-
-                        return ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
+                    .map(otherUser -> ProfileAnalysisDto.RecommendedTeamMemberInfo.builder()
                                 .userId(otherUser.getUserId())
                                 .nickname(otherUser.getNickname())
                                 .role(otherUser.getRole() != null ? otherUser.getRole().toString() : "MEMBER")
                                 .bio(otherUser.getBio())
-                                .mainSkill(mainSkill)
-                                .mainSkillCount(mainSkillCount)
                                 .matched(false)
-                                .build();
-                    })
+                                .build()
+                    )
                     .collect(Collectors.toList());
 
             int start = (int) pageable.getOffset();
