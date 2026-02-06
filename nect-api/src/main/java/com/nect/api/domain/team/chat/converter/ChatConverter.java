@@ -30,7 +30,7 @@ public class ChatConverter {
                 .roomId(message.getChatRoom().getId())
                 .userId(message.getUser().getUserId())
                 .userName(message.getUser().getName())
-                .profileImage(message.getUser().getProfileImageUrl())
+                .profileImage(message.getUser().getProfileImageName())
                 .content(message.getContent())
                 .messageType(message.getMessageType())
                 .isPinned(message.getIsPinned())

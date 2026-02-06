@@ -1,10 +1,12 @@
 
 package com.nect.api.domain.mypage.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.exception.InvalidUserStatusException;
 import com.nect.api.domain.mypage.exception.UserNotFoundException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.user.*;
 import com.nect.core.entity.user.enums.*;
 import com.nect.core.repository.user.*;
@@ -26,7 +28,8 @@ public class MypageService {
     private final UserProjectHistoryRepository userProjectHistoryRepository;
     private final UserSkillRepository userSkillRepository;
     private final UserProfileAnalysisRepository userProfileAnalysisRepository;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
+    private final S3Service s3Service;
 
     @Transactional(readOnly = true)
     public ProfileSettingsResponseDto getProfile(Long userId) {
@@ -126,7 +129,7 @@ public class MypageService {
                 user.getNickname(),
                 user.getEmail(),
                 user.getRole() != null ? user.getRole().name() : null,
-                user.getProfileImageUrl(),
+                s3Service.getPresignedGetUrl(user.getProfileImageName()),
                 user.getBio(),
                 user.getCoreCompetencies(),
                 user.getUserStatus() != null ? user.getUserStatus().getDescription() : null,
@@ -149,7 +152,7 @@ public class MypageService {
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
 
         if (request.profileImageUrl() != null) {
-            user.setProfileImageUrl(request.profileImageUrl());
+            user.setProfileImageName(request.profileImageUrl());
         }
         if (request.bio() != null) {
             user.setBio(request.bio());

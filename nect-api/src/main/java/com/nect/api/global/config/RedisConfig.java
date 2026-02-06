@@ -3,7 +3,8 @@ package com.nect.api.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.nect.api.domain.team.chat.service.RedisSubscriber;
+import com.nect.api.global.infra.redis.RedisMessageHandler;
+import com.nect.api.global.infra.redis.RedisSubscriber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,8 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.util.List;
 
 @Configuration
 public class RedisConfig {
@@ -68,11 +71,13 @@ public class RedisConfig {
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
-            MessageListenerAdapter listenerAdapter) {
+            MessageListenerAdapter listenerAdapter,
+            List<RedisMessageHandler> handlers) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        // 모든 채팅방 구독
-        container.addMessageListener(listenerAdapter, new PatternTopic("chatroom:*"));
+        for (RedisMessageHandler handler : handlers) {
+            container.addMessageListener(listenerAdapter, new PatternTopic(handler.channelPrefix() + "*"));
+        }
         return container;
     }
 

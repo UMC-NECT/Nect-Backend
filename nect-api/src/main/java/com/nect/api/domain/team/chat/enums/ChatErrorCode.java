@@ -25,6 +25,7 @@ public enum ChatErrorCode implements ResponseCode {
     // 메시지 관련
     CHAT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_201", "메시지를 찾을 수 없습니다"),
     CHAT_MESSAGE_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CHAT_202", "메시지 전송에 실패했습니다"),
+
     INVALID_MESSAGE_FOR_ROOM(HttpStatus.INTERNAL_SERVER_ERROR, "CHAT_203", "해당 방의 메시지가 아닙니다."),
     // Redis 관련
     REDIS_PUBLISH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "CHAT_301", "Redis 메시지 발행에 실패했습니다"),
