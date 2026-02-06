@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -82,13 +83,20 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomUser.getChatRoom();
         User user = chatRoomUser.getUser();
         String userName = user.getNickname();
-        chatService.sendMessage(roomId, userId, userName + "님이 채팅방을 나갔습니다.");
+
+
+        long currentMemberCount = chatRoomUserRepository.countByChatRoomId(roomId);
+
+
+        if (currentMemberCount > 1) {
+            chatService.sendMessage(roomId, userId, userName + "님이 채팅방을 나갔습니다.");
+        }
+
 
         chatRoomUserRepository.delete(chatRoomUser);
 
-        // 채팅방 전원이 나갈경우 채팅방 삭제
-        long remainingMemberCount = chatRoomUserRepository.countByChatRoomId(roomId);
-        if (remainingMemberCount == 0) {
+
+        if (currentMemberCount == 1) {
             chatRoomRepository.delete(chatRoom);
         }
 
@@ -119,7 +127,6 @@ public class ChatRoomService {
 
         int memberCount = chatRoomUserRepository.countByChatRoomId(chatRoom.getId());
 
-        //  TODO: 프로필 이미지 (User 엔티티에 profileImage 필드 추가 후 활성화)
         List<String> profileImages = getProfileImages(chatRoom.getId());
 
 
@@ -140,24 +147,17 @@ public class ChatRoomService {
                 .hasNewMessage(hasNewMessage)
                 .build();
     }
-    /**
-     * TODO: 프로필 이미지 목록 조회
-     */
+
     private List<String> getProfileImages(Long chatRoomId) {
-        // TODO: User 엔티티에 profileImage 필드 추가 후 주석 해제
-        return Collections.emptyList();
+        List<ChatRoomUser> roomUsers = chatRoomUserRepository
+                .findAllByChatRoomId(chatRoomId);
 
-    /*
-    List<ChatRoomUser> roomUsers = chatRoomUserRepository
-            .findAllByChatRoomId(chatRoomId);
-
-    return roomUsers.stream()
-            .map(ChatRoomUser::getUser)
-            .map(User::getProfileImage)
-            .filter(StringUtils::hasText)  // null, 빈 문자열 필터링
-            .limit(4)
-            .collect(Collectors.toList());
-    */
+        return roomUsers.stream()
+                .map(ChatRoomUser::getUser)
+                .map(User::getProfileImageUrl)
+                .filter(StringUtils::hasText)
+                .limit(4)
+                .collect(Collectors.toList());
     }
 
     private boolean checkHasNewMessage(Long chatRoomId, Long userId, ChatMessage lastMessage) {

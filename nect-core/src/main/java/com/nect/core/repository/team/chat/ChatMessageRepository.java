@@ -18,10 +18,21 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage,Long> {
 
-    List<ChatMessage> findByChatRoomOrderByIdDesc(ChatRoom chatRoom, Pageable pageable);
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "JOIN FETCH cm.user " +
+            "WHERE cm.chatRoom = :chatRoom " +
+            "ORDER BY cm.id DESC")
+    List<ChatMessage> findByChatRoomOrderByIdDesc(@Param("chatRoom") ChatRoom chatRoom, Pageable pageable);
 
-    List<ChatMessage> findByChatRoomAndIdLessThanOrderByIdDesc(ChatRoom chatRoom, Long id, Pageable pageable);
-
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "JOIN FETCH cm.user " +
+            "WHERE cm.chatRoom = :chatRoom " +
+            "AND cm.id < :id " +
+            "ORDER BY cm.id DESC")
+    List<ChatMessage> findByChatRoomAndIdLessThanOrderByIdDesc(
+            @Param("chatRoom") ChatRoom chatRoom,
+            @Param("id") Long id,
+            Pageable pageable);
 
     @Query("SELECT cm FROM ChatMessage cm " +
             "WHERE cm.chatRoom.id = :roomId " +

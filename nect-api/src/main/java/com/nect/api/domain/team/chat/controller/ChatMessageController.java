@@ -26,7 +26,7 @@ public class ChatMessageController {
     private final ChatService chatService;
     private final TeamChatService  teamChatService;
 
-    // 방 메시지 조회
+    // 채팅방 내부  조회
     @GetMapping("/rooms/{room_id}/messages")
     public ApiResponse<ChatRoomMessagesResponseDto> getChatMessages(
             @PathVariable Long room_id,
@@ -38,6 +38,7 @@ public class ChatMessageController {
        ChatRoomMessagesResponseDto  messages = chatService.getChatMessages(room_id, currentUserId,lastMessage_id, size);
         return ApiResponse.ok(messages);
     }
+
 
 
     @GetMapping("/projects/{projectId}/rooms")

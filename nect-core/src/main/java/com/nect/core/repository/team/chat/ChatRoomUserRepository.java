@@ -18,10 +18,16 @@ public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser,Long>
 
     int countByChatRoomId(Long chatRoomId);
 
+    Optional<ChatRoomUser> findByChatRoom_IdAndUser_UserId(Long chatRoomId, Long userId);
+
     Optional<ChatRoomUser> findByChatRoomIdAndUser_UserId(Long chatRoomId, Long userId);
 
     List<ChatRoomUser> findAllByUserUserId(Long userId);
 
+    @Query("SELECT cru FROM ChatRoomUser cru " +
+            "JOIN FETCH cru.user " +
+            "WHERE cru.chatRoom.id = :chatRoomId")
+    List<ChatRoomUser> findAllByChatRoomId(@Param("chatRoomId") Long chatRoomId);
 
     @Query("select cru from ChatRoomUser cru " +
             "join fetch cru.chatRoom " +
@@ -41,6 +47,24 @@ public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser,Long>
             "WHERE cru.chatRoom.id = :roomId")
     List<Long> findUserIdsByChatRoomId(@Param("roomId") Long roomId);
 
+    @Query("SELECT COUNT(cru) FROM ChatRoomUser cru " +
+            "WHERE cru.chatRoom.id = :roomId " +
+            "AND cru.lastReadMessageId >= :messageId")
+    int countUsersWhoReadMessage(@Param("roomId") Long roomId,
+                                 @Param("messageId") Long messageId);
 
 
+    @Query("SELECT cru FROM ChatRoomUser cru " +
+            "WHERE cru.chatRoom.id = :roomId")
+    List<ChatRoomUser> findAllByRoomId(@Param("roomId") Long roomId);
+
+
+    @Query("SELECT COUNT(cm) FROM ChatMessage cm " +
+            "WHERE cm.chatRoom.id = :roomId " +
+            "AND cm.id > (SELECT CASE WHEN cru.lastReadMessageId IS NULL THEN 0 " +
+            "ELSE cru.lastReadMessageId END FROM ChatRoomUser cru " +
+            "WHERE cru.chatRoom.id = :roomId AND cru.user.userId = :userId)")
+    int countUnreadMessages(@Param("roomId") Long roomId,
+                            @Param("userId") Long userId);
 }
+

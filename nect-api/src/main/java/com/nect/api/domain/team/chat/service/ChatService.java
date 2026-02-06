@@ -1,6 +1,7 @@
 package com.nect.api.domain.team.chat.service;
 
 import com.nect.api.domain.team.chat.converter.ChatConverter;
+import com.nect.api.domain.team.chat.converter.FileConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.ChatMessageSearchResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
@@ -8,9 +9,13 @@ import com.nect.api.domain.team.chat.dto.res.ChatRoomMessagesResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
 import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
+import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
+import com.nect.core.entity.team.chat.ChatRoomUser;
+import com.nect.core.entity.team.chat.enums.MessageType;
 import com.nect.core.entity.user.User;
+import com.nect.core.repository.team.chat.ChatFileRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
 import com.nect.core.repository.team.chat.ChatRoomUserRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
@@ -23,8 +28,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,14 +45,13 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRedisPublisher redisPublisher;
     private final UserRepository userRepository;
-
+    private final ChatFileRepository chatFileRepository;
 
     @Transactional
     public ChatMessageDto sendMessage(Long roomId, Long userId, String content) {
 
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
-
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND));
@@ -54,9 +60,24 @@ public class ChatService {
         ChatMessage message = ChatConverter.toTextMessage(chatRoom, user, content);
         chatMessageRepository.save(message);
 
+        // 발신자의 lastReadMessageId 업데이트 (본인은 이미 읽음)
+        ChatRoomUser senderRoomUser = chatRoomUserRepository
+                .findByChatRoom_IdAndUser_UserId(roomId, userId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED));
+
+        senderRoomUser.setLastReadMessageId(message.getId());
+        senderRoomUser.setLastReadAt(LocalDateTime.now());
+
+        // DTO 변환
         ChatMessageDto messageDto = ChatConverter.toMessageDto(message);
 
         //Redis 발행
+        redisPublisher.publish(roomId, messageDto);
+        // readCount = 안 읽은 사람 수 (전체 인원 - 1(본인))
+        int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
+        messageDto.setReadCount(totalMembers - 1);
+
+        // 메시지 발행
         redisPublisher.publish(roomId, messageDto);
 
         return messageDto;
@@ -65,7 +86,7 @@ public class ChatService {
 
 
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ChatRoomMessagesResponseDto getChatMessages(Long roomId, Long userId,Long lastMessageId, int size) {
 
         // 1. 채팅방 조회
@@ -73,11 +94,10 @@ public class ChatService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
         // 2.  권한 확인: 채팅방 멤버인지 확인
-        boolean isMember = chatRoomUserRepository
-                .existsByChatRoomIdAndUserUserId(roomId, userId);
-        if (!isMember) {
-            throw new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
+        ChatRoomUser chatRoomUser = chatRoomUserRepository
+                .findByChatRoom_IdAndUser_UserId(roomId, userId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED));
+
 
         // 3. 인원 수 조회
         long memberCount = chatRoomUserRepository.countByChatRoomId(roomId);
@@ -95,8 +115,43 @@ public class ChatService {
 
         Collections.reverse(messages);
 
+        if (!messages.isEmpty()) {
+            Long latestMessageId = messages.get(messages.size() - 1).getId();
+
+            if (chatRoomUser.getLastReadMessageId() == null
+                    || latestMessageId > chatRoomUser.getLastReadMessageId()) {
+
+                chatRoomUser.setLastReadMessageId(latestMessageId);
+                chatRoomUser.setLastReadAt(LocalDateTime.now());
+
+                log.info("자동 읽음 처리 - roomId: {}, userId: {}, messageId: {}",
+                        roomId, userId, latestMessageId);
+            }
+        }
+
+        // 메시지 DTO 변환 및 readCount 계산
         List<ChatMessageDto> messageDtos = messages.stream()
-                .map(ChatConverter::toMessageDto)
+                .map(message -> {
+//                    ChatMessageDto dto = ChatConverter.toMessageDto(message);
+                    ChatMessageDto dto;
+                    if (message.getMessageType() == MessageType.FILE) {
+                        Optional<ChatFile> fileOpt = chatFileRepository
+                                .findByChatMessageId(message.getId());
+                        if (fileOpt.isPresent()) {
+                            dto = FileConverter.toFileMessageDto(message, fileOpt.get());
+                        } else {
+                            dto = ChatConverter.toMessageDto(message);
+                        }
+                    } else {
+                        dto = ChatConverter.toMessageDto(message);
+                    }
+
+                    // readCount = 안 읽은 사람 수
+                    int readCount = calculateUnreadCount(roomId, message.getId(), memberCount);
+                    dto.setReadCount(readCount);
+
+                    return dto;
+                })
                 .collect(Collectors.toList());
 
         return ChatRoomMessagesResponseDto.builder()
@@ -106,7 +161,6 @@ public class ChatService {
                 .messages(messageDtos)
                 .hasNext(messages.size() == size)
                 .build();
-
     }
 
     @Transactional
@@ -127,6 +181,7 @@ public class ChatService {
 
         return ChatConverter.toNoticeResponseDTO(message);
     }
+
 
     @Transactional(readOnly = true)
     public ChatMessageSearchResponseDto searchMessages(
@@ -163,5 +218,9 @@ public class ChatService {
     }
 
 
+    private int calculateUnreadCount(Long roomId, Long messageId, long totalMembers) {
+        int readMembers = chatRoomUserRepository.countUsersWhoReadMessage(roomId, messageId);
+        return (int) (totalMembers - readMembers);
+    }
 
 }

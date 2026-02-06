@@ -51,20 +51,23 @@ public class ChatFileService {
     private String uploadDir;
 
     @Transactional
-    public ChatFileUploadResponseDto uploadFile(Long roomId,MultipartFile file,Long userId) {
-        validateRoomMember(roomId, userId);
+    public ChatMessageDto uploadAndSendFile(Long roomId, MultipartFile file, Long userId) {
 
-        FileValidator.validateImageFile(file);
+        ChatRoomUser chatRoomUser = chatRoomUserRepository.findMemberInRoom(roomId, userId)
+                .orElseThrow(() -> new StorageException(StorageErrorCode.NOT_CHAT_ROOM_MEMBER));
 
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new StorageException(StorageErrorCode.CHAT_ROOM_NOT_FOUND));
+        ChatRoom chatRoom = chatRoomUser.getChatRoom();
+        User user = chatRoomUser.getUser();
 
-        try{
 
-            // Cloudflare R2에 업로드
+        FileValidator.validateFile(file);
+
+        try {
             String storedFileName = s3Service.uploadFile(file);
             String fileUrl = s3Service.getPresignedGetUrl(storedFileName);
 
+            ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
+            chatMessageRepository.save(message);
 
             ChatFile chatFile = FileConverter.toFileEntity(
                     file.getOriginalFilename(),
@@ -74,46 +77,26 @@ public class ChatFileService {
                     file.getContentType(),
                     chatRoom
             );
-
+            chatFile.setChatMessage(message);
             chatFileRepository.save(chatFile);
 
+            chatRoomUser.setLastReadMessageId(message.getId());
+            chatRoomUser.setLastReadAt(LocalDateTime.now());
 
-            return FileConverter.toFileUploadResponseDTO(chatFile);
+            // 7. DTO 변환
+            ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
 
+            int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
+            messageDto.setReadCount(totalMembers - 1);
 
-        }catch(IOException e){
+            String channel = "chatroom:" + roomId;
+            redisPublisher.publish(roomId, messageDto);
+
+            return messageDto;
+
+        } catch (IOException e) {
             throw new StorageException(StorageErrorCode.FILE_UPLOAD_FAILED);
         }
-    }
-
-    @Transactional
-    public ChatMessageDto sendFileMessage(Long roomId, Long userId, Long fileId) {
-
-
-        ChatRoomUser chatRoomUser = chatRoomUserRepository.findMemberInRoom(roomId, userId)
-                .orElseThrow(() -> new StorageException(StorageErrorCode.NOT_CHAT_ROOM_MEMBER));
-
-        ChatRoom chatRoom = chatRoomUser.getChatRoom();
-        User user = chatRoomUser.getUser();
-
-
-        ChatFile chatFile = chatFileRepository.findById(fileId)
-                .orElseThrow(() ->  new StorageException(StorageErrorCode.FILE_NOT_FOUND));
-
-
-        String refreshedUrl = s3Service.getPresignedGetUrl(chatFile.getStoredFileName());
-        chatFile.updateFileUrl(refreshedUrl);
-
-        ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
-        chatMessageRepository.save(message);
-
-        chatFile.setChatMessage(message);
-        ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
-
-        redisPublisher.publish(roomId, messageDto);
-
-        return messageDto;
-
     }
 
 
@@ -141,11 +124,12 @@ public class ChatFileService {
                 .map(room -> {
 
                     int totalFileCount = chatFileRepository
-                            .countByChatRoomIdAndCreatedAtAfter(room.getId(), fifteenDaysAgo);
+                            .countImageFilesByChatRoomIdAndCreatedAtAfter(
+                                    room.getId(), fifteenDaysAgo);
 
 
                     List<ChatFile> chatFiles = chatFileRepository
-                            .findTopNByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(
+                            .findImageFilesByChatRoomIdAndCreatedAtAfter(
                                     room.getId(),
                                     fifteenDaysAgo,
                                     PageRequest.of(0, limitPerRoom));
@@ -173,12 +157,12 @@ public class ChatFileService {
 
 
         int totalCount = chatFileRepository
-                .countByChatRoomIdAndCreatedAtAfter(roomId, fifteenDaysAgo);
-
+                .countImageFilesByChatRoomIdAndCreatedAtAfter(roomId, fifteenDaysAgo);
 
         Pageable pageable = PageRequest.of(page, size);
+
         List<ChatFile> chatFiles = chatFileRepository
-                .findTopNByChatRoomIdAndCreatedAtAfterOrderByCreatedAtDesc(
+                .findImageFilesByChatRoomIdAndCreatedAtAfter(
                         roomId, fifteenDaysAgo, pageable);
 
 

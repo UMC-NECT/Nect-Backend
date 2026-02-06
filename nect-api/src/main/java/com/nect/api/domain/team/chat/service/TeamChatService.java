@@ -28,10 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils; // 추가
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,63 +49,16 @@ public class TeamChatService {
     }
 
 
-    // 1:1 채팅방 생성
-    @Transactional
-    public ChatRoomResponseDto createOneOnOneChatRoom(Long currentUserId, ChatRoomCreateRequestDto request) {
 
-
-        boolean isMeInProject = projectUserRepository.existsByProjectIdAndUserId(request.getProject_id(), currentUserId);
-        boolean isTargetInProject = projectUserRepository.existsByProjectIdAndUserId(request.getProject_id(), request.getTarget_user_id());
-
-        if (!isMeInProject || !isTargetInProject) {
-            throw new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND, "서로 같은 팀원이 아닙니다.");
-        }
-
-        Project project = projectRepository.findById(request.getProject_id())
-                .orElseThrow(() -> new RuntimeException("프로젝트를 찾을 수 없습니다."));
-
-        User me = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND, "현재 사용자를 찾을 수 없습니다."));
-
-        User targetUser = userRepository.findById(request.getTarget_user_id())
-                .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND, "상대방 사용자를 찾을 수 없습니다."));
-
-
-        Optional<Long> existingRoomId = chatRoomRepository.findExistingOneOnOneRoomId(
-                request.getProject_id(),
-                currentUserId,
-                request.getTarget_user_id()
-        );
-
-        if (existingRoomId.isPresent()) {
-            ChatRoom existingRoom = chatRoomRepository.findById(existingRoomId.get())
-                    .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_ROOM_NOT_FOUND, "존재하는 채팅방 ID를 찾을 수 없습니다."));
-
-            return ChatConverter.toResponseDTO(existingRoom, targetUser);
-        }
-
-
-        ChatRoom chatRoom = ChatConverter.toChatRoomEntity(
-                project,
-                null,
-                ChatRoomType.DIRECT
-        );
-        chatRoomRepository.save(chatRoom);
-
-
-        ChatRoomUser myMember = ChatConverter.toChatRoomMemberEntity(chatRoom, me, LocalDateTime.now());
-        ChatRoomUser targetMember = ChatConverter.toChatRoomMemberEntity(chatRoom, targetUser, null);
-
-        chatRoomUserRepository.saveAll(List.of(myMember, targetMember));
-
-        return ChatConverter.toResponseDTO(chatRoom, targetUser);
-    }
 
     // 팀 채팅방 생성
     @Transactional
     public ChatRoomResponseDto createGroupChatRoom(Long currentUserId, GroupChatRoomCreateRequestDto request) {
 
-        if (request.getTargetUserIds() == null || request.getTargetUserIds().isEmpty()) {
+        Set<Long> uniqueTargetIds = new HashSet<>(request.getTargetUserIds());
+        uniqueTargetIds.remove(currentUserId);
+
+        if (uniqueTargetIds.isEmpty()) {
             throw new ChatException(ChatErrorCode.NO_MEMBERS_SELECTED, "최소 1명 이상 선택해야 합니다.");
         }
 
@@ -132,12 +82,17 @@ public class TeamChatService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND, "현재 사용자를 찾을 수 없습니다."));
 
 
-        List<User> targetUsers = projectUserRepository.findAllUsersByProjectIdAndUserIds(
+        List<User> targetUsers = projectUserRepository.findActiveUsersByProjectIdAndUserIds(
                 request.getProjectId(),
-                request.getTargetUserIds()
+                new ArrayList<>(uniqueTargetIds)
         );
+        // 2. 결과 대조 로그
+        List<Long> foundUserIds = targetUsers.stream().map(User::getUserId).toList();
 
-        if (targetUsers.size() != request.getTargetUserIds().size()) {
+        if (targetUsers.size() != uniqueTargetIds.size()) {
+            Set<Long> missingIds = new HashSet<>(uniqueTargetIds);
+            missingIds.removeAll(foundUserIds);
+
             throw new ChatException(ChatErrorCode.USER_NOT_FOUND, "유저가 프로젝트에 속하지 않습니다");
         }
 
@@ -158,7 +113,14 @@ public class TeamChatService {
 
         chatRoomUserRepository.saveAll(members);
 
-        return ChatConverter.toResponseDTO(chatRoom, null);
+        List<String> profileImages = members.stream()
+                .map(member -> member.getUser().getProfileImageUrl())
+                .filter(StringUtils::hasText)
+                .limit(4)
+                .collect(Collectors.toList());
+
+        return ChatConverter.toResponseDTO(chatRoom, profileImages);
+
     }
 
     @Transactional
@@ -186,7 +148,7 @@ public class TeamChatService {
 
         // 초대 대상이 프로젝트 멤버인지 확인
         List<Long> validUserIds = projectUserRepository
-                .findAllUsersByProjectIdAndUserIds(projectId, request.getTargetUserIds())
+                .findActiveUsersByProjectIdAndUserIds(projectId, request.getTargetUserIds())
                 .stream()
                 .map(User::getUserId)
                 .toList();
@@ -235,10 +197,15 @@ public class TeamChatService {
                 .map(User::getNickname)
                 .collect(Collectors.toList());
 
+        List<String> profileImages = newMembers.stream()
+                .map(User::getProfileImageUrl)
+                .collect(Collectors.toList());
+
         return ChatRoomInviteResponseDto.builder()
                 .roomId(roomId)
                 .invitedCount(newMembers.size())
                 .invitedUserNames(invitedUserNames)
+                .profileImages(profileImages)
                 .build();
     }
 
@@ -284,7 +251,7 @@ public class TeamChatService {
                         .userId(user.getUserId())
                         .nickname(user.getNickname())
                         .name(user.getName())
-                        .profileImage("/images/default-profile.png")
+                        .profileImage(user.getProfileImageUrl())
                         .build())
                 .collect(Collectors.toList());
     }
