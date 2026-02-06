@@ -7,14 +7,12 @@ import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
-import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
-import com.nect.core.repository.matching.RecruitmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,12 +53,6 @@ class HomeControllerTest {
 
     @MockitoBean
     private MainHomeFacade mainHomeFacade;
-
-    @MockitoBean
-    private HomeMemberQueryService homeMemberQueryService;
-
-    @MockitoBean
-    private RecruitmentRepository recruitmentRepository;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -222,7 +214,7 @@ class HomeControllerTest {
     @Test
     @DisplayName("홈화면 헤더 프로필 API")
     void 홈화면_헤더_프로필_API() throws Exception {
-        given(homeMemberQueryService.getHeaderProfile(eq(1L)))
+        given(mainHomeFacade.getHeaderProfile(eq(1L)))
                 .willReturn(mockHeaderProfileResponse());
 
         mockMvc.perform(get("/api/v1/home/profile")
@@ -245,13 +237,13 @@ class HomeControllerTest {
     }
 
     private HomeProjectResponse mockProjectResponse() {
-        return new HomeProjectResponse(List.of(
-                new HomeProjectItem(
+        return HomeProjectResponse.of(List.of(
+                HomeProjectItem.of(
                         10L,
                         "https://imageUrl",
                         "AI 협업툴 개발",
                         "홍길동",
-                        "Backend",
+                        "DEVELOPER",
                         "팀 협업 효율을 높이는 AI 기반 협업툴 프로젝트입니다.",
                         12,
                         6,
@@ -260,12 +252,12 @@ class HomeControllerTest {
                         "모집 중",
                         Map.of("Backend", 2, "Design", 1)
                 ),
-                new HomeProjectItem(
+                HomeProjectItem.of(
                         11L,
                         "https://imageUrl",
                         "모바일 일정 관리",
                         "김철수",
-                        "PM",
+                        "PLANNER",
                         "개인 맞춤 일정 관리 앱을 개발합니다.",
                         7,
                         5,
@@ -278,34 +270,34 @@ class HomeControllerTest {
     }
 
     private HomeHeaderResponse mockHeaderProfileResponse() {
-        return HomeHeaderResponse.builder()
-                .userId(1L)
-                .imageUrl("https://example.com/profile/1.png")
-                .name("홍길동")
-                .email("honggildong@example.com")
-                .role(Role.DEVELOPER)
-                .build();
+        return HomeHeaderResponse.of(
+                1L,
+                "https://example.com/profile/1.png",
+                "홍길동",
+                "honggildong@example.com",
+                Role.DEVELOPER
+        );
     }
 
     private HomeMembersResponse mockMembersResponse() {
-        return new HomeMembersResponse(List.of(
-                new HomeMemberItem(
+        return HomeMembersResponse.of(List.of(
+                HomeMemberItem.of(
                         21L,
                         "https://example.com/profile/21.png",
                         "이영희",
-                        "Design",
+                        "DESIGNER",
                         "사용자 경험 중심의 디자인을 지향합니다.",
-                        "매칭 가능",
+                        "JOB_SEEKING",
                         true,
                         List.of("PM", "Design")
                 ),
-                new HomeMemberItem(
+                HomeMemberItem.of(
                         22L,
                         "https://example.com/profile/22.png",
                         "박민수",
-                        "Backend",
+                        "DEVELOPER",
                         "대규모 트래픽 처리를 경험했습니다.",
-                        "매칭 가능",
+                        "EMPLOYED",
                         false,
                         List.of("Server", "Frontend")
                 )
@@ -319,7 +311,7 @@ class HomeControllerTest {
                 fieldWithPath("status.description").optional().description("응답 상세 설명"),
                 fieldWithPath("body.projects").description("프로젝트 목록"),
                 fieldWithPath("body.projects[].projectId").description("프로젝트 ID"),
-                fieldWithPath("body.projects[].imageUrl").description("프로젝트 이미지 ID"),
+                fieldWithPath("body.projects[].imageUrl").description("프로젝트 이미지 URL"),
                 fieldWithPath("body.projects[].projectName").description("프로젝트 이름"),
                 fieldWithPath("body.projects[].authorName").description("작성자 이름"),
                 fieldWithPath("body.projects[].authorPart").description("작성자 파트"),
@@ -347,7 +339,7 @@ class HomeControllerTest {
                 fieldWithPath("body.members[].userId").description("유저 ID"),
                 fieldWithPath("body.members[].imageUrl").description("프로필 이미지 URL"),
                 fieldWithPath("body.members[].name").description("이름"),
-                fieldWithPath("body.members[].part").description("파트"),
+                fieldWithPath("body.members[].part").description("파트(역할)"),
                 fieldWithPath("body.members[].introduction").description("소개"),
                 fieldWithPath("body.members[].status").description("상태"),
                 fieldWithPath("body.members[].isScrapped").description("스크랩 여부"),
