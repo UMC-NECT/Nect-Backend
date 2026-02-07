@@ -1,7 +1,10 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
+import com.nect.api.domain.mypage.service.MyPageProjectService;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class MypageController {
 
     private final MypageService mypageService;
+    private final MyPageProjectService myPageProjectService;
 
     /**
      * 프로필 조회
@@ -37,6 +41,18 @@ public class MypageController {
         mypageService.updateProfile(userDetails.getUserId(), request);
         return ApiResponse.ok();
     }
+
+    /**
+     * 프로젝트 조회
+     */
+    @GetMapping("/projects")
+    public ApiResponse<MyProjectsResponseDto> getMyProjects(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        MyProjectsResponseDto response = myPageProjectService.getMyProjects(userDetails.getUserId());
+
+        return ApiResponse.ok(response);
+    }
+
 
     /**
      * 프로필 분석 불러오기

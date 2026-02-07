@@ -33,7 +33,7 @@ public class ChatFileController {
         return ApiResponse.ok(response);
     }
 
-    //이미지 삭제(클라우드)
+    //이미지 삭제
     @DeleteMapping("/files/{fileId}")
     public ApiResponse<Void> deleteFile(@PathVariable Long fileId,
                  @AuthenticationPrincipal UserDetailsImpl userDetails) {
