@@ -9,6 +9,7 @@ import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.api.domain.notifications.enums.code.NotificationSearchFilter;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,14 +82,14 @@ class NotificationControllerTest {
 
         given(notificationService.getNotifications(
                 any(),
-                eq(NotificationScope.MAIN_HOME),
+                eq(NotificationSearchFilter.EXPLORATION),
                 eq(null),
                 eq(20)
         )).willReturn(mockResponse());
 
         mockMvc.perform(get("/api/v1/notifications")
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        .param("scope", "MAIN_HOME")
+                        .param("filter", "EXPLORATION")
                         .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON)
                 )
@@ -108,8 +109,8 @@ class NotificationControllerTest {
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .queryParameters(
-                                        parameterWithName("scope")
-                                                .description("알림 범위 (MAIN_HOME, WORKSPACE_ONLY, WORKSPACE_GLOBAL)"),
+                                        parameterWithName("filter")
+                                                .description("알림 필터 (EXPLORATION, WORKSPACE_ONLY, WORKSPACE_GLOBAL, WORKSPACES)"),
                                         parameterWithName("cursor")
                                                 .optional()
                                                 .description("커서 기반 페이징용 알림 ID"),
@@ -138,6 +139,7 @@ class NotificationControllerTest {
                                         fieldWithPath("body.notifications[].targetId")
                                                 .description("알림 대상 ID"),
                                         fieldWithPath("body.notifications[].projectId")
+                                                .optional()
                                                 .description("프로젝트 ID"),
                                         fieldWithPath("body.notifications[].createdDate")
                                                 .description("알림 생성일 (yy.MM.dd)"),
@@ -145,7 +147,7 @@ class NotificationControllerTest {
                                                 .optional()
                                                 .description("알림 분류 (한글)"),
                                         fieldWithPath("body.notifications[].isRead")
-                                                .description("다음 페이지 조회용 커서"),
+                                                .description("읽음 여부"),
                                         fieldWithPath("body.notifications[].type")
                                                 .description("알림 타입"),
                                         fieldWithPath("body.notifications[].scope")

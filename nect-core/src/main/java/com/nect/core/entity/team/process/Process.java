@@ -4,6 +4,7 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.SharedDocument;
+import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import jakarta.persistence.*;
@@ -45,6 +46,15 @@ public class Process extends BaseEntity {
     @Column(name = "status", nullable = false)
     private ProcessStatus status;
 
+    // 일반 프로세스일 경우엔 null
+    @Enumerated(EnumType.STRING)
+    @Column(name = "process_type", length = 30)
+    private ProcessType processType;
+
+    // WEEK_MISSION일 때만 사용
+    @Column(name = "mission_number")
+    private Integer missionNumber;
+
     @Column(name = "start_at")
     private LocalDate startAt;
 
@@ -61,11 +71,6 @@ public class Process extends BaseEntity {
     @SQLRestriction("deleted_at is null")
     @BatchSize(size = 100)
     private final List<ProcessTaskItem> taskItems = new ArrayList<>();
-
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
-    @SQLRestriction("deleted_at is null")
-    @BatchSize(size = 100)
-    private final List<Link> links = new ArrayList<>();
 
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
     @SQLRestriction("deleted_at is null")
@@ -102,27 +107,35 @@ public class Process extends BaseEntity {
         this.content = content;
         this.status = ProcessStatus.PLANNING;
         this.statusOrder = 0;
+
+        this.processType = ProcessType.GENERAL;
+        this.missionNumber = null;
     }
 
     public void attachDocument(SharedDocument doc) {
         if (doc == null || doc.getId() == null) {
             throw new IllegalArgumentException("문서 객체 또는 문서 ID는 null일 수 없습니다.");
         }
+        if (doc.getDeletedAt() != null) {
+            throw new IllegalArgumentException("삭제된 문서는 첨부할 수 없습니다. documentId=" + doc.getId());
+        }
 
         boolean exists = sharedDocuments.stream()
                 .anyMatch(psd ->
-                        psd.getDocument() != null
+                        psd.getDeletedAt() == null
+                                && psd.getDocument() != null
                                 && psd.getDocument().getId() != null
                                 && psd.getDocument().getId().equals(doc.getId())
                 );
 
         if (exists) {
-            throw new IllegalStateException("해당 문서는 이미 첨부되었습니다. documentId = " + doc.getId());
+            throw new IllegalStateException("해당 문서는 이미 첨부되었습니다. documentId=" + doc.getId());
         }
 
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(this)
                 .document(doc)
+                .attachedAt(LocalDateTime.now())
                 .build();
 
         sharedDocuments.add(psd);
@@ -133,10 +146,6 @@ public class Process extends BaseEntity {
         this.taskItems.add(item);
     }
 
-    public void addLink(Link link) {
-        link.setProcess(this);
-        this.links.add(link);
-    }
 
     public void addProcessUser(ProcessUser pu) {
         pu.setProcess(this);
@@ -197,6 +206,10 @@ public class Process extends BaseEntity {
         if (statusOrder != null) this.statusOrder = statusOrder;
     }
 
+    public void markAsWeekMission(Integer missionNumber) {
+        this.processType = ProcessType.WEEK_MISSION;
+        this.missionNumber = missionNumber;
+    }
 
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
@@ -209,7 +222,6 @@ public class Process extends BaseEntity {
 
         this.taskItems.forEach(ProcessTaskItem::softDelete);
         this.feedbacks.forEach(ProcessFeedback::softDelete);
-        this.links.forEach(Link::softDelete);
         this.sharedDocuments.forEach(ProcessSharedDocument::softDelete);
         this.processFields.forEach(ProcessField::softDelete);
         this.processUsers.forEach(ProcessUser::delete);

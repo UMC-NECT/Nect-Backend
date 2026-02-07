@@ -20,7 +20,6 @@ public record MemberBoardResDto(
             @JsonProperty("nickname")
             String nickname,
 
-            // TODO: UserProfile 엔티티 생기면 연결해서 내려주기
             @JsonProperty("profile_image_url")
             String profileImageUrl,
 

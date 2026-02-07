@@ -16,6 +16,7 @@ public enum FileErrorCode implements ResponseCode {
 
     PROJECT_NOT_FOUND("F4041", "프로젝트를 찾을 수 없습니다."),
     FILE_NOT_FOUND("F4042", "파일(문서)을 찾을 수 없습니다."),
+    USER_NOT_FOUND("F4043", "사용자를 찾을 수 없습니다."),
 
     FILE_UPLOAD_FAILED("F5001", "파일 업로드에 실패했습니다.");
 

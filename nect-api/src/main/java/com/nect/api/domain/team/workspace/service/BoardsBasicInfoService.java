@@ -1,14 +1,20 @@
 package com.nect.api.domain.team.workspace.service;
 
+import com.nect.api.domain.notifications.command.NotificationCommand;
+import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.workspace.dto.req.BoardsBasicInfoUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.BoardsBasicInfoGetResDto;
 import com.nect.api.domain.team.workspace.enums.BoardsErrorCode;
 import com.nect.api.domain.team.workspace.exception.BoardsException;
 import com.nect.api.global.code.DateConstants;
+import com.nect.core.entity.notifications.enums.NotificationClassification;
+import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
+import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +25,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,6 +39,7 @@ public class BoardsBasicInfoService {
     private final ProjectUserRepository projectUserRepository;
 
     private final ProjectHistoryPublisher historyPublisher;
+    private final NotificationFacade notificationFacade;
 
     @Transactional(readOnly = true)
     public BoardsBasicInfoGetResDto getBasicInfo(Long projectId, Long userId) {
@@ -151,6 +159,8 @@ public class BoardsBasicInfoService {
             throw new BoardsException(BoardsErrorCode.INVALID_REQUEST, "no actual changes");
         }
 
+        notifyTeamBoardUpdate(project, userId, changedMeta);
+
         historyPublisher.publish(
                 projectId,
                 userId,
@@ -160,6 +170,43 @@ public class BoardsBasicInfoService {
                 Map.of("changed", changedMeta)
         );
 
-        // TODO: NotificationFacade를 통해 "프로젝트 공지/정기회의 수정" 알림 생성/발송
+    }
+
+    private void notifyTeamBoardUpdate(Project project, Long actorUserId, Map<String, Object> changedMeta) {
+        // 수신자 = 프로젝트 ACTIVE 유저 - 본인
+        List<User> receivers = projectUserRepository.findAllUsersByProjectId(project.getId())
+                .stream()
+                .filter(u -> !u.getUserId().equals(actorUserId))
+                .toList();
+
+        if (receivers.isEmpty()) return;
+
+        // 공지 변경 알림
+        if (changedMeta.containsKey("notice_text")) {
+            NotificationCommand command = new NotificationCommand(
+                    NotificationType.WORKSPACE_BOARD_NOTICE_UPDATED,
+                    NotificationClassification.TEAM_BOARD,
+                    NotificationScope.WORKSPACE_ONLY,
+                    project.getId(),
+                    new Object[]{},
+                    null,
+                    project
+            );
+            notificationFacade.notify(receivers, command);
+        }
+
+        // 정기회의 변경 알림
+        if (changedMeta.containsKey("regular_meeting_text")) {
+            NotificationCommand command = new NotificationCommand(
+                    NotificationType.WORKSPACE_BOARD_REGULAR_MEETING_UPDATED,
+                    NotificationClassification.TEAM_BOARD,
+                    NotificationScope.WORKSPACE_ONLY,
+                    project.getId(),
+                    new Object[]{},
+                    null,
+                    project
+            );
+            notificationFacade.notify(receivers, command);
+        }
     }
 }

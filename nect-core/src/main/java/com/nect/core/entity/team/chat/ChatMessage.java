@@ -20,6 +20,8 @@ public class ChatMessage extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "file_key", length = 500)
+    private String fileKey;
 
     // 메시지 내용
     @Column(columnDefinition = "TEXT")
@@ -35,7 +37,7 @@ public class ChatMessage extends BaseEntity {
     @Builder.Default
     private Boolean isPinned = false;
 
-    // TODO 발신자 (User 외래키)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

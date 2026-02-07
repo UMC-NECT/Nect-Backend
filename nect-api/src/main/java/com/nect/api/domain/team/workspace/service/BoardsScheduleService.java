@@ -179,8 +179,6 @@ public class BoardsScheduleService {
                 )
         );
 
-        // TODO: NotificationFacade 통해 "일정 생성" 알림
-
         return new ScheduleCreateResDto(saved.getId());
     }
 
@@ -252,7 +250,6 @@ public class BoardsScheduleService {
                 Map.of("changed", changed)
         );
 
-        // TODO: NotificationFacade 통해 "일정 수정" 알림
     }
 
     // 일정 삭제
@@ -287,7 +284,6 @@ public class BoardsScheduleService {
                 )
         );
 
-        // TODO: NotificationFacade 통해 "일정 삭제" 알림
     }
 
 

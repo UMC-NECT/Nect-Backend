@@ -1,15 +1,13 @@
 package com.nect.api.domain.user.controller;
 
-import com.nect.api.domain.user.dto.AgreeDto;
-import com.nect.api.domain.user.dto.DuplicateCheckDto;
-import com.nect.api.domain.user.dto.LoginDto;
-import com.nect.api.domain.user.dto.ProfileDto;
-import com.nect.api.domain.user.dto.SignUpDto;
+import com.nect.api.domain.user.dto.*;
 import com.nect.api.domain.user.service.UserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,18 +19,18 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping("/refresh")
-    public ApiResponse<LoginDto.LoginResponseDto> refreshToken(
+    public ApiResponse<LoginDto.TokenResponseDto> refreshToken(
             @Valid @RequestBody LoginDto.RefreshTokenRequestDto request
     ) {
-        LoginDto.LoginResponseDto response = userService.refreshToken(request.refreshToken());
+        LoginDto.TokenResponseDto response = userService.refreshToken(request.refreshToken());
         return ApiResponse.ok(response);
     }
 
     @PostMapping("/test-login")
-    public ApiResponse<LoginDto.LoginResponseDto> testLogin(
+    public ApiResponse<LoginDto.TokenResponseDto> testLogin(
             @RequestBody(required = false) LoginDto.TestLoginRequestDto request
     ) {
-        LoginDto.LoginResponseDto response = userService.testLoginByEmail(request);
+        LoginDto.TokenResponseDto response = userService.testLoginByEmail(request);
         return ApiResponse.ok(response);
     }
 
@@ -53,11 +51,11 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ApiResponse<Void> signUp(
+    public ApiResponse<LoginDto.TokenResponseDto> signUp(
             @RequestBody SignUpDto.SignUpRequestDto request
     ) {
-        userService.signUp(request);
-        return ApiResponse.ok();
+        LoginDto.TokenResponseDto response = userService.signUp(request);
+        return ApiResponse.ok(response);
     }
 
     @PostMapping("/login")
@@ -91,6 +89,50 @@ public class UserController {
             @RequestBody(required = false) ProfileDto.ProfileSetupRequestDto request
     ) {
         userService.setupProfile(userDetails.getUserId(), request);
+        return ApiResponse.ok();
+    }
+
+    @GetMapping("/info")
+    public ApiResponse<ProfileDto.UserInfoResponseDto> getUserInfo(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        ProfileDto.UserInfoResponseDto response = userService.getUserInfo(userDetails.getUserId());
+        return ApiResponse.ok(response);
+    }
+
+    @GetMapping("/profile/analysis")
+    public ApiResponse<ProfileAnalysisDto> analyzeProfile(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        ProfileAnalysisDto response = userService.analyzeProfile(userDetails.getUserId());
+        return ApiResponse.ok(response);
+    }
+
+    @GetMapping("/profile/analysis/projects")
+    public ApiResponse<ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedProjectInfo>> getRecommendedProjects(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            Pageable pageable
+    ) {
+        ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedProjectInfo> projects =
+                userService.getRecommendedProjects(userDetails.getUserId(), pageable);
+        return ApiResponse.ok(projects);
+    }
+
+    @GetMapping("/profile/analysis/team-members")
+    public ApiResponse<ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedTeamMemberInfo>> getRecommendedTeamMembers(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            Pageable pageable
+    ) {
+        ProfileAnalysisDto.PaginatedResponse<ProfileAnalysisDto.RecommendedTeamMemberInfo> teamMembers =
+                userService.getRecommendedTeamMembers(userDetails.getUserId(), pageable);
+        return ApiResponse.ok(teamMembers);
+    }
+
+    @DeleteMapping("/profile/analysis")
+    public ApiResponse<Void> deleteProfileAnalysis(
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        userService.deleteProfileAnalysis(userDetails.getUserId());
         return ApiResponse.ok();
     }
 }

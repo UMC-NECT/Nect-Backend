@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class ChatNoticeResponseDto {
     private Long messageId;
     private Long roomId;
+    private Long userId;
     private String content;
     private MessageType messageType;
     private String senderName;

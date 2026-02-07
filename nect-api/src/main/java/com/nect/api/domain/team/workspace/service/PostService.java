@@ -83,7 +83,7 @@ public class PostService {
         NotificationCommand command = new NotificationCommand(
                 NotificationType.WORKSPACE_MENTIONED,
                 NotificationClassification.BOARD,
-                NotificationScope.WORKSPACE_GLOBAL,
+                NotificationScope.WORKSPACE_ONLY,
                 targetBoardId,
                 new Object[]{ actor.getName() },
                 new Object[]{ content },
@@ -192,7 +192,8 @@ public class PostService {
                 post.getCreatedAt(),
                 new PostGetResDto.AuthorDto(
                         post.getAuthor().getUserId(),
-                        post.getAuthor().getName()
+                        post.getAuthor().getName(),
+                        post.getAuthor().getNickname()
                 )
         );
     }

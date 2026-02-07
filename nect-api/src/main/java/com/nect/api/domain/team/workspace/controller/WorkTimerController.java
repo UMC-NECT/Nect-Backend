@@ -1,15 +1,12 @@
 package com.nect.api.domain.team.workspace.controller;
 
+import com.nect.api.domain.team.workspace.dto.res.WorkTimerSnapshot;
 import com.nect.api.domain.team.workspace.facade.WorkTimerFacade;
-import com.nect.api.domain.team.workspace.service.WorkTimerService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,5 +35,15 @@ public class WorkTimerController {
         Long userId = userDetails.getUserId();
         workTimerFacade.stop(projectId, userId);
         return ApiResponse.ok(null);
+    }
+
+    // 스냅샷
+    @GetMapping("/snapshot")
+    public ApiResponse<WorkTimerSnapshot> snapshot(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        WorkTimerSnapshot data = workTimerFacade.snapshot(projectId, userDetails.getUserId());
+        return ApiResponse.ok(data);
     }
 }

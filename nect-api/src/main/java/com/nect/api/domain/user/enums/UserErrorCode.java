@@ -25,7 +25,10 @@ public enum UserErrorCode implements ResponseCode {
     INVALID_INTEREST_FIELD("U016", "관심분야 타입이 올바르지 않습니다"),
     INVALID_SKILL_CATEGORY("U017", "스킬 카테고리가 올바르지 않습니다"),
     INVALID_COLLABORATION_SCORE("U018", "협업 스타일 점수가 올바르지 않습니다"),
-    INVALID_NICKNAME_FORMAT("U019", "닉네임은 2글자 이상이어야 합니다");
+    INVALID_NICKNAME_FORMAT("U019", "닉네임은 2글자 이상이어야 합니다"),
+    PROFILE_ANALYSIS_NOT_FOUND("U020", "프로필 분석 결과를 찾을 수 없습니다"),
+    PROFILE_ANALYSIS_PARSING_FAILED("U021", "프로필 분석 결과 파싱에 실패했습니다"),
+    PROFILE_ANALYSIS_SAVE_FAILED("U022", "프로필 분석 결과 저장에 실패했습니다");
 
     private final String statusCode;
     private final String message;

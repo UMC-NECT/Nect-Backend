@@ -1,7 +1,9 @@
 package com.nect.api.domain.notifications.controller;
 
 import com.nect.api.domain.notifications.dto.NotificationEnumResponse.EnumValueDto;
+import com.nect.api.domain.notifications.dto.NotificationEnumResponse.NotificationSearchFilterDto;
 import com.nect.api.domain.notifications.dto.NotificationEnumResponse.NotificationTypeDto;
+import com.nect.api.domain.notifications.enums.code.NotificationSearchFilter;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
@@ -33,6 +35,17 @@ public class NotificationEnumsController {
         return ApiResponse.ok(response);
     }
 
+    @GetMapping("/filters")
+    public ApiResponse<List<NotificationSearchFilterDto>> getFilters() {
+        List<NotificationSearchFilterDto> response = Arrays.stream(NotificationSearchFilter.values())
+                .map(value -> new NotificationSearchFilterDto(
+                        value.name(),
+                        value.getScopes().stream().map(Enum::name).toList()
+                ))
+                .toList();
+        return ApiResponse.ok(response);
+    }
+
     @GetMapping("/types/matching-rejected")
     public ApiResponse<NotificationTypeDto> getMatchingRejectedType() {
         NotificationType type = NotificationType.MATCHING_REJECTED;
@@ -44,4 +57,7 @@ public class NotificationEnumsController {
         );
         return ApiResponse.ok(response);
     }
+
+
+
 }

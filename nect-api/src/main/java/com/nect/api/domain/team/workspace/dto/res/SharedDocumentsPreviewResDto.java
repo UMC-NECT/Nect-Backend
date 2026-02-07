@@ -49,7 +49,6 @@ public record SharedDocumentsPreviewResDto(
             @JsonProperty("nickname")
             String nickname,
 
-            // TODO: UserProfile 엔티티 생기면 연결
             @JsonProperty("profile_image_url")
             String profileImageUrl
     ) {}

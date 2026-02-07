@@ -2,8 +2,12 @@ package com.nect.core.repository.team.chat;
 
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
+import com.nect.core.entity.team.chat.ChatRoomUser;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -14,25 +18,60 @@ import java.util.Optional;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage,Long> {
 
-    List<ChatMessage> findByChatRoomOrderByIdDesc(ChatRoom chatRoom, Pageable pageable);
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "JOIN FETCH cm.user " +
+            "WHERE cm.chatRoom = :chatRoom " +
+            "ORDER BY cm.id DESC")
+    List<ChatMessage> findByChatRoomOrderByIdDesc(@Param("chatRoom") ChatRoom chatRoom, Pageable pageable);
 
-    List<ChatMessage> findByChatRoomAndIdLessThanOrderByIdDesc(ChatRoom chatRoom, Long id, Pageable pageable);
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "JOIN FETCH cm.user " +
+            "WHERE cm.chatRoom = :chatRoom " +
+            "AND cm.id < :id " +
+            "ORDER BY cm.id DESC")
+    List<ChatMessage> findByChatRoomAndIdLessThanOrderByIdDesc(
+            @Param("chatRoom") ChatRoom chatRoom,
+            @Param("id") Long id,
+            Pageable pageable);
 
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "WHERE cm.chatRoom.id = :roomId " +
+            "AND cm.id < :lastMessageId " +
+            "ORDER BY cm.createdAt DESC")
+    List<ChatMessage> findByRoomIdBeforeMessageId(
+            @Param("roomId") Long roomId,
+            @Param("lastMessageId") Long lastMessageId,
+            Pageable pageable);
 
-    //TODO 새 메시지 확인
-    List<ChatMessage> findByChatRoomAndIdGreaterThanOrderByIdAsc(
-            ChatRoom chatRoom,
-            Long lastMessageId
-    );
-     //TODO 채팅방의 전체 메시지 수
-    long countByChatRoom(ChatRoom chatRoom);
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "WHERE cm.chatRoom.id = :roomId " +
+            "ORDER BY cm.createdAt DESC")
+    List<ChatMessage> findRecentMessages(
+            @Param("roomId") Long roomId,
+            Pageable pageable);
 
-     // TODO 특정 시간 이후 메시지 수 (읽지 않은 메시지 카운트)
-    long countByChatRoomAndCreatedAtAfter(ChatRoom chatRoom, LocalDateTime after);
-     // TODO 고정된 메시지 조회
-    List<ChatMessage> findByChatRoomAndIsPinnedTrueOrderByCreatedAtDesc(ChatRoom chatRoom);
+    Optional<ChatMessage> findByChatRoomIdAndUserUserId(Long chatRoomId, Long userId);
+
+    int countByChatRoomId(Long chatRoomId);
+
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "WHERE cm.chatRoom.id = :chatRoomId " +
+            "ORDER BY cm.createdAt DESC " +
+            "LIMIT 1")
+    Optional<ChatMessage> findTopByChatRoomIdOrderByCreatedAtDesc(@Param("chatRoomId") Long chatRoomId);
 
     Optional<ChatMessage> findTopByChatRoomOrderByIdDesc(ChatRoom chatRoom);
+
+    @Query("SELECT cm FROM ChatMessage cm " +
+            "WHERE cm.chatRoom.id = :roomId " +
+            "AND cm.messageType = 'TEXT' " +
+            "AND cm.content LIKE %:keyword% " +
+            "ORDER BY cm.createdAt DESC")
+    Page<ChatMessage> searchByKeyword(
+            @Param("roomId") Long roomId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 
 }
 

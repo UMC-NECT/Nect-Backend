@@ -22,10 +22,12 @@ public class ChatRoomUser extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "last_read_at")
     private LocalDateTime lastReadAt;
 
     @Column(name = "last_read_message_id")
     private Long lastReadMessageId;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chat_room_id", nullable = false)

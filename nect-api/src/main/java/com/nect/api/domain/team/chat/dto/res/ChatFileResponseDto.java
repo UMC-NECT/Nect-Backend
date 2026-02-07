@@ -8,14 +8,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatFileResponseDto {
-    private String fileName;
-    private String fileUrl;
-    private LocalDateTime createdAt;
-
-}
+public record ChatFileResponseDto(
+        String fileName,
+        String fileUrl,
+        LocalDateTime createdAt
+) {}

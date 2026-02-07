@@ -18,20 +18,23 @@ public class LoginDto {
             String accessToken,
             String refreshToken,
             Long accessTokenExpiredAt,
-            Long refreshTokenExpiredAt
+            Long refreshTokenExpiredAt,
+            Boolean isOnboardingCompleted
     ) {
         public static LoginResponseDto of(
                 String accessToken,
                 String refreshToken,
                 Long accessTokenExpiredAt,
-                Long refreshTokenExpiredAt
+                Long refreshTokenExpiredAt,
+                Boolean isOnboardingCompleted
         ) {
             return new LoginResponseDto(
                     "Bearer",
                     accessToken,
                     refreshToken,
                     accessTokenExpiredAt,
-                    refreshTokenExpiredAt
+                    refreshTokenExpiredAt,
+                    isOnboardingCompleted
             );
         }
     }
@@ -55,4 +58,27 @@ public class LoginDto {
     public record LogoutResponseDto(
             String message
     ) {}
+
+    public record TokenResponseDto(
+            String grantType,
+            String accessToken,
+            String refreshToken,
+            Long accessTokenExpiredAt,
+            Long refreshTokenExpiredAt
+    ) {
+        public static TokenResponseDto of(
+                String accessToken,
+                String refreshToken,
+                Long accessTokenExpiredAt,
+                Long refreshTokenExpiredAt
+        ) {
+            return new TokenResponseDto(
+                    "Bearer",
+                    accessToken,
+                    refreshToken,
+                    accessTokenExpiredAt,
+                    refreshTokenExpiredAt
+            );
+        }
+    }
 }

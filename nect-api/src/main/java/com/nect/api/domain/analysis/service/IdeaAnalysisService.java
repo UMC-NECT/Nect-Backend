@@ -39,6 +39,7 @@ public class IdeaAnalysisService {
     private final ProjectIdeaAnalysisRepository projectIdeaAnalysisRepository;
     private final ObjectMapper objectMapper;
 
+
     public IdeaAnalysisResponseDto analyzeProjectIdea(Long userId, IdeaAnalysisRequestDto requestDto) {
 
         long analysisCount = projectIdeaAnalysisRepository.countByUserId(userId);
@@ -78,7 +79,7 @@ public class IdeaAnalysisService {
             return response;
 
         } catch (Exception e) {
-            throw new IdeaAnalysisException(IdeaAnalysisErrorCode.ANALYSIS_FAILED, "AI 분석 중 예기치 못한 오류가 발생했습니다.", e);       }
+            throw new IdeaAnalysisException(IdeaAnalysisErrorCode.ANALYSIS_FAILED, "AI 분석 중  오류가 발생했습니다.", e);       }
     }
 
     /**

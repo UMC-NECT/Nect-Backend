@@ -34,12 +34,16 @@ public record NotificationResponse(
 ) {
 
     public static NotificationResponse from(Notification notification) {
+        Long projectId = (notification.getProject() != null)
+                ? notification.getProject().getId()
+                : null;
+
         return new NotificationResponse(
                 notification.getMainMessage(),
                 notification.getContentMessage(),
                 notification.getId(),
                 notification.getTargetId(),
-                notification.getProject().getId(),
+                projectId,
                 notification.getCreatedAt().format(FORMATTER),
                 notification.getClassification().getClassifyKr(),
                 notification.getType().name(),

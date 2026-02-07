@@ -1,6 +1,8 @@
 package com.nect.api.domain.team.process.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nect.api.domain.team.process.enums.AttachmentType;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.user.enums.RoleField;
 
@@ -42,14 +44,14 @@ public record ProcessDetailResDto(
         @JsonProperty("mention_user_ids")
         List<Long> mentionUserIds,
 
-        List<FileResDto> files,
-
-        List<LinkResDto> links,
-
         @JsonProperty("task_items")
         List<ProcessTaskItemResDto> taskItems,
 
+        @JsonProperty("feedbacks")
         List<ProcessFeedbackCreateResDto> feedbacks,
+
+        @JsonProperty("attachments")
+        List<AttachmentDto> attachments,
 
         @JsonProperty("created_at")
         LocalDateTime createdAt,
@@ -65,9 +67,8 @@ public record ProcessDetailResDto(
         customFields = (customFields == null) ? List.of() : customFields;
         assignees = (assignees == null) ? List.of() : assignees;
         mentionUserIds = (mentionUserIds == null) ? List.of() : mentionUserIds;
-        files = (files == null) ? List.of() : files;
-        links = (links == null) ? List.of() : links;
         taskItems = (taskItems == null) ? List.of() : taskItems;
         feedbacks = (feedbacks == null) ? List.of() : feedbacks;
+        attachments = (attachments == null) ? List.of() : attachments;
     }
 }

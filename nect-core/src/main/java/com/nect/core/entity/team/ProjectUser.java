@@ -88,4 +88,8 @@ public class ProjectUser {
         this.roleField = roleField;
         this.customRoleFieldName = customRoleFieldName;
     }
+
+    public void changeType(ProjectMemberType memberType){
+        this.memberType = memberType;
+    }
 }

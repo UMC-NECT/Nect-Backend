@@ -65,4 +65,9 @@ public class UserEnumController {
     public ApiResponse<List<EnumValueDto>> getGoals() {
         return ApiResponse.ok(userEnumService.getGoals());
     }
+
+    @GetMapping("/user-statuses")
+    public ApiResponse<List<EnumValueDto>> getUserStatuses() {
+        return ApiResponse.ok(userEnumService.getUserStatuses());
+    }
 }

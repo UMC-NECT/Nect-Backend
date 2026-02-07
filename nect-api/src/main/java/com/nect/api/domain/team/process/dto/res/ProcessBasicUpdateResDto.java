@@ -36,11 +36,17 @@ public record ProcessBasicUpdateResDto(
         @JsonProperty("assignee_ids")
         List<Long> assigneeIds,
 
+        @JsonProperty("assignees")
+        List<AssigneeResDto> assignees,
+
         @JsonProperty("mention_user_ids")
         List<Long> mentionUserIds,
 
         @JsonProperty("updated_at")
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        @JsonProperty("writer")
+        WriterDto writer
 ) {
     public ProcessBasicUpdateResDto {
         roleFields = (roleFields == null) ? List.of() : roleFields;
@@ -48,4 +54,21 @@ public record ProcessBasicUpdateResDto(
         assigneeIds = (assigneeIds == null) ? List.of() : assigneeIds;
         mentionUserIds = (mentionUserIds == null) ? List.of() : mentionUserIds;
     }
+
+    public record WriterDto(
+            @JsonProperty("user_id")
+            Long userId,
+
+            @JsonProperty("name")
+            String name,
+
+            @JsonProperty("nickname")
+            String nickname,
+
+            @JsonProperty("role_field")
+            RoleField roleField,
+
+            @JsonProperty("custom_field_name")
+            String customFieldName
+    ) {}
 }

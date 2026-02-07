@@ -134,6 +134,28 @@ class NotificationEnumsControllerTest {
                 ));
     }
 
+    @Test
+    @DisplayName("알림 검색 필터 enum 조회 API")
+    void 알림_검색_필터_enum_조회_API() throws Exception {
+        mockMvc.perform(get("/api/v1/enums/notifications/filters")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("notifications-enums-filters",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("알림")
+                                .summary("알림 검색 필터 enum 조회")
+                                .description("알림 검색 필터(NotificationSearchFilter) enum 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(filterListResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
     private static List<FieldDescriptor> enumListResponseFields() {
         return List.of(
                 fieldWithPath("status.statusCode").description("응답 상태 코드"),
@@ -154,6 +176,17 @@ class NotificationEnumsControllerTest {
                 fieldWithPath("body.mainMessageFormat").description("메인 메시지 포맷"),
                 fieldWithPath("body.contentMessageFormat").optional().description("서브 메시지 포맷"),
                 fieldWithPath("body.hasContent").description("서브 메시지 제공 여부")
+        );
+    }
+
+    private static List<FieldDescriptor> filterListResponseFields() {
+        return List.of(
+                fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                fieldWithPath("status.message").description("응답 메시지"),
+                fieldWithPath("status.description").optional().description("응답 상세 설명"),
+                fieldWithPath("body").description("검색 필터 목록"),
+                fieldWithPath("body[].value").description("enum 값"),
+                fieldWithPath("body[].scopes").description("해당 필터에 포함되는 scope 목록")
         );
     }
 }

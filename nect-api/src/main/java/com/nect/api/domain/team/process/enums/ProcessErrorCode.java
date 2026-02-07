@@ -17,6 +17,7 @@ public enum ProcessErrorCode implements ResponseCode  {
 
     FORBIDDEN("P4030", "해당 프로젝트에 대한 권한이 없습니다."),
     PROCESS_NOT_IN_PROJECT("P4031", "해당 프로젝트에 속한 프로세스가 아닙니다."),
+    WEEK_MISSION_FORBIDDEN("P4032", "위크 미션은 프로세스 상세 조회에서 조회할 수 없습니다."),
 
     PROJECT_NOT_FOUND("P4041", "프로젝트를 찾을 수 없습니다."),
     PROCESS_NOT_FOUND("P4042", "프로세스를 찾을 수 없습니다."),

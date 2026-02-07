@@ -9,6 +9,9 @@ public record AssigneeResDto(
         @JsonProperty("user_name")
         String userName,
 
+        @JsonProperty("nickname")
+        String nickname,
+
         @JsonProperty("user_image")
         String userImage
 ) {}

@@ -3,6 +3,7 @@ package com.nect.api.domain.team.file.controller;
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.team.file.dto.res.FileDownloadUrlResDto;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.service.FileService;
 import com.nect.api.global.jwt.JwtUtil;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -32,7 +34,9 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.multipart;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
@@ -40,6 +44,7 @@ import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -113,7 +118,8 @@ class FileControllerTest {
                 "sample.pdf",
                 "https://cdn.example.com/projects/1/files/123_sample.pdf",
                 FileExt.PDF,
-                1024L
+                1024L,
+                "https://cdn.example.com/projects/1/files/123_sample.pdf?downloadToken=abc"
         );
 
         given(fileService.upload(eq(projectId), eq(userId), any()))
@@ -155,10 +161,62 @@ class FileControllerTest {
                                         fieldWithPath("body.file_name").type(STRING).description("원본 파일명"),
                                         fieldWithPath("body.file_url").type(STRING).description("파일 URL"),
                                         fieldWithPath("body.file_type").type(STRING).description("파일 확장자(FileExt)"),
-                                        fieldWithPath("body.file_size").type(NUMBER).description("파일 크기(bytes)")
+                                        fieldWithPath("body.file_size").type(NUMBER).description("파일 크기(bytes)"),
+                                        fieldWithPath("body.download_url").type(STRING).description("다운로드 URL")
                                 )
                                 .build()
                         )
                 ));
+    }
+
+    @Test
+    @DisplayName("프로젝트 파일 다운로드(리다이렉트)")
+    void downloadRedirect() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+        long documentId = 100L;
+
+        String redirectUrl = "https://cdn.example.com/projects/1/files/100/download?token=abc";
+
+        FileDownloadUrlResDto res = new FileDownloadUrlResDto(
+                documentId,
+                "spec.pdf",
+                FileExt.PDF,
+                1024L,
+                redirectUrl
+        );
+
+        given(fileService.getDownloadUrl(eq(projectId), eq(userId), eq(documentId)))
+                .willReturn(res);
+
+        mockMvc.perform(
+                        get("/api/v1/projects/{projectId}/files/{documentId}/download", projectId, documentId)
+                                .with(authentication(authWithUser(userId)))
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                )
+                .andExpect(status().isFound()) // 302
+                .andExpect(header().string("Location", redirectUrl))
+                .andDo(document("file-download-redirect",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("File")
+                                .summary("프로젝트 파일 다운로드(리다이렉트)")
+                                .description("파일 다운로드 URL을 조회한 뒤 302(FOUND)로 Location 헤더에 담아 리다이렉트합니다.")
+                                .pathParameters(
+                                        ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
+                                        ResourceDocumentation.parameterWithName("documentId").description("파일(문서) ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseHeaders(
+                                        headerWithName("Location").description("다운로드 리다이렉트 URL")
+                                )
+                                .build()
+                        )
+                ));
+
+        verify(fileService).getDownloadUrl(eq(projectId), eq(userId), eq(documentId));
     }
 }

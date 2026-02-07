@@ -9,13 +9,12 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ChatRoomAlbumResponseDto {
-    private Long roomId;
-    private String roomName;
-    private List<ChatFileResponseDto> files;
-}
+public record ChatRoomAlbumResponseDto(
+        Long roomId,
+        String roomName,
+        String roomType,
+        Integer fileCount,
+        List<ChatFileResponseDto> files
+) {}

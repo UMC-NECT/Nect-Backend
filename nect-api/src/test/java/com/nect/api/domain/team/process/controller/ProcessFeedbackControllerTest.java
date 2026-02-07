@@ -118,6 +118,7 @@ class ProcessFeedbackControllerTest {
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 userId,
                 "임시유저",
+                "패트",
                 List.of()
         );
 
@@ -170,6 +171,7 @@ class ProcessFeedbackControllerTest {
                                                 fieldWithPath("body.created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.created_by.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.created_by.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.created_by.role_fields").type(ARRAY)
                                                         .description("작성자 역할 분야 목록(RoleField enum name 또는 CUSTOM:직접입력)"),
 
@@ -197,6 +199,7 @@ class ProcessFeedbackControllerTest {
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 userId,
                 "임시유저",
+                "패트",
                 List.of()
         );
 
@@ -251,6 +254,7 @@ class ProcessFeedbackControllerTest {
                                                 fieldWithPath("body.created_by").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.created_by.user_id").type(NUMBER).description("작성자 유저 ID"),
                                                 fieldWithPath("body.created_by.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.created_by.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.created_by.role_fields").type(ARRAY)
                                                         .description("작성자 역할 분야 목록(RoleField enum name 또는 CUSTOM:직접입력)"),
 

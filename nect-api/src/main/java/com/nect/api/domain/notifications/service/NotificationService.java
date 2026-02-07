@@ -1,5 +1,6 @@
 package com.nect.api.domain.notifications.service;
 
+import com.nect.api.domain.notifications.enums.code.NotificationSearchFilter;
 import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.api.global.code.CommonResponseCode;
 import com.nect.api.domain.notifications.command.NotificationCommand;
@@ -8,8 +9,10 @@ import com.nect.api.domain.notifications.enums.code.NotificationErrorCode;
 import com.nect.api.domain.notifications.exception.NotificationException;
 import com.nect.core.entity.notifications.Notification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.notifications.NotificationRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +41,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final ProjectUserRepository projectUserRepository;
 
     // 여러 유저에 대해 생성
     @Transactional(readOnly = false)
@@ -74,7 +78,7 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public NotificationListResponse getNotifications(
             Long userId,
-            NotificationScope scope,
+            NotificationSearchFilter filter,
             Long cursor,
             int size
     ) {
@@ -83,18 +87,43 @@ public class NotificationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
 
-        if (scope == null) { // scope 없으면 안됨.
+        if (filter == null) { // filter 없으면 안됨.
             throw new NotificationException(NotificationErrorCode.INVALID_NOTIFICATION_SCOPE);
         }
 
-        // 페이징 정보
-        PageRequest pageRequest = PageRequest.of(0, size);
+        int safeSize = Math.max(1, size); // size가 1보다 작으면 1로 설정
 
-        // 알림 목록 조회 -> List<Notification> 반환
-        List<Notification> notifications = notificationRepository.findByScopeWithCursor(user, scope, cursor, pageRequest);
+        // FILTER에 담긴 SCOPE 가져오기
+        List<NotificationScope> scopes = filter.getScopes();
+        List<Notification> notifications;
 
-        // cursor 정보 생성
-        Long nextCursor = notifications.isEmpty() ? null : notifications.getLast().getId();
+        // filter가 EXPLORATION이면 나에 대한 알림을 조회
+        if (filter == NotificationSearchFilter.EXPLORATION) {
+            notifications = notificationRepository.findByScopesWithCursor(
+                    user,
+                    scopes,
+                    cursor,
+                    PageRequest.of(0, safeSize)
+            );
+        } else {
+            // filter가 WORKSPACE 종류일 때는 내가 속한 프로젝트들을 가져와서 그거로 조회
+            List<Project> myProjects = projectUserRepository.findActiveProjectsByUserId(userId);
+            if (myProjects.isEmpty()) {
+                return NotificationListResponse.from(List.of(), null);
+            }
+
+            notifications = notificationRepository.findByScopesAndProjectsWithCursor(
+                    user,
+                    scopes,
+                    myProjects,
+                    cursor,
+                    PageRequest.of(0, safeSize)
+            );
+        }
+
+        Long nextCursor = (notifications.size() == safeSize)
+                ? notifications.getLast().getId()
+                : null;
 
         // API 응답 객체 생성 후 반환
         return NotificationListResponse.from(notifications, nextCursor);

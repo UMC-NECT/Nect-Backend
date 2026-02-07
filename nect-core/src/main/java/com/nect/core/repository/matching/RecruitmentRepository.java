@@ -31,18 +31,6 @@ public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> 
 
     List<Recruitment> findAllByProject_IdIn(@Param("projectIds") List<Long> projectIds);
 
-    // TODO: Recruitmnet Field 바뀌면 적용
-//    @Query("""
-//        select r.project.id as projectId,
-//               r.field.role.description as roleName,
-//               sum(r.capacity) as capacitySum
-//        from Recruitment r
-//        where r.project.id in :projectIds
-//          and r.field.role is not null
-//        group by r.project.id, r.field.role.description
-//    """)
-//    List<ProjectRoleCapacityRow> sumRoleCapacityByProjectIds(@Param("projectIds") List<Long> projectIds);
-
     @Query("""
         select r
         from Recruitment r
@@ -52,8 +40,6 @@ public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> 
     List<Recruitment> findOpenFieldsByProject(
             @Param("project") Project project
     );
-
-
 
     interface ProjectCapacityRow {
         Long getProjectId();

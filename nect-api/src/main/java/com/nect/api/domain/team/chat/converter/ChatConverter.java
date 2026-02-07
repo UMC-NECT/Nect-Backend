@@ -3,7 +3,6 @@ package com.nect.api.domain.team.chat.converter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.req.ChatRoomDto;
 import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
-import com.nect.api.domain.team.chat.dto.res.ChatNotificationResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ProjectMemberResponseDto;
 import com.nect.core.entity.team.Project;
@@ -26,16 +25,17 @@ public class ChatConverter {
 
     //ChatMessage  -> ChatMessageDto
     public static ChatMessageDto toMessageDto(ChatMessage message) {
-        ChatMessageDto dto = new ChatMessageDto();
-        dto.setMessageId(message.getId());
-        dto.setRoomId(message.getChatRoom().getId());
-
-        dto.setUserName("사용자" + message.getUser().getUserId());  // TODO: User 조회
-        dto.setContent(message.getContent());
-        dto.setMessageType(message.getMessageType());
-        dto.setIsPinned(message.getIsPinned());
-        dto.setCreatedAt(message.getCreatedAt());
-        return dto;
+        return ChatMessageDto.builder()
+                .messageId(message.getId())
+                .roomId(message.getChatRoom().getId())
+                .userId(message.getUser().getUserId())
+                .userName(message.getUser().getName())
+                .profileImage(message.getUser().getProfileImageName())
+                .content(message.getContent())
+                .messageType(message.getMessageType())
+                .isPinned(message.getIsPinned())
+                .createdAt(message.getCreatedAt())
+                .build();
     }
 
     //DTO -> ChatMessage
@@ -103,23 +103,13 @@ public class ChatConverter {
         return member;
     }
 
-    public static ChatRoomResponseDto toResponseDTO(ChatRoom chatRoom, User targetUser) {
-
-        String roomName = chatRoom.getName();
-        String profileImage = null;
-
-
-        if (chatRoom.getType() == ChatRoomType.DIRECT && targetUser != null) {
-            roomName = targetUser.getNickname();
-            // profileImage = targetUser.getProfileImage(); // TODO: 나중에 프로필 이미지 생기면 추가
-        }
-
+    public static ChatRoomResponseDto toResponseDTO(ChatRoom chatRoom, List<String> profileImages) {
         return ChatRoomResponseDto.builder()
                 .roomId(chatRoom.getId())
                 .projectId(chatRoom.getProject() != null ? chatRoom.getProject().getId() : null)
-                .roomName(roomName)
+                .roomName(chatRoom.getName())
                 .roomType(chatRoom.getType())
-                .profileImage(profileImage)
+                .profileImages(profileImages)
                 .createdAt(chatRoom.getCreatedAt() != null ? chatRoom.getCreatedAt() : LocalDateTime.now())
                 .build();
     }
@@ -143,21 +133,15 @@ public class ChatConverter {
         return ChatNoticeResponseDto.builder()
                 .messageId(message.getId())
                 .roomId(message.getChatRoom().getId())
+                .userId(message.getUser() != null ? message.getUser().getUserId() : null)
                 .content(message.getContent())
                 .messageType(message.getMessageType())
-                // User가 null일 경우 대비 (시스템 메시지 등)
                 .senderName(message.getUser() != null ? message.getUser().getNickname() : "알 수 없음")
                 .isPinned(message.getIsPinned())
-                .registeredAt(LocalDateTime.now())
+                .registeredAt(message.getCreatedAt())
                 .build();
     }
 
-    public static ChatNotificationResponseDto toNotificationResponse(ChatRoomUser chatRoomUser) {
-        return ChatNotificationResponseDto.builder()
-                .roomId(chatRoomUser.getChatRoom().getId())
-                .isNotificationEnabled(chatRoomUser.getIsNotificationEnabled())
-                .build();
-    }
 
     public static List<ChatRoomUser> toChatRoomUserList(ChatRoom chatRoom, List<User> users) {
         return users.stream()

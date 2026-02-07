@@ -16,7 +16,7 @@ public class IdeaAnalysisException extends CustomException {
     }
 
     public IdeaAnalysisException(IdeaAnalysisErrorCode errorCode, String message, Throwable cause) {
-        super(errorCode, message);
+        super(errorCode, message,cause);
 
     }
 

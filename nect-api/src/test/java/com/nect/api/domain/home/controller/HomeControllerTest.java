@@ -1,6 +1,7 @@
 package com.nect.api.domain.home.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
@@ -10,7 +11,8 @@ import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
-import com.nect.core.repository.matching.RecruitmentRepository;
+import com.nect.core.entity.user.enums.InterestField;
+import com.nect.core.entity.user.enums.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,9 +55,6 @@ class HomeControllerTest {
     private MainHomeFacade mainHomeFacade;
 
     @MockitoBean
-    private RecruitmentRepository recruitmentRepository;
-
-    @MockitoBean
     private JwtUtil jwtUtil;
 
     @MockitoBean
@@ -83,12 +82,14 @@ class HomeControllerTest {
     @Test
     @DisplayName("모집 중인 프로젝트 조회 API")
     void 모집_중인_프로젝트_조회_API() throws Exception {
-        given(mainHomeFacade.getRecruitingProjects(eq(1L), eq(3)))
+        given(mainHomeFacade.getRecruitingProjects(eq(1L), eq(3), eq(Role.DEVELOPER), eq(InterestField.IT_WEB_MOBILE)))
                 .willReturn(mockProjectResponse());
 
         mockMvc.perform(get("/api/v1/home/projects")
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
+                        .param("role", "DEVELOPER")
+                        .param("interest", "IT_WEB_MOBILE")
                         .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -101,7 +102,13 @@ class HomeControllerTest {
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .queryParameters(
-                                        parameterWithName("count").description("조회할 프로젝트 개수")
+                                        parameterWithName("count").description("조회할 프로젝트 개수"),
+                                        parameterWithName("role")
+                                                .optional()
+                                                .description("필터 역할 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/roles)"),
+                                        parameterWithName("interest")
+                                                .optional()
+                                                .description("필터 관심 분야 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/interest-fields)")
                                 )
                                 .responseFields(projectResponseFields())
                                 .build()
@@ -141,12 +148,14 @@ class HomeControllerTest {
     @Test
     @DisplayName("홈화면 매칭 가능한 넥터 API")
     void 홈화면_매칭_가능한_넥터_API() throws Exception {
-        given(mainHomeFacade.getMatchableMembers(eq(1L), eq(3)))
+        given(mainHomeFacade.getMatchableMembers(eq(1L), eq(3), eq(Role.DEVELOPER), eq(InterestField.IT_WEB_MOBILE)))
                 .willReturn(mockMembersResponse());
 
         mockMvc.perform(get("/api/v1/home/members")
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("count", "3")
+                        .param("role", "DEVELOPER")
+                        .param("interest", "IT_WEB_MOBILE")
                         .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
@@ -159,7 +168,13 @@ class HomeControllerTest {
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .queryParameters(
-                                        parameterWithName("count").description("조회할 넥터 개수")
+                                        parameterWithName("count").description("조회할 넥터 개수"),
+                                        parameterWithName("role")
+                                                .optional()
+                                                .description("필터 역할 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/roles)"),
+                                        parameterWithName("interest")
+                                                .optional()
+                                                .description("필터 관심 분야 (role과 interest는 모두 null이거나 모두 null이 아니어야 함; enum 조회는 /api/v1/enums/interest-fields)")
                                 )
                                 .responseFields(memberResponseFields())
                                 .build()
@@ -196,14 +211,39 @@ class HomeControllerTest {
                 ));
     }
 
+    @Test
+    @DisplayName("홈화면 헤더 프로필 API")
+    void 홈화면_헤더_프로필_API() throws Exception {
+        given(mainHomeFacade.getHeaderProfile(eq(1L)))
+                .willReturn(mockHeaderProfileResponse());
+
+        mockMvc.perform(get("/api/v1/home/profile")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("home-header-profile",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("홈")
+                                .summary("홈화면 헤더 프로필")
+                                .description("홈 화면 헤더에 표시할 프로필 정보를 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(headerProfileResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
     private HomeProjectResponse mockProjectResponse() {
-        return new HomeProjectResponse(List.of(
-                new HomeProjectItem(
+        return HomeProjectResponse.of(List.of(
+                HomeProjectItem.of(
                         10L,
-                        1001L,
+                        "https://imageUrl",
                         "AI 협업툴 개발",
                         "홍길동",
-                        "Backend",
+                        "DEVELOPER",
                         "팀 협업 효율을 높이는 AI 기반 협업툴 프로젝트입니다.",
                         12,
                         6,
@@ -212,12 +252,12 @@ class HomeControllerTest {
                         "모집 중",
                         Map.of("Backend", 2, "Design", 1)
                 ),
-                new HomeProjectItem(
+                HomeProjectItem.of(
                         11L,
-                        1002L,
+                        "https://imageUrl",
                         "모바일 일정 관리",
                         "김철수",
-                        "PM",
+                        "PLANNER",
                         "개인 맞춤 일정 관리 앱을 개발합니다.",
                         7,
                         5,
@@ -229,25 +269,35 @@ class HomeControllerTest {
         ));
     }
 
+    private HomeHeaderResponse mockHeaderProfileResponse() {
+        return HomeHeaderResponse.of(
+                1L,
+                "https://example.com/profile/1.png",
+                "홍길동",
+                "honggildong@example.com",
+                Role.DEVELOPER
+        );
+    }
+
     private HomeMembersResponse mockMembersResponse() {
-        return new HomeMembersResponse(List.of(
-                new HomeMemberItem(
+        return HomeMembersResponse.of(List.of(
+                HomeMemberItem.of(
                         21L,
                         "https://example.com/profile/21.png",
                         "이영희",
-                        "Design",
+                        "DESIGNER",
                         "사용자 경험 중심의 디자인을 지향합니다.",
-                        "매칭 가능",
+                        "JOB_SEEKING",
                         true,
                         List.of("PM", "Design")
                 ),
-                new HomeMemberItem(
+                HomeMemberItem.of(
                         22L,
                         "https://example.com/profile/22.png",
                         "박민수",
-                        "Backend",
+                        "DEVELOPER",
                         "대규모 트래픽 처리를 경험했습니다.",
-                        "매칭 가능",
+                        "EMPLOYED",
                         false,
                         List.of("Server", "Frontend")
                 )
@@ -261,7 +311,7 @@ class HomeControllerTest {
                 fieldWithPath("status.description").optional().description("응답 상세 설명"),
                 fieldWithPath("body.projects").description("프로젝트 목록"),
                 fieldWithPath("body.projects[].projectId").description("프로젝트 ID"),
-                fieldWithPath("body.projects[].imageUrl").description("프로젝트 이미지 ID"),
+                fieldWithPath("body.projects[].imageUrl").description("프로젝트 이미지 URL"),
                 fieldWithPath("body.projects[].projectName").description("프로젝트 이름"),
                 fieldWithPath("body.projects[].authorName").description("작성자 이름"),
                 fieldWithPath("body.projects[].authorPart").description("작성자 파트"),
@@ -289,11 +339,24 @@ class HomeControllerTest {
                 fieldWithPath("body.members[].userId").description("유저 ID"),
                 fieldWithPath("body.members[].imageUrl").description("프로필 이미지 URL"),
                 fieldWithPath("body.members[].name").description("이름"),
-                fieldWithPath("body.members[].part").description("파트"),
+                fieldWithPath("body.members[].part").description("파트(역할)"),
                 fieldWithPath("body.members[].introduction").description("소개"),
                 fieldWithPath("body.members[].status").description("상태"),
                 fieldWithPath("body.members[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.members[].roles").description("역할 목록")
+        );
+    }
+
+    private static List<FieldDescriptor> headerProfileResponseFields() {
+        return List.of(
+                fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                fieldWithPath("status.message").description("응답 메시지"),
+                fieldWithPath("status.description").optional().description("응답 상세 설명"),
+                fieldWithPath("body.userId").description("유저 ID"),
+                fieldWithPath("body.imageUrl").description("프로필 이미지 URL"),
+                fieldWithPath("body.name").description("이름"),
+                fieldWithPath("body.email").description("이메일"),
+                fieldWithPath("body.role").description("역할")
         );
     }
 

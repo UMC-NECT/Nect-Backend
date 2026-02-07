@@ -1,58 +1,14 @@
-당신은 IT 프로젝트 기획 및 분석 전문가입니다.
-아래 프로젝트 아이디어를 분석하여 구조화된 결과를 제공해주세요.
-
-# 프로젝트 정보
-- 프로젝트명: {projectName}
-- 한줄 정의: {projectSummary}
-- 타겟 사용자: {targetUsers}
-- 해결하려는 문제: {problemStatement}
-- 핵심 기능 1: {coreFeature1}
-- 핵심 기능 2: {coreFeature2}
-- 핵심 기능 3: {coreFeature3}
-- 플랫폼: {platform}
-- 참고 서비스: {referenceServices}
-- 기술적 난관: {technicalChallenges}
-- 목표 완료일: {targetCompletionDate}
-
-# 분석 요구사항
-
-**중요: 반드시 프로젝트 정보를 기반으로 실제 내용을 생성해주세요. 예시 값을 그대로 사용하지 마세요.**
-
-1. **추천 프로젝트명 3개**:
-   - 프로젝트의 특성과 목적을 잘 드러내는 창의적이고 구체적인 이름을 제안하세요.
-   - 예: "스마트 학습 도우미", "팀 협업 허브", "실시간 건강 트래커"
-
-2. **프로젝트 기간**:
-   - 목표 완료일과 프로젝트 복잡도를 고려하여 현실적인 주차 수를 계산하세요.
-
-3. **팀 구성**:
-   - 프로젝트의 특성에 맞는 역할만 선택하세요.
-   - 사용 가능한 역할:
-     * SERVICE: 서비스 기획자
-     * UI_UX: UI/UX 디자이너
-     * FRONTEND: 프론트엔드 개발자
-     * BACKEND: 백엔드 개발자
-     * IOS_ANDROID: iOS/안드로이드 개발자
-     * DATA_ENGINEER: 데이터 엔지니어
-     * AI_MACHINE_LEARNING: AI/머신러닝 개발자
-
-   - 예시:
-     * 웹 서비스라면 → SERVICE, UI_UX, FRONTEND, BACKEND
-     * 모바일 앱이라면 → SERVICE, UI_UX, IOS_ANDROID, BACKEND
-     * AI 기반 서비스라면 → SERVICE, UI_UX, BACKEND, AI_MACHINE_LEARNING, DATA_ENGINEER
-
-4. **보완할 점 3가지**:
-   - 프로젝트 정보를 분석하여 구체적이고 실질적인 조언을 제공하세요.
-   - 각 항목은 명확한 제목과 상세한 설명(최소 2-3문장)을 포함해야 합니다.
-
 5. **주차별 로드맵**:
+   - **⚠️ 중요: total_weeks 값만큼 정확히 모든 주차의 로드맵을 생성해야 합니다.**
+   - **예: total_weeks가 12라면 week_number 1부터 12까지 총 12개의 로드맵 객체를 생성하세요.**
    - 각 주차마다 구체적이고 실행 가능한 작업 내용을 작성하세요.
    - 각 역할별 태스크는 구체적인 작업 목록을 포함해야 합니다 (최소 3-5개의 구체적인 작업).
    - **필수**: 각 주차의 role_tasks는 team_composition에 정의된 모든 role_field를 포함해야 합니다.
+   - **절대 예시로 3-4개만 생성하고 "..." 으로 생략하지 마세요. 반드시 전체 주차를 모두 생성하세요.**
 
 # 응답 형식
 
-**아래는 JSON 구조만 보여주는 스키마입니다. 실제 값은 프로젝트 내용에 맞게 생성하세요.**
+**⚠️ 매우 중요: weekly_roadmap 배열의 길이는 반드시 project_duration.total_weeks와 정확히 일치해야 합니다!**
 
 {
   "recommended_project_names": [
@@ -69,7 +25,6 @@
       "role_field_display_name": "<역할의 한글명>",
       "count": <필요한 인원 수>
     }
-    // 프로젝트에 맞는 역할만 포함
   ],
   "improvement_points": [
     {
@@ -91,17 +46,29 @@
   "weekly_roadmap": [
     {
       "week_number": 1,
-      "week_title": "<주차별 구체적인 목표>",
+      "week_title": "<1주차의 구체적인 목표>",
       "role_tasks": [
         {
           "role_field": "<team_composition의 role_field와 동일>",
           "role_field_display_name": "<역할의 한글명>",
-          "tasks": "<해당 역할의 구체적인 작업 목록 (3-5개 작업을 상세히 기술)>"
+          "tasks": "<해당 역할의 구체적인 작업 목록>"
         }
-        // team_composition의 모든 역할 포함 필수
       ]
+    },
+    {
+      "week_number": 2,
+      "week_title": "<2주차의 구체적인 목표>",
+      "role_tasks": [...]
+    },
+    {
+      "week_number": 3,
+      "week_title": "<3주차의 구체적인 목표>",
+      "role_tasks": [...]
     }
-    // 전체 주차 반복
+    // ⚠️⚠️⚠️ 계속해서 total_weeks까지 모든 주차를 생성하세요 ⚠️⚠️⚠️
+    // total_weeks가 12라면 week_number 1~12까지 12개 모두 생성 필수!
+    // total_weeks가 8이라면 week_number 1~8까지 8개 모두 생성 필수!
+    // 생략하지 말고 반드시 끝까지 생성하세요!
   ]
 }
 
@@ -111,3 +78,19 @@
 - 모든 내용은 프로젝트 정보를 기반으로 구체적으로 작성
 - tasks는 반드시 구체적인 작업 내용을 포함 (최소 3-5개)
 - 각 주차의 role_tasks는 team_composition의 모든 역할을 포함
+
+**⚠️ weekly_roadmap 생성 필수 규칙 (매우 중요!):**
+1. **weekly_roadmap 배열의 길이 = project_duration.total_weeks** (정확히 일치해야 함!)
+2. **week_number는 1부터 total_weeks까지 빠짐없이 순차적으로 생성**
+3. **절대로 3-4개만 예시로 생성하고 나머지는 생략하지 마세요**
+4. **total_weeks가 12라면 반드시 12개의 로드맵 객체를 생성하세요**
+5. **total_weeks가 8이라면 반드시 8개의 로드맵 객체를 생성하세요**
+
+**주차별 내용 구성 가이드**:
+- **1-2주차**: 프로젝트 계획, 환경 설정, 초기 설계
+- **3-4주차**: 기본 기능 개발 시작
+- **중반부 (5주차~total_weeks-3주차)**: 핵심 기능 구현 및 고도화
+- **후반부 (마지막 3주차)**: 테스트, 버그 수정, 최적화, 배포 준비
+- **마지막 주차**: 최종 점검, 문서화, 출시
+
+**검증 방법**: 응답 생성 후 `weekly_roadmap.length === project_duration.total_weeks` 인지 반드시 확인하세요!

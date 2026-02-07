@@ -80,6 +80,16 @@ public enum NotificationType {
     WORKSPACE_TASK_FEEDBACK(
             "%s님이 나의 작업에 피드백을 남겼습니다.",
             "“%s”"
+    ),
+
+    WORKSPACE_BOARD_NOTICE_UPDATED(
+        "새로운 공지사항이 등록되었습니다.",
+                null
+    ),
+
+    WORKSPACE_BOARD_REGULAR_MEETING_UPDATED(
+        "새로운 정기회의가 등록되었습니다.",
+                null
     );
 
     private final String mainMessageFormat;

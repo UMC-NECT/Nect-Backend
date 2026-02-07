@@ -24,6 +24,7 @@ public enum NotificationClassification {
     // 작업실 전용
     FILE_UPlOAD("파일 업로드"),
     BOARD("게시판"),
+    TEAM_BOARD("팀보드"),
     WORK_STATUS("작업현황"),
     WEEK_MISSION("위크미션")
 
