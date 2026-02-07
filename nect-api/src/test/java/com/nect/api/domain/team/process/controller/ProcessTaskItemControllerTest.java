@@ -12,6 +12,7 @@ import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -301,7 +302,9 @@ class ProcessTaskItemControllerTest {
         long userId = 1L;
 
         ProcessTaskItemReorderReqDto request = new ProcessTaskItemReorderReqDto(
-                List.of(100L, 101L, 102L)
+                List.of(100L, 101L, 102L),
+                RoleField.BACKEND,
+                null
         );
 
         ProcessTaskItemResDto i0 = new ProcessTaskItemResDto(100L, "A", false, 0, null);
@@ -338,7 +341,9 @@ class ProcessTaskItemControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
-                                                fieldWithPath("ordered_task_item_ids").type(ARRAY).description("정렬된 업무 항목 ID 목록(전체 포함)")
+                                                fieldWithPath("ordered_task_item_ids").type(ARRAY).description("정렬된 업무 항목 ID 목록(전체 포함)"),
+                                                fieldWithPath("role_field").optional().type(STRING).description("레인 역할(RoleField). ROLE 레인일 때 사용"),
+                                                fieldWithPath("custom_role_field_name").optional().type(STRING).description("커스텀 레인 이름. CUSTOM 레인일 때 사용")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),

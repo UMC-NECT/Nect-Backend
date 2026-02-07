@@ -5,7 +5,7 @@ import com.nect.core.entity.user.enums.RoleField;
 
 import java.util.List;
 
-public record ProcessTaskItemReorderReqDto(
+public record WeekMissionTaskItemReorderReqDto(
         @JsonProperty("ordered_task_item_ids")
         List<Long> orderedTaskItemIds,
 
@@ -14,5 +14,4 @@ public record ProcessTaskItemReorderReqDto(
 
         @JsonProperty("custom_role_field_name")
         String customRoleFieldName
-
 ) {}
