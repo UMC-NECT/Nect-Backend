@@ -2,7 +2,9 @@ package com.nect.api.analysis;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
@@ -27,11 +29,13 @@ import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
+import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,6 +56,9 @@ class MyPageControllerRestDocsTest {
 
     @MockitoBean
     private MyPageProjectQueryService myPageProjectQueryService;
+
+    @MockitoBean
+    private MyPageProjectCommandService myPageProjectCommandService;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -230,6 +237,141 @@ class MyPageControllerRestDocsTest {
                                         fieldWithPath("body.projects[].team_member_projects[].image_name").description("프로젝트 이미지 파일명"),
                                         fieldWithPath("body.projects[].team_member_projects[].created_at").description("프로젝트 생성일시"),
                                         fieldWithPath("body.projects[].team_member_projects[].ended_at").description("프로젝트 종료일시").optional()
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("마이페이지 프로젝트 목표 작성 API")
+    void writePurposes() throws Exception {
+        MyProjectStringListRequest request = new MyProjectStringListRequest(
+                List.of("팀 협업 플랫폼 완성", "MVP 출시")
+        );
+
+        doNothing().when(myPageProjectCommandService)
+                .changePurpose(eq(1L), anyList());
+
+        mockMvc.perform(
+                        patch("/api/v1/mypage/projects/{projectId}/purposes", 1L)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status.statusCode").value("C000"))
+                .andExpect(jsonPath("$.status.message").value("success"))
+                .andDo(document("mypage-projects-purposes-write",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 목표 작성")
+                                .description("프로젝트의 목표 목록을 작성 또는 교체합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("contents[]").description("프로젝트 목표 항목 목록")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                                        fieldWithPath("status.message").description("응답 메시지"),
+                                        fieldWithPath("status.description").description("상세 설명").optional()
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("마이페이지 프로젝트 주요 기능 작성 API")
+    void writeMainFunctions() throws Exception {
+        MyProjectStringListRequest request = new MyProjectStringListRequest(
+                List.of("실시간 채팅", "파일 공유")
+        );
+
+        doNothing().when(myPageProjectCommandService)
+                .changeMainFunctions(eq(1L), anyList());
+
+        mockMvc.perform(
+                        patch("/api/v1/mypage/projects/{projectId}/functions", 1L)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status.statusCode").value("C000"))
+                .andExpect(jsonPath("$.status.message").value("success"))
+                .andDo(document("mypage-projects-functions-write",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 주요 기능 작성")
+                                .description("프로젝트의 주요 기능 목록을 작성 또는 교체합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("contents[]").description("프로젝트 주요 기능 항목 목록")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                                        fieldWithPath("status.message").description("응답 메시지"),
+                                        fieldWithPath("status.description").description("상세 설명").optional()
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("마이페이지 프로젝트 서비스 사용자 작성 API")
+    void writeServiceUsers() throws Exception {
+        MyProjectStringListRequest request = new MyProjectStringListRequest(
+                List.of("대학생", "초기 창업자")
+        );
+
+        doNothing().when(myPageProjectCommandService)
+                .changeServiceUsers(eq(1L), anyList());
+
+        mockMvc.perform(
+                        patch("/api/v1/mypage/projects/{projectId}/service-users", 1L)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status.statusCode").value("C000"))
+                .andExpect(jsonPath("$.status.message").value("success"))
+                .andDo(document("mypage-projects-service-users-write",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 서비스 사용자 작성")
+                                .description("프로젝트의 서비스 사용자 목록을 작성 또는 교체합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("contents[]").description("프로젝트 서비스 사용자 항목 목록")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                                        fieldWithPath("status.message").description("응답 메시지"),
+                                        fieldWithPath("status.description").description("상세 설명").optional()
                                 )
                                 .build()
                         )

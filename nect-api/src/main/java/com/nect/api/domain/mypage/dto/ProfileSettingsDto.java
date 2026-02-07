@@ -1,6 +1,5 @@
 package com.nect.api.domain.mypage.dto;
 
-import java.time.LocalDate;
 import java.util.List;
 
 public class ProfileSettingsDto {
