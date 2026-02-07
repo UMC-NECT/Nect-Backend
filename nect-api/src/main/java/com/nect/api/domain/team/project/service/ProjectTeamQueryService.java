@@ -98,6 +98,7 @@ public class ProjectTeamQueryService {
                             r.getName(),
                             r.getNickname(),
                             profileUrl,
+                            r.getBio(),
                             rf,
                             customName,
                             label,
