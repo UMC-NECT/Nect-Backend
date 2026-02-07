@@ -4,6 +4,7 @@ import com.nect.api.domain.team.file.dto.res.FileDownloadUrlResDto;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.enums.FileErrorCode;
 import com.nect.api.domain.team.file.exception.FileException;
+import com.nect.api.domain.team.file.util.FileUploadValidator;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
@@ -19,22 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.EnumSet;
-import java.util.Locale;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class FileService {
-
-    private static final long MB = 1024L * 1024L;
-
-    private static final long MAX_5MB = 5L * MB;
-    private static final long MAX_20MB = 20L * MB;
-
-    private static final Set<FileExt> LIMIT_5MB = EnumSet.of(FileExt.JPG, FileExt.PNG, FileExt.SVG);
-    private static final Set<FileExt> LIMIT_20MB = EnumSet.of(FileExt.PDF, FileExt.DOCS, FileExt.PPTX, FileExt.FIG, FileExt.ZIP);
 
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
@@ -84,13 +74,7 @@ public class FileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new FileException(FileErrorCode.USER_NOT_FOUND, "userId=" + userId));
 
-        if (file == null) {
-            throw new FileException(FileErrorCode.INVALID_REQUEST, "file is null");
-        }
-
-        if (file.isEmpty()) {
-            throw new FileException(FileErrorCode.EMPTY_FILE, "file is empty");
-        }
+        FileUploadValidator.validateNotEmpty(file);
 
         long fileSize = file.getSize();
 
@@ -98,9 +82,9 @@ public class FileService {
                 ? "file"
                 : file.getOriginalFilename();
 
-        FileExt ext = resolveExtOrThrow(originalName);
+        FileExt ext = FileUploadValidator.resolveExtOrThrow(originalName);
 
-        validateSizeOrThrow(ext, fileSize);
+        FileUploadValidator.validateSizeOrThrow(ext, fileSize);
 
         // R2 업로드
         String fileKey;
@@ -136,40 +120,4 @@ public class FileService {
         );
     }
 
-    private void validateSizeOrThrow(FileExt ext, long fileSize) {
-        long max;
-
-        if (LIMIT_5MB.contains(ext)) {
-            max = MAX_5MB;
-        } else if (LIMIT_20MB.contains(ext)) {
-            max = MAX_20MB;
-        } else {
-            throw new FileException(FileErrorCode.UNSUPPORTED_FILE_EXT, "fileExt = " + ext);
-        }
-
-        if (fileSize > max) {
-            throw new FileException(
-                    FileErrorCode.FILE_SIZE_EXCEEDED,
-                    "fileExt = " + ext + ", size = " + fileSize + ", max = " + max
-            );
-        }
-    }
-
-    private FileExt resolveExtOrThrow(String fileName) {
-        String lower = fileName.toLowerCase(Locale.ROOT);
-        int dot = lower.lastIndexOf('.');
-        String ext = (dot >= 0) ? lower.substring(dot + 1) : "";
-
-        return switch (ext) {
-            case "jpg", "jpeg" -> FileExt.JPG;
-            case "png" -> FileExt.PNG;
-            case "svg" -> FileExt.SVG;
-            case "pdf" -> FileExt.PDF;
-            case "docs" -> FileExt.DOCS;
-            case "pptx" -> FileExt.PPTX;
-            case "fig" -> FileExt.FIG;
-            case "zip" -> FileExt.ZIP;
-            default -> throw new FileException(FileErrorCode.UNSUPPORTED_FILE_EXT, "fileName=" + fileName);
-        };
-    }
 }

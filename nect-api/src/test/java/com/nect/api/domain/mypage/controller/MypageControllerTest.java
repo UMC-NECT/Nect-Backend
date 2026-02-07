@@ -1,30 +1,52 @@
 package com.nect.api.domain.mypage.controller;
 
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
+import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.nect.api.NectDocumentApiTester;
+import com.nect.core.entity.team.enums.PlanFileType;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.payload.JsonFieldType;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.multipart;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private MypageService mypageService;
+
+    @MockitoBean
+    private MyPageProjectCommandService projectCommandService;
+
+    @MockitoBean
+    private MyPageProjectQueryService projectQueryService;
 
     @Test
     void getProfile() throws Exception {
@@ -57,7 +79,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 조회")
                                         .description("사용자의 마이페이지 프로필 정보를 조회합니다.")
                                         .responseFields(
@@ -189,7 +211,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-patch-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 수정")
                                         .description("마이페이지 프로필 정보를 부분 수정합니다.\n\n" +
                                                 "**수정 가능한 필드**\n" +
@@ -239,6 +261,208 @@ class MypageControllerTest extends NectDocumentApiTester {
     }
 
     @Test
+    void uploadPlanFile_FILE() throws Exception {
+        long projectId = 1L;
+
+        MockMultipartFile name = new MockMultipartFile(
+                "name",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "기획서".getBytes()
+        );
+        MockMultipartFile planFileType = new MockMultipartFile(
+                "planFileType",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                "\"FILE\"".getBytes()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "sample.pdf",
+                MediaType.APPLICATION_PDF_VALUE,
+                "dummy pdf bytes".getBytes()
+        );
+
+        doNothing().when(projectCommandService)
+                .addPlanFile(eq(projectId), anyString(), eq(PlanFileType.FILE), any(), any());
+
+        mockMvc.perform(
+                        multipart("/api/v1/mypage/projects/{projectId}/plan-file", projectId)
+                                .file(name)
+                                .file(planFileType)
+                                .file(file)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.MULTIPART_FORM_DATA)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-upload",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestParts(
+                                partWithName("name").description("파일 표시명"),
+                                partWithName("planFileType").description("파일 타입 (FILE 또는 LINK)"),
+                                partWithName("file").description("업로드할 파일(MultipartFile)"),
+                                partWithName("link").description("링크 URL (planFileType=LINK일 때만 사용)").optional()
+                        ),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 추가")
+                                .description(
+                                        "프로젝트의 세부 기획 파일(업로드 또는 링크)을 추가합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약: 무엇을 하는 API인지 간단히 서술\n" +
+                                        "- 입력 규칙: planFileType별 필수 파트를 명시\n" +
+                                        "- 제약/예외: 파일 확장자/용량 제한 등 핵심 제약을 적기\n\n" +
+                                        "**입력 규칙**\n" +
+                                        "- planFileType=FILE: name, planFileType, file 필수 (link는 무시)\n" +
+                                        "- planFileType=LINK: name, planFileType, link 필수 (file은 무시)\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void editPlanFile_LINK() throws Exception {
+        long projectId = 1L;
+        long planFileId = 10L;
+
+        MockMultipartFile name = new MockMultipartFile(
+                "name",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "Figma 링크".getBytes()
+        );
+        MockMultipartFile planFileType = new MockMultipartFile(
+                "planFileType",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                "\"LINK\"".getBytes()
+        );
+        MockMultipartFile link = new MockMultipartFile(
+                "link",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "https://figma.com/file/abc".getBytes()
+        );
+
+        doNothing().when(projectCommandService)
+                .editPlanFile(eq(projectId), eq(planFileId), anyString(), eq(PlanFileType.LINK), any(), anyString());
+
+        mockMvc.perform(
+                        multipart("/api/v1/mypage/projects/{projectId}/plan-file/{planFileId}", projectId, planFileId)
+                                .file(name)
+                                .file(planFileType)
+                                .file(link)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.MULTIPART_FORM_DATA)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .with(request -> {
+                                    request.setMethod("PATCH");
+                                    return request;
+                                })
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-edit",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestParts(
+                                partWithName("name").description("파일 표시명"),
+                                partWithName("planFileType").description("파일 타입 (FILE 또는 LINK)"),
+                                partWithName("file").description("업로드할 파일(MultipartFile) - planFileType=FILE일 때만 사용").optional(),
+                                partWithName("link").description("링크 URL - planFileType=LINK일 때만 사용").optional()
+                        ),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 수정")
+                                .description(
+                                        "프로젝트 세부 기획 파일의 내용을 수정합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약으로 변경 범위를 먼저 설명\n" +
+                                        "- planFileType 변경 가능 여부와 필수 파트를 명시\n" +
+                                        "- 기존 FILE ↔ LINK 전환 시 처리(기존 파일 삭제 등) 요약\n\n" +
+                                        "**입력 규칙**\n" +
+                                        "- planFileType=FILE: name, planFileType, file 필수\n" +
+                                        "- planFileType=LINK: name, planFileType, link 필수\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID"),
+                                        parameterWithName("planFileId").description("세부 기획 파일 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void removePlanFile() throws Exception {
+        long projectId = 1L;
+        long planFileId = 10L;
+
+        doNothing().when(projectCommandService).removePlanFile(eq(projectId), eq(planFileId));
+
+        mockMvc.perform(
+                        delete("/api/v1/mypage/projects/{projectId}/plan-file/{planFileId}", projectId, planFileId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-remove",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 삭제")
+                                .description(
+                                        "프로젝트 세부 기획 파일을 삭제합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약으로 삭제 대상과 범위를 명확히\n" +
+                                        "- 삭제 시 파일 스토리지 제거 여부를 간단히 명시\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID"),
+                                        parameterWithName("planFileId").description("세부 기획 파일 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
     void getProfileAnalysis() throws Exception {
         // given
         ProfileSettingsDto.ProfileAnalysisResponseDto mockResponse = new ProfileSettingsDto.ProfileAnalysisResponseDto(
@@ -254,7 +478,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile-analysis",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 분석 불러오기")
                                         .description("데이터베이스에 저장된 AI 프로필 분석 결과를 조회합니다. 분석 결과가 없으면 profileType과 tags는 null입니다.")
                                         .responseFields(

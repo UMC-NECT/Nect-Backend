@@ -9,10 +9,13 @@ import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.core.entity.team.enums.PlanFileType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/mypage")
@@ -106,7 +109,41 @@ public class MypageController {
 
 
     // 프로젝트 세부 기획 파일 추가
+    @PostMapping(value = "/projects/{projectId}/plan-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> uploadPlanFile(
+            @PathVariable Long projectId,
+            @RequestPart("name") String name,
+            @RequestPart("planFileType") PlanFileType planFileType,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "link", required = false) String link
+    ) {
+        projectCommandService.addPlanFile(projectId, name, planFileType, file, link);
+        return ApiResponse.ok();
+    }
+
+    // 프로젝트 세부 기획 파일 수정
+    @PatchMapping(value = "/projects/{projectId}/plan-file/{planFileId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> editPlanFile(
+            @PathVariable Long projectId,
+            @PathVariable Long planFileId,
+            @RequestPart("name") String name,
+            @RequestPart("planFileType") PlanFileType planFileType,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "link", required = false) String link
+    ) {
+        projectCommandService.editPlanFile(projectId, planFileId, name, planFileType, file, link);
+        return ApiResponse.ok();
+    }
 
     // 프로젝트 세부 기획 파일 삭제
+    @DeleteMapping(value = "/projects/{projectId}/plan-file/{planFileId}")
+    public ApiResponse<Void> removePlanFile(
+            @PathVariable Long projectId,
+            @PathVariable Long planFileId
+    ){
+        projectCommandService.removePlanFile(projectId, planFileId);
+        return ApiResponse.ok();
+    }
+
 
 }
