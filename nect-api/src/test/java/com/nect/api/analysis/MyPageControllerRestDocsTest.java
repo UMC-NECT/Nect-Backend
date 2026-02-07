@@ -3,7 +3,7 @@ package com.nect.api.analysis;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
-import com.nect.api.domain.mypage.service.MyPageProjectService;
+import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -51,7 +51,7 @@ class MyPageControllerRestDocsTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private MyPageProjectService myPageProjectService;
+    private MyPageProjectQueryService myPageProjectQueryService;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -168,7 +168,7 @@ class MyPageControllerRestDocsTest {
                 .projects(List.of(projectInfo1, projectInfo2))
                 .build();
 
-        given(myPageProjectService.getMyProjects(eq(1L))).willReturn(response);
+        given(myPageProjectQueryService.getMyProjects(eq(1L))).willReturn(response);
 
         // when & then
         mockMvc.perform(
