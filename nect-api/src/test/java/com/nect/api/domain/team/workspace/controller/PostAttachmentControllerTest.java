@@ -118,7 +118,7 @@ class PostAttachmentControllerTest {
         given(postAttachmentFacade.uploadAndAttachFile(eq(projectId), eq(userId), eq(postId), any()))
                 .willReturn(response);
 
-        mockMvc.perform(multipart("/api/v1/projects/{projectId}/boards/boards/posts/{postId}/attachments/files", projectId, postId)
+        mockMvc.perform(multipart("/api/v1/projects/{projectId}/boards/posts/{postId}/attachments/files", projectId, postId)
                         .file(file)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -193,7 +193,7 @@ class PostAttachmentControllerTest {
         given(postAttachmentFacade.createAndAttachLink(eq(projectId), eq(userId), eq(postId), any(PostLinkCreateReqDto.class)))
                 .willReturn(response);
 
-        mockMvc.perform(post("/api/v1/projects/{projectId}/boards/boards/posts/{postId}/attachments/links", projectId, postId)
+        mockMvc.perform(post("/api/v1/projects/{projectId}/boards/posts/{postId}/attachments/links", projectId, postId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -254,7 +254,7 @@ class PostAttachmentControllerTest {
 
         willDoNothing().given(postAttachmentFacade).detach(eq(projectId), eq(userId), eq(postId), eq(documentId));
 
-        mockMvc.perform(delete("/api/v1/projects/{projectId}/boards/boards/posts/{postId}/attachments/{documentId}", projectId, postId, documentId)
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/boards/posts/{postId}/attachments/{documentId}", projectId, postId, documentId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
