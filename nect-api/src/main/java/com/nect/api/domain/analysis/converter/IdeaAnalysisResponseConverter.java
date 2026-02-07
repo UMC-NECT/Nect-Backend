@@ -25,6 +25,7 @@ public class IdeaAnalysisResponseConverter {
 
             return IdeaAnalysisResponseDto.builder()
                     .recommendedProjectNames(parseRecommendedProjectNames(root))
+                    .description(root.get("description").asText())
                     .projectDuration(parseProjectDuration(root))
                     .teamComposition(parseTeamComposition(root))
                     .improvementPoints(parseImprovementPoints(root))

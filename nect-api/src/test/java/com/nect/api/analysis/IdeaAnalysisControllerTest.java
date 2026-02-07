@@ -150,6 +150,7 @@ class IdeaAnalysisControllerTest {
                                         fieldWithPath("status.description").description("상세 설명").optional(),
 
                                         fieldWithPath("body.analysis_id").description("분석 결과 ID"),
+                                        fieldWithPath("body.description").description("AI 프로젝트 분석 상세 요약"),
                                         fieldWithPath("body.recommended_project_names[]").description("추천 프로젝트 이름 리스트 (최대 3개)"),
 
                                         fieldWithPath("body.project_duration.start_date").description("프로젝트 시작 예정일 (yyyy-MM-dd)"),
@@ -217,6 +218,7 @@ class IdeaAnalysisControllerTest {
                                         fieldWithPath("status.description").description("상세 설명").optional(),
 
                                         fieldWithPath("body.analysis.analysis_id").description("분석 결과 ID"),
+                                        fieldWithPath("body.analysis.description").description("AI 프로젝트 분석 상세 요약"),
                                         fieldWithPath("body.analysis.recommended_project_names[]").description("추천 프로젝트 이름 리스트"),
 
                                         fieldWithPath("body.analysis.project_duration.start_date").description("프로젝트 시작 예정일"),
@@ -255,6 +257,7 @@ class IdeaAnalysisControllerTest {
     private IdeaAnalysisResponseDto mockAnalysisResponse() {
         return IdeaAnalysisResponseDto.builder()
                 .analysisId(1L)
+                .description("이 프로젝트는 대학생들의 학습 효율을 높이기 위한 AI 기반 스터디 매칭 플랫폼으로, 실시간 데이터 동기화를 통한 사용자 경험 증대를 목표로 합니다.")
                 .recommendedProjectNames(List.of("StudyConnect", "CampusLink", "StudyMate"))
                 .projectDuration(IdeaAnalysisResponseDto.ProjectDuration.builder()
                         .startDate(LocalDate.of(2026, 3, 1))

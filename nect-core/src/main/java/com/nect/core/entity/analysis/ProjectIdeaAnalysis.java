@@ -26,6 +26,8 @@ public class ProjectIdeaAnalysis extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
+    private String description;
 
     //TODO : 정규화 위반이긴하지만 추천명 3개를 담겠다고 별도의 엔티티를 만드는게 성능적으로 더 별로라 생각해서 별도 필드로 구현했습니다.
     @Column(name = "recommended_project_name_1", length = 100, nullable = false)
@@ -62,6 +64,7 @@ public class ProjectIdeaAnalysis extends BaseEntity {
 
     @Builder
     public ProjectIdeaAnalysis(Long userId,
+                               String description,
                                String recommendedProjectName1,
                                String recommendedProjectName2,
                                String recommendedProjectName3,
@@ -69,6 +72,7 @@ public class ProjectIdeaAnalysis extends BaseEntity {
                                LocalDate projectEndDate,
                                Integer totalWeeks) {
         this.userId = userId;
+        this.description = description;
         this.recommendedProjectName1 = recommendedProjectName1;
         this.recommendedProjectName2 = recommendedProjectName2;
         this.recommendedProjectName3 = recommendedProjectName3;
