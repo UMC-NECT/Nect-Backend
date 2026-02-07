@@ -37,9 +37,6 @@ public record ProcessCardResDto(
         @JsonProperty("custom_fields")
         List<String> customFields,
 
-        @JsonProperty("mission_number")
-        Integer missionNumber,
-
         @JsonProperty("assignee")
         List<AssigneeResDto> assignee
 ) {}
