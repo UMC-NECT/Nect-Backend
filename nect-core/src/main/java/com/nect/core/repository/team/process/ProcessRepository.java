@@ -17,7 +17,10 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     // 소속 검증 + 소프트 delete 제외
     Optional<Process> findByIdAndProjectIdAndDeletedAtIsNull(Long id, Long projectId);
 
-    @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
+    @EntityGraph(attributePaths = {
+            "processUsers",
+            "processUsers.user"
+    })
     @Query("""
         select p
         from Process p
@@ -83,7 +86,7 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     """)
     List<Process> findAllForTeamBoard(@Param("projectId") Long projectId);
 
-    // ROLE 레인: 조건에 맞는 Process ID만
+    // ROLE 레인: 조건에 맞는 Process ID만 (정렬은 굳이 안 해도 됨)
     @Query("""
         select distinct p.id
         from Process p
@@ -422,7 +425,7 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
           count(ti.id) as totalCount,
           u.userId as leaderUserId,
           u.nickname as leaderNickname,
-          u.profileImageUrl as leaderProfileImageUrl
+          u.profileImageName as leaderProfileImageUrl
         from Process p
         left join p.taskItems ti on ti.deletedAt is null
         left join p.processUsers pu
@@ -439,7 +442,7 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
              or (p.startAt <= :end and p.endAt >= :start)
           )
         group by p.id, p.missionNumber, p.status, p.title, p.startAt, p.endAt,
-                 u.userId, u.nickname, u.profileImageUrl
+                 u.userId, u.nickname, u.profileImageName
         order by p.missionNumber asc nulls last, p.startAt asc nulls last, p.id asc
     """)
     List<WeekMissionCardRow> findWeekMissionCardsInRange(

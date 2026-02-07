@@ -192,7 +192,8 @@ public class PostService {
                 post.getCreatedAt(),
                 new PostGetResDto.AuthorDto(
                         post.getAuthor().getUserId(),
-                        post.getAuthor().getName()
+                        post.getAuthor().getName(),
+                        post.getAuthor().getNickname()
                 )
         );
     }

@@ -4,6 +4,7 @@ import com.nect.api.domain.team.project.dto.ProjectPartsResDto;
 import com.nect.api.domain.team.project.dto.ProjectUsersResDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.user.User;
@@ -27,6 +28,12 @@ public class ProjectTeamQueryService {
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
     private final ProjectUserRepository projectUserRepository;
     private final UserRepository userRepository;
+    private final S3Service s3Service;
+
+    private String toPresignedUserImage(String fileKey) {
+        if (fileKey == null || fileKey.isBlank()) return null;
+        return s3Service.getPresignedGetUrl(fileKey);
+    }
 
     // 프로젝트 파트 목록 조회 서비스
     @Transactional(readOnly = true)
@@ -77,7 +84,7 @@ public class ProjectTeamQueryService {
         List<ProjectUsersResDto.UserDto> users = rows.stream()
                 .map(r -> {
                     User u = userMap.get(r.getUserId());
-                    String profileUrl = (u == null) ? null : u.getProfileImageUrl();
+                    String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
 
                     RoleField rf = r.getRoleField();
                     String customName = r.getCustomRoleFieldName();
