@@ -181,7 +181,7 @@ class PostControllerTest {
                 true,
                 7L,
                 LocalDateTime.of(2026, 1, 31, 10, 0),
-                new PostGetResDto.AuthorDto(1L, "노수민")
+                new PostGetResDto.AuthorDto(1L, "노수민", "패트")
         );
 
         given(postFacade.getPost(eq(projectId), eq(userId), eq(postId)))
@@ -224,7 +224,8 @@ class PostControllerTest {
 
                                                 fieldWithPath("body.author").type(OBJECT).description("작성자 정보"),
                                                 fieldWithPath("body.author.user_id").type(NUMBER).description("작성자 유저 ID"),
-                                                fieldWithPath("body.author.name").type(STRING).description("작성자 이름")
+                                                fieldWithPath("body.author.name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.author.nickname").type(STRING).description("작성자 별명")
                                         )
                                         .build()
                         )

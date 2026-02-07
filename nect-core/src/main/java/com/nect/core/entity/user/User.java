@@ -76,7 +76,7 @@ public class User extends BaseEntity {
     private Boolean isAutoLoginEnabled = false;
 
     @Column(name = "profile_image_url")
-    private String profileImageUrl;
+    private String profileImageName;
 
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;

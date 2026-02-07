@@ -22,6 +22,9 @@ public class Link extends BaseEntity {
     @JoinColumn(name="process_id", nullable=false)
     private Process process;
 
+    @Column(name="title", length=50, nullable=false)
+    private String title;
+
     @Column(name = "url", nullable = false, columnDefinition = "TEXT")
     private String url;
 
@@ -29,8 +32,9 @@ public class Link extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    public Link(Process process, String url) {
+    public Link(Process process, String title, String url) {
         this.process = process;
+        this.title = title;
         this.url = url;
     }
 

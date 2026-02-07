@@ -158,6 +158,7 @@ public class ProcessFeedbackService {
         List<String> createdByRoleFields = roleFieldLabelsMap.getOrDefault(userId, List.of());
 
         String createdByUserName = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getName() : null;
+        String createdByNickname = (saved.getCreatedBy() != null) ? saved.getCreatedBy().getNickname() : null;
 
         // 히스토리
         Map<String, Object> meta = new LinkedHashMap<>();
@@ -190,7 +191,7 @@ public class ProcessFeedbackService {
             NotificationCommand command = new NotificationCommand(
                     NotificationType.WORKSPACE_TASK_FEEDBACK,
                     NotificationClassification.WORK_STATUS,
-                    NotificationScope.WORKSPACE_GLOBAL,
+                    NotificationScope.WORKSPACE_ONLY,
                     processId,
                     new Object[]{actor.getName()},
                     new Object[]{preview(saved.getContent(), 60)},
@@ -206,7 +207,7 @@ public class ProcessFeedbackService {
                 saved.getId(),
                 saved.getContent(),
                 saved.getStatus(),
-                new FeedbackCreatedByResDto(userId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(userId, createdByUserName, createdByNickname, createdByRoleFields),
                 saved.getCreatedAt()
         );
     }
@@ -249,6 +250,7 @@ public class ProcessFeedbackService {
         User createdBy = feedback.getCreatedBy();
         Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
         String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
+        String createdByNickname = (createdBy != null) ? createdBy.getNickname() : null;
 
         List<String> createdByRoleFields = List.of();
         if (createdByUserId != null) {
@@ -260,7 +262,7 @@ public class ProcessFeedbackService {
                 feedback.getId(),
                 feedback.getContent(),
                 feedback.getStatus(),
-                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByRoleFields),
+                new FeedbackCreatedByResDto(createdByUserId, createdByUserName, createdByNickname, createdByRoleFields),
                 feedback.getCreatedAt(),
                 feedback.getUpdatedAt()
         );
@@ -276,20 +278,8 @@ public class ProcessFeedbackService {
 
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
-        // TODO(HISTORY/NOTI): 삭제 전 스냅샷 확보 권장
-        // - beforeContent = feedback.getContent()
-        // - beforeCreatedBy = feedback.getCreatedByUserId() (필드 확정 후)
-        // - beforeCreatedAt = feedback.getCreatedAt()
-
         String beforeContent = feedback.getContent();
         feedback.softDelete();
-
-        // TODO(Notification):
-        // - "피드백 삭제" 알림 트리거 지점
-        // - 수신자: 프로젝트 멤버 전체 OR 해당 프로세스 관련자
-        // - NotificationType 예: PROCESS_FEEDBACK_DELETED
-        // - meta: 삭제된 피드백의 content 요약/작성자 등(스냅샷 기반)
-        // - 권장: AFTER_COMMIT 이후 알림 전송
 
 
         Map<String, Object> meta = new LinkedHashMap<>();
@@ -305,8 +295,6 @@ public class ProcessFeedbackService {
                 processId,
                 meta
         );
-
-        // TODO(TEAM EVENT FACADE): 추후 ActivityFacade로 통합
 
         return new ProcessFeedbackDeleteResDto(feedbackId);
     }

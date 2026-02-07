@@ -1,11 +1,13 @@
 package com.nect.api.global.infra;
 
 import com.amazonaws.HttpMethod;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.nect.api.global.infra.exception.StorageErrorCode;
+import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.exception.StorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,6 @@ public class S3Service {
         metadata.setContentLength(file.getSize());
 
         PutObjectRequest putObjectRequest = new PutObjectRequest(bucket, fileName, file.getInputStream(), metadata);
-
         amazonS3.putObject(putObjectRequest);
 
         return fileName; // DB 저장 값 (Key)
@@ -53,12 +54,26 @@ public class S3Service {
 
         Date expiration = new Date(System.currentTimeMillis() + PRESIGNED_EXPIRE_MILLIS);
 
-        GeneratePresignedUrlRequest request =
-                new GeneratePresignedUrlRequest(bucket, fileName)
-                        .withMethod(HttpMethod.GET)
-                        .withExpiration(expiration);
+        URL url;
+        try {
+            GeneratePresignedUrlRequest request =
+                    new GeneratePresignedUrlRequest(bucket, fileName)
+                            .withMethod(HttpMethod.GET)
+                            .withExpiration(expiration);
 
-        URL url = amazonS3.generatePresignedUrl(request);
+            url = amazonS3.generatePresignedUrl(request);
+        } catch (AmazonS3Exception e) {
+            if (e.getStatusCode() == 404) {
+                throw new StorageException(StorageErrorCode.FILE_NOT_FOUND);
+            }
+            throw new StorageException(StorageErrorCode.FILE_DOWNLOAD_FAILED);
+
+        } catch (SdkClientException | IllegalArgumentException e) {
+            throw new StorageException(StorageErrorCode.FILE_DOWNLOAD_FAILED);
+        } catch (Exception e) {
+            throw new StorageException(StorageErrorCode.S3_EXCEPTION);
+        }
+
         return url.toString();
     }
 

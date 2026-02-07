@@ -40,7 +40,7 @@ public class IdeaAnalysisSchemaBuilder {
                                         "properties", Map.of(
                                                 "role_field", Map.of(
                                                         "type", "string",
-                                                        "enum", allRoleFields 
+                                                        "enum", allRoleFields
                                                 ),
                                                 "role_field_display_name", Map.of("type", "string"),
                                                 "count", Map.of("type", "integer")
@@ -76,7 +76,7 @@ public class IdeaAnalysisSchemaBuilder {
                                                                 "properties", Map.of(
                                                                         "role_field", Map.of(
                                                                                 "type", "string",
-                                                                                "enum", allRoleFields  
+                                                                                "enum", allRoleFields
                                                                         ),
                                                                         "role_field_display_name", Map.of("type", "string"),
                                                                         "tasks", Map.of("type", "string")

@@ -8,11 +8,14 @@ import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
 import com.nect.api.domain.team.process.enums.AttachmentErrorCode;
 import com.nect.api.domain.team.process.exception.AttachmentException;
 import com.nect.core.entity.team.SharedDocument;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Link;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessSharedDocument;
+import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.LinkRepository;
@@ -22,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -36,20 +40,9 @@ public class ProcessAttachmentService {
     private final LinkRepository linkRepository;
 
 
-    // TODO(TEAM EVENT FACADE): Attachment 변경 시(Notification) ActivityFacade로 통합 예정
-
     private final ProjectHistoryPublisher historyPublisher;
 
     // 헬퍼 메서드
-    private void assertActiveProjectMember(Long projectId, Long userId) {
-        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
-            throw new AttachmentException(
-                    AttachmentErrorCode.FORBIDDEN,
-                    "not an active project member. projectId=" + projectId + ", userId=" + userId
-            );
-        }
-    }
-
     private Process getActiveProcess(Long projectId, Long processId) {
         return processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
                 .orElseThrow(() -> new AttachmentException(
@@ -76,15 +69,41 @@ public class ProcessAttachmentService {
         if (req == null || req.url() == null || req.url().isBlank()) {
             throw new AttachmentException(AttachmentErrorCode.INVALID_REQUEST, "url is required");
         }
+
+        if (req.title() == null || req.title().isBlank()) {
+            throw new AttachmentException(AttachmentErrorCode.INVALID_REQUEST, "title is required");
+        }
+    }
+
+    private void assertWeekMissionLeader(Long projectId, Long userId) {
+        boolean ok = projectUserRepository.existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(
+                projectId, userId, ProjectMemberType.LEADER, ProjectMemberStatus.ACTIVE
+        );
+        if (!ok) {
+            throw new AttachmentException(AttachmentErrorCode.FORBIDDEN,
+                    "WEEK_MISSION은 프로젝트 리더만 수정할 수 있습니다. projectId=" + projectId + ", userId=" + userId);
+        }
+    }
+
+    private void assertAttachmentPermission(Long projectId, Long userId, Process process) {
+        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
+            assertWeekMissionLeader(projectId, userId);
+            return;
+        }
+
+        if (!projectUserRepository.existsByProjectIdAndUserIdAndMemberStatus(projectId, userId, ProjectMemberStatus.ACTIVE)) {
+            throw new AttachmentException(AttachmentErrorCode.FORBIDDEN,
+                    "not an active project member. projectId=" + projectId + ", userId=" + userId);
+        }
     }
 
     // 프로세스 파일 첨부 서비스
     @Transactional
     public ProcessFileAttachResDto attachFile(Long projectId, Long userId, Long processId, ProcessFileAttachReqDto req) {
-        assertActiveProjectMember(projectId, userId);
         validateFileAttachReq(req);
 
         Process process = getActiveProcess(projectId, processId);
+        assertAttachmentPermission(projectId, userId, process);
 
         SharedDocument doc = getActiveDocument(projectId, req.fileId());
 
@@ -98,12 +117,10 @@ public class ProcessAttachmentService {
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
                 .process(process)
                 .document(doc)
-                .attachedAt(null)
+                .attachedAt(LocalDateTime.now())
                 .build();
 
         processSharedDocumentRepository.save(psd);
-
-        // TODO(Notification): 파일 첨부 알림 트리거(수신자=프로젝트 멤버/프로세스 관련자, AFTER_COMMIT 전환 권장)
 
 
         Map<String, Object> meta = new LinkedHashMap<>();
@@ -125,9 +142,8 @@ public class ProcessAttachmentService {
     // 프로세스 파일 첨부해제 서비스
     @Transactional
     public void detachFile(Long projectId, Long userId, Long processId, Long fileId) {
-        assertActiveProjectMember(projectId, userId);
-
         Process process = getActiveProcess(projectId, processId);
+        assertAttachmentPermission(projectId, userId, process);
 
         ProcessSharedDocument psd = processSharedDocumentRepository
                 .findByProcessIdAndDocumentIdAndDeletedAtIsNull(process.getId(), fileId)
@@ -138,7 +154,6 @@ public class ProcessAttachmentService {
 
         psd.softDelete();
 
-        // TODO(Notification): 파일 첨부해제 알림 트리거(AFER_COMMIT 권장)
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
         meta.put("fileId", fileId);
@@ -157,25 +172,25 @@ public class ProcessAttachmentService {
     // 프로세스 링크 추가 서비스
     @Transactional
     public ProcessLinkCreateResDto createLink(Long projectId, Long userId, Long processId, ProcessLinkCreateReqDto req) {
-        assertActiveProjectMember(projectId, userId);
         validateLinkCreateReq(req);
 
         Process process = getActiveProcess(projectId, processId);
+        assertAttachmentPermission(projectId, userId, process);
 
         Link link = Link.builder()
                 .process(process)
+                .title(req.title().trim())
                 .url(req.url().trim())
                 .build();
 
 
         Link saved = linkRepository.save(link);
 
-        // TODO(Notification): 링크 추가 알림 트리거(AFER_COMMIT 권장)
-
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);
         meta.put("linkId", saved.getId());
         meta.put("url", saved.getUrl());
+        meta.put("title", saved.getTitle());
 
         historyPublisher.publish(
                 projectId,
@@ -186,15 +201,14 @@ public class ProcessAttachmentService {
                 meta
         );
 
-        return new ProcessLinkCreateResDto(saved.getId());
+        return new ProcessLinkCreateResDto(saved.getId(), saved.getTitle(), saved.getUrl(), saved.getCreatedAt());
     }
 
     // 프로세스 링크 삭제 서비스
     @Transactional
     public void deleteLink(Long projectId, Long userId, Long processId, Long linkId) {
-        assertActiveProjectMember(projectId, userId);
-
         Process process = getActiveProcess(projectId, processId);
+        assertAttachmentPermission(projectId, userId, process);
 
         Link link = linkRepository.findByIdAndProcessIdAndDeletedAtIsNull(linkId, process.getId())
                 .orElseThrow(() -> new AttachmentException(
@@ -204,8 +218,6 @@ public class ProcessAttachmentService {
 
         String beforeUrl = link.getUrl();
         link.softDelete();
-
-        // TODO(Notification): 링크 삭제 알림 트리거(AFER_COMMIT 권장)
 
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processId", processId);

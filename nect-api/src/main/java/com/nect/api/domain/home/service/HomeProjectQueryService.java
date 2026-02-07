@@ -1,6 +1,8 @@
-package com.nect.api.domain.team.project.service;
+package com.nect.api.domain.home.service;
 
+import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.matching.RecruitmentRepository;
@@ -74,18 +76,34 @@ public class HomeProjectQueryService {
                 ));
 
         Map<Long, Map<String, Integer>> partCountsByProjectId = new HashMap<>();
-//        for (RecruitmentRepository.ProjectRoleCapacityRow row : recruitmentRepository.sumRoleCapacityByProjectIds(projectIds)) { // TODO: Recruitmnet Field 바뀌면 적용
-//            partCountsByProjectId
-//                    .computeIfAbsent(row.getProjectId(), k -> new HashMap<>())
-//                    .put(row.getRoleName(), row.getCapacitySum() == null ? 0 : row.getCapacitySum());
-//        }
+        for (Recruitment recruitment : recruitmentRepository.findAllByProject_IdIn(projectIds)) {
+            Integer capacity = recruitment.getCapacity();
+
+            if (capacity == null || capacity <= 0) {
+                continue;
+            }
+
+            RoleField field = recruitment.getField();
+            String roleKey;
+            if (field == RoleField.CUSTOM) {
+                String customField = recruitment.getCustomField();
+                roleKey = (customField == null || customField.isBlank())
+                        ? RoleField.CUSTOM.name()
+                        : customField;
+            } else {
+                roleKey = field.name();
+            }
+
+            partCountsByProjectId
+                    .computeIfAbsent(recruitment.getProject().getId(), k -> new HashMap<>())
+                    .merge(roleKey, capacity, Integer::sum);
+        }
 
         return new HomeProjectBatch(
                 authorByProjectId,
                 activeCountByProjectId,
                 maxMemberCountByProjectId,
-                null // TODO: Recruitmnet Field 바뀌면 적용
-//                partCountsByProjectId
+                partCountsByProjectId
         );
     }
 
@@ -108,7 +126,6 @@ public class HomeProjectQueryService {
         return (int) ChronoUnit.DAYS.between(today, endDate);
     }
 }
-
 
 
 

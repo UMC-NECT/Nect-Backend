@@ -57,6 +57,7 @@ subprojects {
 
 	test {
 		systemProperty 'test.mode', 'true'
+        maxHeapSize = "2g"
 		useJUnitPlatform()
 	}
 }
