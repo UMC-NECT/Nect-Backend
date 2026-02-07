@@ -6,6 +6,7 @@ import lombok.Builder;
 @Builder
 public record UserProjectDto(
         Long projectId,
+        String projectTitle,
         ProjectMemberType memberType
 ) {
 }

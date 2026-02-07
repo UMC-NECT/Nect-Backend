@@ -20,6 +20,7 @@ public class ProjectUserConverter {
     public static UserProjectDto toUserProjectDto(ProjectUser projectUser){
         return UserProjectDto.builder()
                 .projectId(projectUser.getProject().getId())
+                .projectTitle(projectUser.getProject().getTitle())
                 .memberType(projectUser.getMemberType())
                 .build();
     }
