@@ -1,4 +1,4 @@
-package com.nect.core.repository.analysis;
+package com.nect.core.repository.team;
 import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
