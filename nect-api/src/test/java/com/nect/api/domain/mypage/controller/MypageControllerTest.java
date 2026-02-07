@@ -311,7 +311,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("ProjectUser")
+                                .tag("mypage")
                                 .summary("프로젝트 멤버 필드(파트) 변경")
                                 .description("프로젝트 내 멤버의 필드(파트) 및 커스텀 필드를 변경합니다.")
                                 .requestHeaders(
@@ -358,7 +358,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("ProjectUser")
+                                .tag("mypage")
                                 .summary("프로젝트 멤버 강퇴")
                                 .description("프로젝트에서 특정 멤버를 강퇴합니다.")
                                 .requestHeaders(
@@ -411,7 +411,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("ProjectUser")
+                                .tag("mypage")
                                 .summary("프로젝트 멤버 타입 변경")
                                 .description("프로젝트에서 특정 멤버의 타입을 변경합니다. (LEADER | LEAD | MEMBER)")
                                 .requestHeaders(
