@@ -5,7 +5,6 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateAndAttachResDto;
-import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
 import com.nect.api.domain.team.process.facade.ProcessAttachmentFacade;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
 import com.nect.api.global.jwt.JwtUtil;
@@ -19,9 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -152,7 +149,7 @@ class ProcessLinkControllerTest {
                                         )
                                         .requestFields(
                                                 fieldWithPath("title").type(STRING).description("링크 제목"),
-                                                fieldWithPath("url").type(STRING).description("추가할 링크 URL")
+                                                fieldWithPath("link_url").type(STRING).description("추가할 링크 URL")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
