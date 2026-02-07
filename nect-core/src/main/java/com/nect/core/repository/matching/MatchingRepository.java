@@ -99,4 +99,12 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
             @Param("user") User user,
             @Param("matchingStatus") MatchingStatus matchingStatus
     );
+
+    @Query("""
+        SELECT COUNT(m)
+        FROM Matching m
+        WHERE m.matchingStatus = :status
+    """)
+    long countByStatus(@Param("status") MatchingStatus status);
+
 }

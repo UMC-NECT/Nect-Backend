@@ -3,6 +3,7 @@ package com.nect.api.domain.home.controller;
 import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
+import com.nect.api.domain.home.dto.HomeStatisticResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -67,6 +68,12 @@ public class HomeController {
         Long userId = resolveUserId(userDetails);
         HomeHeaderResponse profileInfo = mainHomeFacade.getHeaderProfile(userId);
         return ApiResponse.ok(profileInfo);
+    }
+
+    // 홈화면 통계
+    @GetMapping("/statistics")
+    public ApiResponse<HomeStatisticResponse> statistics() {
+        return ApiResponse.ok(mainHomeFacade.statisticResponse());
     }
 
     private Long resolveUserId(UserDetailsImpl userDetails) {

@@ -228,4 +228,20 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     }
 
     Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
+
+    @Query("""
+    SELECT COUNT(pu.userId)
+    FROM ProjectUser pu
+    GROUP BY pu.userId
+    HAVING COUNT(pu) >= 2
+""")
+    List<Long> countRejoinedUsers();
+
+    @Query("""
+    SELECT COUNT(DISTINCT pu.userId)
+    FROM ProjectUser pu
+""")
+    long countDistinctUsers();
+
+
 }
