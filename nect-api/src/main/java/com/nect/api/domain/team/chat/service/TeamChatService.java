@@ -112,12 +112,15 @@ public class TeamChatService {
         chatRoomUserRepository.saveAll(members);
 
         List<String> profileImages = members.stream()
-                .map(member -> s3Service.getPresignedGetUrl(member.getUser().getProfileImageName()))
+                .map(member -> member.getUser().getProfileImageName())
+                .filter(StringUtils::hasText)
+                .map(s3Service::getPresignedGetUrl)
                 .filter(StringUtils::hasText)
                 .limit(4)
                 .collect(Collectors.toList());
 
         return ChatConverter.toResponseDTO(chatRoom, profileImages);
+
 
     }
 
@@ -196,7 +199,9 @@ public class TeamChatService {
                 .collect(Collectors.toList());
 
         List<String> profileImages = newMembers.stream()
-                .map( u -> s3Service.getPresignedGetUrl(u.getProfileImageName()))
+                .map(User::getProfileImageName)
+                .filter(StringUtils::hasText)
+                .map(s3Service::getPresignedGetUrl)
                 .collect(Collectors.toList());
 
         return ChatRoomInviteResponseDto.builder()
@@ -249,7 +254,9 @@ public class TeamChatService {
                         .userId(user.getUserId())
                         .nickname(user.getNickname())
                         .name(user.getName())
-                        .profileImage(s3Service.getPresignedGetUrl(user.getProfileImageName()))
+                        .profileImage(StringUtils.hasText(user.getProfileImageName())
+                                ? s3Service.getPresignedGetUrl(user.getProfileImageName())
+                                : null)
                         .build())
                 .collect(Collectors.toList());
     }
