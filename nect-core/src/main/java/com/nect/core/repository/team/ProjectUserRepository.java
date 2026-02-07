@@ -2,7 +2,6 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -149,6 +148,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             u.name as name,
             u.nickname as nickname,
             u.profileImageName as profileImageName,
+            u.bio as bio,
             pu.roleField as roleField,
             pu.customRoleFieldName as customRoleFieldName,
             pu.memberType as memberType
@@ -196,48 +196,28 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userIds") List<Long> userIds
     );
 
-    interface UserFieldIdsRow {
-        Long getUserId();
-        Long getFieldId();
-    }
+    @Query("""
+        select count(pu) > 0
+        from ProjectUser pu
+        where pu.project = :project
+            and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEAD
+            and pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+            and pu.roleField = :roleField
+            and (
+                :roleField <> com.nect.core.entity.user.enums.RoleField.CUSTOM
+                or pu.customRoleFieldName = :customRoleFieldName
+                )
+    """)
+    boolean existsActiveLeadInProject(
+            @Param("project") Project project,
+            @Param("roleField") RoleField roleField,
+            @Param("customRoleFieldName") String customRoleFieldName
+    );
 
-
-    interface ProjectLeaderRow {
-        Long getProjectId();
-        Long getLeaderUserId();
-    }
-
-    interface ProjectActiveCountRow {
-        Long getProjectId();
-        Long getActiveCount();
-    }
-
-
-    interface UserRoleFieldsRow {
-        Long getUserId();
-        RoleField getRoleField();
-        String getCustomRoleFieldName();
-    }
-
-    interface MemberBoardRow {
-        Long getUserId();
-        String getName();
-        String getNickname();
-        String getProfileImageName();
-        RoleField getRoleField();
-        String getCustomRoleFieldName();
-        ProjectMemberType getMemberType();
-    }
 
     Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
 
     boolean existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(Long projectId, Long userId, ProjectMemberType projectMemberType, ProjectMemberStatus projectMemberStatus);
-
-    interface ProjectLeaderProfileRow {
-        Long getUserId();
-        String getNickname();
-        String getProfileImageUrl();
-    }
 
     @Query("""
         select
@@ -252,6 +232,44 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
           and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
     """)
     Optional<ProjectLeaderProfileRow> findActiveLeaderProfile(@Param("projectId") Long projectId);
+
+    interface UserFieldIdsRow {
+        Long getUserId();
+        Long getFieldId();
+    }
+
+    interface ProjectLeaderRow {
+        Long getProjectId();
+        Long getLeaderUserId();
+    }
+
+    interface ProjectActiveCountRow {
+        Long getProjectId();
+        Long getActiveCount();
+    }
+
+    interface UserRoleFieldsRow {
+        Long getUserId();
+        RoleField getRoleField();
+        String getCustomRoleFieldName();
+    }
+
+    interface MemberBoardRow {
+        Long getUserId();
+        String getName();
+        String getNickname();
+        String getProfileImageName();
+        String getBio();
+        RoleField getRoleField();
+        String getCustomRoleFieldName();
+        ProjectMemberType getMemberType();
+    }
+
+    interface ProjectLeaderProfileRow {
+        Long getUserId();
+        String getNickname();
+        String getProfileImageUrl();
+    }
 
     @Query("""
         SELECT u

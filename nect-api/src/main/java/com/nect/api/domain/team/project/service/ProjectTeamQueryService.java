@@ -91,13 +91,14 @@ public class ProjectTeamQueryService {
 
                     String label = (rf == RoleField.CUSTOM)
                             ? customName
-                            : rf.getDescription();
+                            : rf.getLabelEn();
 
                     return new ProjectUsersResDto.UserDto(
                             r.getUserId(),
                             r.getName(),
                             r.getNickname(),
                             profileUrl,
+                            r.getBio(),
                             rf,
                             customName,
                             label,

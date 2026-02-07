@@ -40,7 +40,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
-import static org.springframework.restdocs.payload.JsonFieldType.*;
+import static org.springframework.restdocs.payload.JsonFieldType.OBJECT;
+import static org.springframework.restdocs.payload.JsonFieldType.STRING;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.payload.PayloadDocumentation.subsectionWithPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -194,7 +195,7 @@ class ProjectPartsControllerTest {
     }
 
     @Test
-    @DisplayName("프로젝트 전체 인원 조회 (담당자 드롭다운)")
+    @DisplayName("프로젝트 전체 인원 조회")
     void readProjectUsers() throws Exception {
         long projectId = 1L;
         long userId = 1L;
@@ -216,7 +217,7 @@ class ProjectPartsControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("Project")
                                         .summary("프로젝트 전체 인원 조회")
-                                        .description("프로젝트에 속한 전체 인원 목록을 조회합니다. (담당자 드롭다운)")
+                                        .description("프로젝트에 속한 전체 인원 목록을 조회합니다.")
                                         .pathParameters(
                                                 com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName("projectId")
                                                         .description("프로젝트 ID")

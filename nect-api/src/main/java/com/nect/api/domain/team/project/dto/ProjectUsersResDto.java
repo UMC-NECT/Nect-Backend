@@ -27,6 +27,9 @@ public record ProjectUsersResDto(
             @JsonProperty("profile_image_url")
             String profileImageUrl,
 
+            @JsonProperty("bio")
+            String bio,
+
             @JsonProperty("role_field")
             RoleField roleField,
 
