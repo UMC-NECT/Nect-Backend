@@ -36,9 +36,6 @@ public class Post extends BaseEntity {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "is_pinned", nullable = false)
-    private Boolean isPinned;
-
     @Column(name = "like_count", nullable = false)
     private Long likeCount = 0L;
 
@@ -50,24 +47,19 @@ public class Post extends BaseEntity {
                  Project project,
                  PostType postType,
                  String title,
-                 String content,
-                 Boolean isPinned) {
+                 String content
+                 ) {
         this.author = author;
         this.project = project;
         this.postType = postType;
         this.title = title;
         this.content = content;
-        this.isPinned = (isPinned != null) ? isPinned : false;
     }
 
-    public void update(PostType postType,
-                       String title,
-                       String content,
-                       Boolean isPinned) {
+    public void update(PostType postType, String title, String content) {
         if (postType != null) this.postType = postType;
         if (title != null) this.title = title;
         if (content != null) this.content = content;
-        if (isPinned != null) this.isPinned = isPinned;
     }
 
     // 좋아요 증가

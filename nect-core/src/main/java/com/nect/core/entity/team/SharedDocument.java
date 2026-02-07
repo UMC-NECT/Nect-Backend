@@ -45,7 +45,7 @@ public class SharedDocument extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "file_name", length = 200, nullable = false)
+    @Column(name = "file_name", length = 200)
     private String fileName;
 
     @Enumerated(EnumType.STRING)
