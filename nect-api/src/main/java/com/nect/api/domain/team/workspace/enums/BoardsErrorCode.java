@@ -14,7 +14,8 @@ public enum BoardsErrorCode implements ResponseCode {
 
     PROJECT_NOT_FOUND("B4041", "프로젝트를 찾을 수 없습니다."),
     PROJECT_MEMBER_NOT_FOUND("B4042", "프로젝트 멤버를 찾을 수 없습니다."),
-    USER_NOT_FOUND("B4043", "사용자를 찾을 수 없습니다.");
+    USER_NOT_FOUND("B4043", "사용자를 찾을 수 없습니다."),
+    DOCUMENT_NOT_FOUND("B4044", "문서를 찾을 수 없습니다.");
 
     private final String statusCode;
     private final String message;

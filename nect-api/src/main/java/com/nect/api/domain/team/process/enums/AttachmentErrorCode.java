@@ -17,7 +17,9 @@ public enum AttachmentErrorCode implements ResponseCode {
     LINK_NOT_FOUND("A4044", "링크를 찾을 수 없습니다."),
 
     FILE_ALREADY_ATTACHED("A4091", "이미 첨부된 파일입니다."),
-    FILE_NOT_ATTACHED("A4045", "첨부되지 않은 파일입니다.");
+    LINK_ALREADY_ATTACHED("A4092", "이미 첨부된 링크입니다."),
+    FILE_NOT_ATTACHED("A4045", "첨부되지 않은 파일입니다."),
+    LINK_NOT_ATTACHED("A4046", "첨부되지 않은 링크입니다.");
 
     private final String statusCode;
     private final String message;

@@ -14,6 +14,7 @@ import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.DocumentType;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
@@ -22,6 +23,7 @@ import com.nect.core.entity.team.process.*;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.enums.AssignmentRole;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectRepository;
@@ -478,6 +480,8 @@ public class ProcessService {
         List<ProcessCreateReqDto.ProcessLinkItemReqDto> links =
                 Optional.ofNullable(req.links()).orElse(List.of());
 
+        List<Long> linkDocumentIds = new ArrayList<>();
+
         for (var l : links) {
             if (l == null) continue;
 
@@ -491,12 +495,14 @@ public class ProcessService {
                 );
             }
 
-            Link link = Link.builder()
-                    .title(title)
-                    .url(url)
-                    .build();
+            // LINK 문서 생성(공유문서함에 쌓임)
+            SharedDocument linkDoc = SharedDocument.ofLink(writer, project, title, url);
+            SharedDocument savedLinkDoc = sharedDocumentRepository.save(linkDoc);
 
-            process.addLink(link);
+            // 프로세스에 첨부(ProcessSharedDocument 생성)
+            process.attachDocument(savedLinkDoc);
+
+            linkDocumentIds.add(savedLinkDoc.getId());
         }
 
 
@@ -640,6 +646,13 @@ public class ProcessService {
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
+        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
+            throw new ProcessException(
+                    ProcessErrorCode.WEEK_MISSION_FORBIDDEN,
+                    "projectId=" + projectId + ", processId=" + processId
+            );
+        }
+
         String dbLaneKey = toDbLaneKey(laneKey);
 
         // lane 기준 정렬값(status_order) 조회
@@ -665,18 +678,30 @@ public class ProcessService {
                 ))
                 .toList();
 
-        List<ProcessDetailResDto.AttachmentDto> fileAttachments =
+        List<AttachmentDto> attachments =
                 process.getSharedDocuments().stream()
                         .filter(psd -> psd.getDeletedAt() == null)
                         .map(psd -> {
                             SharedDocument doc = psd.getDocument();
-                            if (doc == null) return null;
+                            if (doc == null || doc.getDeletedAt() != null) return null;
 
-                            // 정렬 기준 시간: attachedAt 우선, 없으면 psd createdAt fallback
                             LocalDateTime at =
                                     psd.getAttachedAt() != null ? psd.getAttachedAt() : psd.getCreatedAt();
 
-                            return new ProcessDetailResDto.AttachmentDto(
+                            // documentType 기준으로 FILE/LINK 분기
+                            if (doc.getDocumentType() == DocumentType.LINK) {
+                                return new AttachmentDto(
+                                        AttachmentType.LINK,
+                                        doc.getId(),
+                                        at,
+                                        doc.getTitle(),      // 링크 표시명
+                                        doc.getLinkUrl(),    // 링크 URL
+                                        null, null, null, null
+                                );
+                            }
+
+                            // FILE
+                            return new AttachmentDto(
                                     AttachmentType.FILE,
                                     doc.getId(),
                                     at,
@@ -688,26 +713,10 @@ public class ProcessService {
                             );
                         })
                         .filter(Objects::nonNull)
-                        .toList();
-
-        List<ProcessDetailResDto.AttachmentDto> linkAttachments =
-                process.getLinks().stream()
-                        .filter(l -> l.getDeletedAt() == null)
-                        .map(l -> new ProcessDetailResDto.AttachmentDto(
-                                AttachmentType.LINK,
-                                l.getId(),
-                                l.getCreatedAt(),
-                                l.getTitle(),
-                                l.getUrl(),
-                                null, null, null, null
-                        ))
-                        .toList();
-
-        List<ProcessDetailResDto.AttachmentDto> attachments =
-                Stream.concat(fileAttachments.stream(), linkAttachments.stream())
                         .filter(a -> a.createdAt() != null)
-                        .sorted(Comparator.comparing(ProcessDetailResDto.AttachmentDto::createdAt).reversed())
+                        .sorted(Comparator.comparing(AttachmentDto::createdAt).reversed())
                         .toList();
+
 
         List<Long> mentionUserIds = process.getMentions().stream()
                 .map(ProcessMention::getMentionedUserId)

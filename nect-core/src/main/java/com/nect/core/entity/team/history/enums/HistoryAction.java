@@ -24,6 +24,9 @@ public enum HistoryAction {
     LINK_ATTACHED,
     LINK_DETACHED,
 
+    DOCUMENT_RENAMED,
+    DOCUMENT_DELETED,
+
     POST_CREATED,
     POST_UPDATED,
     POST_DELETED,

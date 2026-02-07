@@ -35,6 +35,9 @@ public record WeekMissionDetailResDto(
         @JsonProperty("assignee")
         AssigneeDto assignee,
 
+        @JsonProperty("attachments")
+        List<AttachmentDto> attachments,
+
         @JsonProperty("task_groups")
         List<TaskGroupResDto> taskGroups,
 
