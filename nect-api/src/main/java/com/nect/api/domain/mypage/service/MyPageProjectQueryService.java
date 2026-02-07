@@ -9,26 +9,23 @@ import com.nect.core.entity.team.process.ProjectTeamRole;
 import com.nect.core.entity.user.User;
 
 import com.nect.core.repository.analysis.ProjectTeamRoleRepository;
-import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
+// 마이페이지-프로젝트 데이터 조회(query) service
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MyPageProjectService {
+public class MyPageProjectQueryService {
 
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
-    private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
 
