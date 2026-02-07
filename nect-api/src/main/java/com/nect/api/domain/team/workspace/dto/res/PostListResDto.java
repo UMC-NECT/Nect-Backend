@@ -26,9 +26,6 @@ public record PostListResDto(
             @JsonProperty("content_preview")
             String contentPreview,
 
-            @JsonProperty("is_pinned")
-            Boolean isPinned,
-
             @JsonProperty("like_count")
             Long likeCount,
 
