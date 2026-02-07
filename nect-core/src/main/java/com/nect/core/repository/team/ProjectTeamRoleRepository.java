@@ -10,6 +10,9 @@ import java.util.List;
 public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole, Long> {
     List<ProjectTeamRole> findByProjectId(Long projectId);
 
+
+    List<ProjectTeamRole> findByProjectIdIn(List<Long> projectIds);
+
     @Query("""
         select ptr
         from ProjectTeamRole ptr

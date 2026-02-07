@@ -1859,7 +1859,6 @@ public class ProcessService {
         return (int) Math.round(part * 100.0 / total);
     }
 
-
     // 프로세스 위치 상태 정렬 변경 서비스
     @Transactional
     public ProcessOrderUpdateResDto updateProcessOrder(Long projectId, Long userId, Long processId, ProcessOrderUpdateReqDto req) {

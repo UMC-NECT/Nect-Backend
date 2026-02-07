@@ -121,8 +121,16 @@ public class ChatRoomService {
 
 
         int memberCount = chatRoomUserRepository.countByChatRoomId(chatRoom.getId());
-
-        List<String> profileImages = getProfileImages(chatRoom.getId());
+        
+        // 프로필 4명이하 조회
+        List<ChatRoomUser> members = chatRoomUserRepository.findTop4ByChatRoomId(chatRoom.getId());
+        
+        List<String> profileImages = members.stream()
+                .map(member -> member.getUser().getProfileImageName())
+                .filter(StringUtils::hasText)
+                .map(s3Service::getPresignedGetUrl)
+                .limit(4)
+                .collect(Collectors.toList());
 
 
         ChatMessage lastMessage = chatMessageRepository

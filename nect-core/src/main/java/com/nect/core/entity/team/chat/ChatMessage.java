@@ -20,6 +20,8 @@ public class ChatMessage extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "file_key", length = 500)
+    private String fileKey;
 
     // 메시지 내용
     @Column(columnDefinition = "TEXT")

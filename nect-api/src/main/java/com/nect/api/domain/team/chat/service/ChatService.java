@@ -8,7 +8,7 @@ import com.nect.api.domain.team.chat.dto.res.ChatNoticeResponseDto;
 import com.nect.api.domain.team.chat.dto.res.ChatRoomMessagesResponseDto;
 import com.nect.api.domain.team.chat.enums.ChatErrorCode;
 import com.nect.api.domain.team.chat.exeption.ChatException;
-import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
+import com.nect.api.global.infra.redis.RedisPublisher;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -43,7 +44,7 @@ public class ChatService {
     private final ChatRoomRepository  chatRoomRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final ChatRedisPublisher redisPublisher;
+    private final RedisPublisher redisPublisher;
     private final UserRepository userRepository;
     private final ChatFileRepository chatFileRepository;
 
@@ -72,13 +73,13 @@ public class ChatService {
         ChatMessageDto messageDto = ChatConverter.toMessageDto(message);
 
         //Redis 발행
-        redisPublisher.publish(roomId, messageDto);
+        String channel = "chatroom:" + roomId;
+        redisPublisher.publish(channel, messageDto);
+
         // readCount = 안 읽은 사람 수 (전체 인원 - 1(본인))
         int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
         messageDto.setReadCount(totalMembers - 1);
 
-        // 메시지 발행
-        redisPublisher.publish(roomId, messageDto);
 
         return messageDto;
     }
@@ -222,5 +223,8 @@ public class ChatService {
         int readMembers = chatRoomUserRepository.countUsersWhoReadMessage(roomId, messageId);
         return (int) (totalMembers - readMembers);
     }
+
+
+
 
 }

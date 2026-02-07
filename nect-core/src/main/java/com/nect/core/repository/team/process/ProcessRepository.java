@@ -17,10 +17,7 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     // 소속 검증 + 소프트 delete 제외
     Optional<Process> findByIdAndProjectIdAndDeletedAtIsNull(Long id, Long projectId);
 
-    @EntityGraph(attributePaths = {
-            "processUsers",
-            "processUsers.user"
-    })
+    @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
     @Query("""
         select p
         from Process p
@@ -86,7 +83,7 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     """)
     List<Process> findAllForTeamBoard(@Param("projectId") Long projectId);
 
-    // ROLE 레인: 조건에 맞는 Process ID만 (정렬은 굳이 안 해도 됨)
+    // ROLE 레인: 조건에 맞는 Process ID만
     @Query("""
         select distinct p.id
         from Process p

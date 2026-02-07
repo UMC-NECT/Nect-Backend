@@ -2,12 +2,12 @@ package com.nect.api.domain.team.chat.service;
 import com.nect.api.domain.team.chat.converter.FileConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
-import com.nect.api.domain.team.chat.infra.ChatRedisPublisher;
 import com.nect.api.domain.team.chat.util.FileValidator;
 import com.nect.api.domain.user.enums.UserErrorCode;
 import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.S3Service;
 import com.nect.api.global.infra.exception.StorageException;
+import com.nect.api.global.infra.redis.RedisPublisher;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
@@ -25,6 +25,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -43,7 +44,7 @@ public class ChatFileService {
     private final UserRepository userRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomUserRepository chatRoomUserRepository;
-    private final ChatRedisPublisher redisPublisher;
+    private final RedisPublisher redisPublisher;
     private final S3Service s3Service;
     private final ProjectUserRepository projectUserRepository;
 
@@ -64,7 +65,7 @@ public class ChatFileService {
 
         try {
             String storedFileName = s3Service.uploadFile(file);
-            String fileUrl = s3Service.getPresignedGetUrl(storedFileName);
+            String fileUrl = getSafePresignedUrl(storedFileName);
 
             ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
             chatMessageRepository.save(message);
@@ -90,7 +91,7 @@ public class ChatFileService {
             messageDto.setReadCount(totalMembers - 1);
 
             String channel = "chatroom:" + roomId;
-            redisPublisher.publish(roomId, messageDto);
+            redisPublisher.publish(channel, messageDto);
 
             return messageDto;
 
@@ -185,12 +186,10 @@ validateRoomMember(roomId, userId);
     private List<ChatFile> refreshPresignedUrls(List<ChatFile> chatFiles) {
         return chatFiles.stream()
                 .peek(file -> {
-                    try {
+                    String newUrl = getSafePresignedUrl(file.getStoredFileName());
 
-                        String newUrl = s3Service.getPresignedGetUrl(file.getStoredFileName());
+                    if (newUrl != null) {
                         file.updateFileUrl(newUrl);
-                    } catch (Exception e) {
-
                     }
                 })
                 .collect(Collectors.toList());
@@ -202,13 +201,13 @@ validateRoomMember(roomId, userId);
         ChatFile chatFile = chatFileRepository.findById(fileId)
                 .orElseThrow(() -> new StorageException(StorageErrorCode.FILE_NOT_FOUND));
         validateRoomMember(chatFile.getChatRoom().getId(), userId);
-        String viewUrl = s3Service.getPresignedGetUrl(chatFile.getStoredFileName());
 
+        String viewUrl = getSafePresignedUrl(chatFile.getStoredFileName());
 
         return ChatFileDetailDto.builder()
                 .fileId(chatFile.getId())
                 .fileName(chatFile.getOriginalFileName())
-                .fileUrl(viewUrl)  // 이미지 표시용
+                .fileUrl(viewUrl)
                 .fileSize(chatFile.getFileSize())
                 .fileType(chatFile.getFileType())
                 .createdAt(chatFile.getCreatedAt())
@@ -221,8 +220,11 @@ validateRoomMember(roomId, userId);
         ChatFile chatFile = chatFileRepository.findById(fileId)
                 .orElseThrow(() -> new StorageException(StorageErrorCode.FILE_NOT_FOUND));
         validateRoomMember(chatFile.getChatRoom().getId(), userId);
-        String downloadUrl = s3Service.getPresignedGetUrl(chatFile.getStoredFileName());
 
+        String downloadUrl = getSafePresignedUrl(chatFile.getStoredFileName());
+        if (downloadUrl == null) {
+            throw new StorageException(StorageErrorCode.FILE_NOT_FOUND);
+        }
 
         return downloadUrl;
     }
@@ -240,5 +242,10 @@ validateRoomMember(roomId, userId);
             throw new StorageException(StorageErrorCode.NOT_CHAT_ROOM_MEMBER);
         }
     }
-
+    private String getSafePresignedUrl(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            return null;
+        }
+        return s3Service.getPresignedGetUrl(fileName);
+    }
 }
