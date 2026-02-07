@@ -11,6 +11,7 @@ import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
 import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
@@ -55,6 +56,13 @@ public class WeekMissionService {
     private final UserRepository userRepository;
     private final NotificationFacade notificationFacade;
     private final ProjectHistoryPublisher historyPublisher;
+    private final S3Service s3Service;
+
+    private String toPresignedUserImage(String fileKey) {
+        if (fileKey == null || fileKey.isBlank()) return null;
+        return s3Service.getPresignedGetUrl(fileKey);
+    }
+
 
     private void assertActiveProjectMember(Long projectId, Long userId) {
         if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
@@ -309,11 +317,13 @@ public class WeekMissionService {
 
         User leader = process.getCreatedBy();
 
+        String profileUrl = (leader == null) ? null : toPresignedUserImage(leader.getProfileImageName());
+
         WeekMissionDetailResDto.AssigneeDto assignee = new WeekMissionDetailResDto.AssigneeDto(
                 leader.getUserId(),
                 leader.getName(),
                 leader.getNickname(),
-                leader.getProfileImageUrl()
+                profileUrl
         );
 
         // DTO 생성자 인자 순서 주의: (taskGroups, taskItems) 둘 다 넣기

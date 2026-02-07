@@ -148,6 +148,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             pu.userId as userId,
             u.name as name,
             u.nickname as nickname,
+            u.profileImageName as profileImageName,
             pu.roleField as roleField,
             pu.customRoleFieldName as customRoleFieldName,
             pu.memberType as memberType
@@ -222,6 +223,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getUserId();
         String getName();
         String getNickname();
+        String getProfileImageName();
         RoleField getRoleField();
         String getCustomRoleFieldName();
         ProjectMemberType getMemberType();
@@ -241,7 +243,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         select
           u.userId as userId,
           u.nickname as nickname,
-          u.profileImageUrl as profileImageUrl
+          u.profileImageName as profileImageName
         from ProjectUser pu
         join User u
           on u.userId = pu.userId

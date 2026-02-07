@@ -9,6 +9,7 @@ import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
@@ -56,6 +57,7 @@ public class ProcessService {
     private final ProcessLaneOrderRepository processLaneOrderRepository;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
 
+    private final S3Service s3Service;
     private final ProcessLaneOrderService processLaneOrderService;
 
     private static final String TEAM_LANE_KEY = "TEAM";
@@ -329,6 +331,11 @@ public class ProcessService {
         }
     }
 
+    private String toPresignedUserImage(String fileKey) {
+        if (fileKey == null || fileKey.isBlank()) return null;
+        return s3Service.getPresignedGetUrl(fileKey);
+    }
+
     // 알림 관련 헬퍼 메서드
     private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
         if (mentionIds == null) return List.of();
@@ -588,17 +595,21 @@ public class ProcessService {
                         "writer must be active project member. projectId=" + projectId + ", userId=" + userId
                 ));
 
+
+
         List<ProcessCreateResDto.AssigneeDto> assigneeDtos =
                 saved.getProcessUsers().stream()
                         .filter(pu -> pu.getDeletedAt() == null)
                         .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
                         .map(pu -> {
                             User u = pu.getUser();
+                            String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
+
                             return new ProcessCreateResDto.AssigneeDto(
                                     u.getUserId(),
                                     u.getName(),
                                     u.getNickname(),
-                                    u.getProfileImageUrl()
+                                    profileUrl
                             );
                         })
                         .toList();
@@ -728,13 +739,13 @@ public class ProcessService {
                 .map(pu -> {
                     User u = pu.getUser();
 
-                    String userImage = u.getProfileImageUrl();
+                    String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
 
                     return new AssigneeResDto(
                             u.getUserId(),
                             u.getName(),
                             u.getNickname(),
-                            userImage
+                            profileUrl
                     );
                 })
                 .toList();
@@ -1151,11 +1162,12 @@ public class ProcessService {
                 .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
                 .map(pu -> {
                     User u = pu.getUser();
+                    String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
                     return new AssigneeResDto(
                             u.getUserId(),
                             u.getName(),
                             u.getNickname(),
-                            u.getProfileImageUrl()
+                            profileUrl
                     );
                 })
                 .toList();
@@ -1428,9 +1440,9 @@ public class ProcessService {
                 .filter(pu -> pu.getAssignmentRole() == AssignmentRole.ASSIGNEE)
                 .map(pu -> {
                     User u = pu.getUser();
-                    String userImage = u.getProfileImageUrl();
+                    String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
                     String nickname = u.getNickname();
-                    return new AssigneeResDto(u.getUserId(), u.getName(), nickname, userImage);
+                    return new AssigneeResDto(u.getUserId(), u.getName(), nickname, profileUrl);
                 })
                 .toList();
 
