@@ -47,7 +47,12 @@ class UploadControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("files")
                                         .summary("이미지 업로드")
-                                        .description("프로필 이미지를 업로드합니다. 업로드된 파일명과 Presigned URL을 반환합니다.")
+                                        .description("프로필 이미지를 업로드합니다. 업로드된 파일명과 Presigned URL을 반환합니다.\n\n" +
+                                                "**지원 포맷:** JPG, PNG, GIF, BMP, WebP 등\n\n" +
+                                                "**요청 파라미터:**\n" +
+                                                "- file (필수): 이미지 파일\n" +
+                                                "  예시: test-image.jpg, photo.png\n" +
+                                                "  형식: multipart/form-data")
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
