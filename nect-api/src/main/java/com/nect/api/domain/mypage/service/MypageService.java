@@ -151,8 +151,8 @@ public class MypageService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
 
-        if (request.profileImageUrl() != null) {
-            user.setProfileImageName(request.profileImageUrl());
+        if (request.profileImageFileName() != null) {
+            user.setProfileImageName(request.profileImageFileName());
         }
         if (request.bio() != null) {
             user.setBio(request.bio());
