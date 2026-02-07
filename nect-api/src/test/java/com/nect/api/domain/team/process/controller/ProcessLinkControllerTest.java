@@ -4,7 +4,9 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
+import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateAndAttachResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
+import com.nect.api.domain.team.process.facade.ProcessAttachmentFacade;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
@@ -17,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -64,6 +67,9 @@ class ProcessLinkControllerTest {
 
     @MockitoBean
     private ProcessAttachmentService processAttachmentService;
+
+    @MockitoBean
+    private ProcessAttachmentFacade processAttachmentFacade;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -114,14 +120,13 @@ class ProcessLinkControllerTest {
                 "https://example.com"
         );
 
-        ProcessLinkCreateResDto response = new ProcessLinkCreateResDto(
+        ProcessLinkCreateAndAttachResDto response = new ProcessLinkCreateAndAttachResDto(
                 100L,
                 "예시 링크",
-                "https://example.com",
-                LocalDateTime.of(2026, 1, 25, 10, 0, 0)
+                "https://example.com"
         );
 
-        given(processAttachmentService.createLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class)))
+        given(processAttachmentFacade.createAndAttachLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class)))
                 .willReturn(response);
 
         mockMvc.perform(post("/api/v1/projects/{projectId}/processes/{processId}/links", projectId, processId)
@@ -137,7 +142,7 @@ class ProcessLinkControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("Process-Attachment")
                                         .summary("링크 추가")
-                                        .description("프로세스(카드)에 링크를 추가합니다.")
+                                        .description("프로세스(카드)에 링크를 추가하며, 공유 문서함에 LINK 문서로 저장됩니다.")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID")
@@ -156,16 +161,15 @@ class ProcessLinkControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.link_id").type(NUMBER).description("링크 ID"),
+                                                fieldWithPath("body.document_id").type(NUMBER).description("생성된 공유문서(document) ID"),
                                                 fieldWithPath("body.title").type(STRING).description("링크 제목"),
-                                                fieldWithPath("body.url").type(STRING).description("링크 URL"),
-                                                fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)")
+                                                fieldWithPath("body.url").type(STRING).description("링크 URL")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(processAttachmentService).createLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class));
+        verify(processAttachmentFacade).createAndAttachLink(eq(projectId), eq(userId), eq(processId), any(ProcessLinkCreateReqDto.class));
     }
 
 
