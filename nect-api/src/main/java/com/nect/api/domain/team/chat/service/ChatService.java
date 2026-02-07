@@ -177,6 +177,15 @@ public class ChatService {
         chatRoomUserRepository.findMemberInRoom(roomId, userId)
                 .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND));
 
+        chatRoomUserRepository.findMemberInRoom(roomId, userId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND));
+
+        if (Boolean.TRUE.equals(isPinned)) {
+            List<ChatMessage> existingPinnedMessages = chatMessageRepository.findAllByChatRoomIdAndIsPinnedTrue(roomId);
+            for (ChatMessage pinnedMessage : existingPinnedMessages) {
+                pinnedMessage.setIsPinned(false);
+            }
+        }
 
         message.setIsPinned(isPinned);
 

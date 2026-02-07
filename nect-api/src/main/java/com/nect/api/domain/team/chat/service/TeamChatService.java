@@ -181,13 +181,13 @@ public class TeamChatService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.USER_NOT_FOUND));
 
         String invitedNames = newMembers.stream()
-                .map(User::getNickname)
+                .map(User::getName)
                 .collect(Collectors.joining(", "));
 
         //TODO : 초대메시지
         String notificationMessage = String.format(
                 "%s님이 %s님을 초대했습니다.",
-                inviter.getNickname(),
+                inviter.getName(),
                 invitedNames
         );
 
@@ -195,7 +195,7 @@ public class TeamChatService {
 
 
         List<String> invitedUserNames = newMembers.stream()
-                .map(User::getNickname)
+                .map(User::getName)
                 .collect(Collectors.toList());
 
         List<String> profileImages = newMembers.stream()

@@ -33,6 +33,7 @@ import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -128,9 +129,11 @@ public class ProjectService {
         try {
             Project project = Project.builder()
                     .title(analysis.getRecommendedProjectName1())
-                    .description("AI 분석 기반으로 생성된 프로젝트입니다") //TODO 분석서에서 마땅한 값 고려중
+                    .description(analysis.getDescription())
                     .status(ProjectStatus.ACTIVE)
                     .build();
+
+            project.setProjectPeriod(analysis.getProjectStartDate(), analysis.getProjectEndDate());
 
             setRecruitmentStatus(project, RecruitmentStatus.OPEN);
             return projectRepository.save(project);
@@ -138,6 +141,7 @@ public class ProjectService {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
+
 
     private void saveTeamRoles(Long projectId, ProjectIdeaAnalysis analysis) {
         try {
