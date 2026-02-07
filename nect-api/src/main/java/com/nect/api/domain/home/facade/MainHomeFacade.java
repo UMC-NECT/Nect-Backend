@@ -131,7 +131,7 @@ public class MainHomeFacade {
 
                     return HomeProjectItem.of(
                             projectId,
-                            resolveProjectImage(p),
+                            s3Service.getPresignedGetUrl(p.getImageName()),
                             p.getTitle(),
                             author == null ? null : author.getName(),
                             author == null ? null : author.getRole().name(),
@@ -184,11 +184,5 @@ public class MainHomeFacade {
     private int safeCount(int count) {
         return Math.max(1, count);
     }
-
-    private String resolveProjectImage(Project project) {
-        String imageName = project.getImageName();
-        return imageName == null ? null : s3Service.getPresignedGetUrl(imageName);
-    }
-
 
 }

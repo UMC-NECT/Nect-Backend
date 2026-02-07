@@ -49,7 +49,7 @@ public class S3Service {
     // 다운로드, 조회 전용
     public String getPresignedGetUrl(String fileName) {
         if (fileName == null || fileName.isBlank()) {
-            throw new StorageException(StorageErrorCode.EMPTY_FILE_NAME);
+            return null;
         }
 
         Date expiration = new Date(System.currentTimeMillis() + PRESIGNED_EXPIRE_MILLIS);
