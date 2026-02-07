@@ -271,5 +271,19 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getProfileImageUrl();
     }
 
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN ProjectUser pu ON u.userId = pu.userId
+        WHERE pu.project.id = :projectId
+          AND pu.userId = :userId
+          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+    """)
+    Optional<User> findActiveUserByProjectIdAndUserId(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId
+    );
+
+
 
 }

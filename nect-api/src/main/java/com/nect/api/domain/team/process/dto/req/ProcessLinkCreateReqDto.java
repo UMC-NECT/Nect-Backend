@@ -6,6 +6,6 @@ public record ProcessLinkCreateReqDto(
         @JsonProperty("title")
         String title,
 
-        @JsonProperty("url")
-        String url
+        @JsonProperty("link_url")
+        String linkUrl
 ) {}

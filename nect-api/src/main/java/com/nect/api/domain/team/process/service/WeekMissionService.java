@@ -5,10 +5,8 @@ import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
-import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
+import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.AttachmentType;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.global.infra.S3Service;
@@ -16,6 +14,8 @@ import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.SharedDocument;
+import com.nect.core.entity.team.enums.DocumentType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.history.enums.HistoryAction;
@@ -28,6 +28,7 @@ import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
+import com.nect.core.repository.team.process.ProcessSharedDocumentRepository;
 import com.nect.core.repository.team.process.ProcessTaskItemRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,12 +37,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,7 +51,7 @@ public class WeekMissionService {
     private final ProjectUserRepository projectUserRepository;
     private final ProcessRepository processRepository;
     private final ProcessTaskItemRepository processTaskItemRepository;
-
+    private final ProcessSharedDocumentRepository processSharedDocumentRepository;
     private final UserRepository userRepository;
     private final NotificationFacade notificationFacade;
     private final ProjectHistoryPublisher historyPublisher;
@@ -326,6 +325,8 @@ public class WeekMissionService {
                 profileUrl
         );
 
+        List<AttachmentDto> attachments = buildAttachments(processId);
+
         // DTO 생성자 인자 순서 주의: (taskGroups, taskItems) 둘 다 넣기
         return new WeekMissionDetailResDto(
                 process.getId(),
@@ -336,12 +337,37 @@ public class WeekMissionService {
                 process.getStartAt(),
                 process.getEndAt(),
                 assignee,
+                attachments,
                 taskGroups,
                 taskItems,
                 process.getCreatedAt(),
                 process.getUpdatedAt()
         );
     }
+
+    private List<AttachmentDto> buildAttachments(Long processId) {
+        return processSharedDocumentRepository.findAliveAttachmentsWithDoc(processId).stream()
+                .map(psd -> {
+                    SharedDocument doc = psd.getDocument();
+                    LocalDateTime at = (psd.getAttachedAt() != null) ? psd.getAttachedAt() : psd.getCreatedAt();
+
+                    if (doc.getDocumentType() == DocumentType.LINK) {
+                        return new AttachmentDto(
+                                AttachmentType.LINK, doc.getId(), at,
+                                doc.getTitle(), doc.getLinkUrl(),
+                                null, null, null, null
+                        );
+                    }
+                    return new AttachmentDto(
+                            AttachmentType.FILE, doc.getId(), at,
+                            null, null,
+                            doc.getFileName(), doc.getFileUrl(), doc.getFileExt(), doc.getFileSize()
+                    );
+                })
+                .sorted(Comparator.comparing(AttachmentDto::createdAt).reversed())
+                .toList();
+    }
+
 
     // 위크미션 TASK 프로세스 상태 변경 서비스
     @Transactional

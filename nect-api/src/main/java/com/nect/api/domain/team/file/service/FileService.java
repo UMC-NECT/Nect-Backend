@@ -110,19 +110,18 @@ public class FileService {
             throw new FileException(FileErrorCode.FILE_UPLOAD_FAILED, "R2 upload failed", e);
         }
 
-        SharedDocument doc = SharedDocument.builder()
-                .createdBy(user)
-                .project(project)
-                .isPinned(false)
-                .title(originalName)
-                .description(null)
-                .fileName(originalName)
-                .fileExt(ext)
-                .fileUrl(fileKey)
-                .fileSize(fileSize)
-                .build();
+        SharedDocument doc = SharedDocument.ofFile(
+                user,
+                project,
+                originalName,
+                originalName,
+                ext,
+                fileKey,
+                fileSize
+        );
 
         SharedDocument saved = sharedDocumentRepository.save(doc);
+
 
         String downloadUrl = s3Service.getPresignedGetUrl(saved.getFileUrl());
 

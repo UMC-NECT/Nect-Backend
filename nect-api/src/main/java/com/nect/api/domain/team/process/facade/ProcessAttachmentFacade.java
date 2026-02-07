@@ -1,35 +1,26 @@
 package com.nect.api.domain.team.process.facade;
 
-import com.nect.api.domain.notifications.command.NotificationCommand;
-import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.service.FileService;
 import com.nect.api.domain.team.process.dto.req.ProcessFileAttachReqDto;
+import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFileAttachResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFileUploadAndAttachResDto;
+import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateAndAttachResDto;
 import com.nect.api.domain.team.process.enums.ProcessErrorCode;
 import com.nect.api.domain.team.process.exception.ProcessException;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
-import com.nect.core.entity.notifications.enums.NotificationClassification;
-import com.nect.core.entity.notifications.enums.NotificationScope;
-import com.nect.core.entity.notifications.enums.NotificationType;
-import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.enums.ProcessType;
-import com.nect.core.entity.user.User;
-import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
-import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -80,6 +71,31 @@ public class ProcessAttachmentFacade {
                 uploaded.fileType(),
                 uploaded.fileSize()
         );
+    }
+
+    // 링크 첨부 + 공유 문서 저장 서비스
+    @Transactional
+    public ProcessLinkCreateAndAttachResDto createAndAttachLink(Long projectId, Long userId, Long processId, ProcessLinkCreateReqDto req) {
+        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+                .orElseThrow(() -> new ProcessException(ProcessErrorCode.PROCESS_NOT_FOUND, "processId=" + processId));
+
+        // 권한 체크 (uploadAndAttachFile과 동일)
+        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
+            boolean isLeader = projectUserRepository.existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(
+                    projectId, userId, ProjectMemberType.LEADER, ProjectMemberStatus.ACTIVE
+            );
+            if (!isLeader) throw new ProcessException(ProcessErrorCode.FORBIDDEN, "WEEK_MISSION은 리더만 링크 추가 가능");
+        } else {
+            if (!projectUserRepository.existsByProjectIdAndUserIdAndMemberStatus(projectId, userId, ProjectMemberStatus.ACTIVE)) {
+                throw new ProcessException(ProcessErrorCode.FORBIDDEN, "not active member");
+            }
+        }
+
+        // 서비스에서 SharedDocument(LINK) 생성 + attach 수행
+        ProcessFileAttachResDto attached = processAttachmentService.createAndAttachLink(projectId, userId, processId, req);
+
+        // 응답은 UI 필요에 따라 title/url 포함해서 내려도 됨
+        return new ProcessLinkCreateAndAttachResDto(attached.fileId(), req.title().trim(), req.linkUrl().trim());
     }
 
 
