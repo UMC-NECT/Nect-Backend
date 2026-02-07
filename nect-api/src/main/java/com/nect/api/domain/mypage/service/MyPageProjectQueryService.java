@@ -2,13 +2,13 @@ package com.nect.api.domain.mypage.service;
 
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.process.ProjectTeamRole;
 import com.nect.core.entity.user.User;
 
-import com.nect.core.repository.analysis.ProjectTeamRoleRepository;
+import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
