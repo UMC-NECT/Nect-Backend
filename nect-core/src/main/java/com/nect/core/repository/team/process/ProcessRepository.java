@@ -17,13 +17,15 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     // 소속 검증 + 소프트 delete 제외
     Optional<Process> findByIdAndProjectIdAndDeletedAtIsNull(Long id, Long projectId);
 
-    @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
+    @EntityGraph(attributePaths = {
+            "processUsers",
+            "processUsers.user"
+    })
     @Query("""
         select p
         from Process p
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and (
                 (p.startAt is null and p.endAt is null)
              or (p.startAt is null and p.endAt >= :start)
@@ -49,14 +51,12 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         from Process p
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.id in :ids
     """)
     List<Process> findAllByIdsInProject(
             @Param("projectId") Long projectId,
             @Param("ids") List<Long> ids
     );
-
 
 
     /**
@@ -75,7 +75,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
          and o.deletedAt is null
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
         order by
           p.status asc,
           coalesce(o.sortOrder, 999999) asc,
@@ -83,14 +82,13 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     """)
     List<Process> findAllForTeamBoard(@Param("projectId") Long projectId);
 
-    // ROLE 레인: 조건에 맞는 Process ID만
+    // ROLE 레인: 조건에 맞는 Process ID만 (정렬은 굳이 안 해도 됨)
     @Query("""
         select distinct p.id
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and pf.deletedAt is null
           and pf.roleField = :roleField
     """)
@@ -106,7 +104,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and pf.deletedAt is null
           and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
           and trim(pf.customFieldName) = :customName
@@ -127,7 +124,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         from Process p
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.id in :ids
     """)
     List<Process> findAllByIdsInProjectWithUsers(
@@ -141,7 +137,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         from Process p
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.id in :ids
     """)
     List<Process> findAllByIdsInProjectWithFields(
@@ -166,7 +161,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         JOIN p.processFields pf
         WHERE p.project.id = :projectId
           AND p.deletedAt IS NULL
-          AND (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           AND pf.deletedAt IS NULL
         GROUP BY pf.roleField, pf.customFieldName
     """)
@@ -188,7 +182,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         JOIN p.processUsers pu
         WHERE p.project.id = :projectId
           AND p.deletedAt IS NULL
-          AND (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           AND pu.deletedAt IS NULL
         GROUP BY pu.user.userId, p.status
         """)
@@ -213,7 +206,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and pf.deletedAt is null
           and pf.roleField is not null
           and pf.roleField <> :custom
@@ -237,7 +229,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and pf.deletedAt is null
           and pf.roleField = :custom
           and pf.customFieldName is not null
@@ -251,13 +242,12 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("statuses") List<ProcessStatus> statuses
     );
 
-    // status 내 TEAM 전체 (GENERAL만)
+    // status 내 TEAM 전체
     @Query("""
         select p
         from Process p
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.status = :status
     """)
     List<Process> findAllByStatusInProject(
@@ -265,14 +255,13 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("status") ProcessStatus status
     );
 
-    // status 내 ROLE lane 전체 (GENERAL만)
+    // status 내 ROLE lane 전체
     @Query("""
         select distinct p
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.status = :status
           and pf.deletedAt is null
           and pf.roleField = :roleField
@@ -283,15 +272,13 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("roleField") RoleField roleField
     );
 
-
-    // status 내 CUSTOM lane 전체 (GENERAL만)
+    // status 내 CUSTOM lane 전체
     @Query("""
         select distinct p
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.status = :status
           and pf.deletedAt is null
           and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
@@ -317,7 +304,6 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and pf.deletedAt is null
           and pf.roleField is not null
     """)
@@ -326,30 +312,12 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     int countByProjectIdAndDeletedAtIsNullAndStatus(Long projectId, ProcessStatus status);
 
 
-    /**
-     * TEAM lane total (GENERAL만)
-     */
-    @Query("""
-        select count(p)
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.status = :status
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
-    """)
-    int countTeamLaneTotalExcludingWeekMission(
-            @Param("projectId") Long projectId,
-            @Param("status") ProcessStatus status
-    );
-
-    // ROLE lane total
     @Query("""
         select count(distinct p)
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.status = :status
           and pf.deletedAt is null
           and pf.roleField = :roleField
@@ -360,14 +328,12 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("roleField") RoleField roleField
     );
 
-    // CUSTOM lane total
     @Query("""
         select count(distinct p)
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.status = :status
           and pf.deletedAt is null
           and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
@@ -378,230 +344,5 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
             @Param("status") ProcessStatus status,
             @Param("customName") String customName
     );
-
-    // WEEK_MISSION 상세(체크리스트 포함)
-    @EntityGraph(attributePaths = { "taskItems", "createdBy" })
-    @Query("""
-        select p
-        from Process p
-        where p.project.id = :projectId
-          and p.id = :processId
-          and p.deletedAt is null
-          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
-    """)
-    Optional<Process> findWeekMissionDetail(
-            @Param("projectId") Long projectId,
-            @Param("processId") Long processId
-    );
-
-
-    // WEEK_MISSION 주차별 조회
-    interface WeekMissionCardRow {
-        Long getProcessId();
-        Integer getMissionNumber();
-        ProcessStatus getStatus();
-        String getTitle();
-        LocalDate getStartDate();
-        LocalDate getDeadLine();
-        Long getDoneCount();
-        Long getTotalCount();
-        Long getLeaderUserId();
-        String getLeaderNickname();
-        String getLeaderProfileImageUrl();
-    }
-
-    @Query("""
-        select
-          p.id as processId,
-          p.missionNumber as missionNumber,
-          p.status as status,
-          p.title as title,
-          p.startAt as startDate,
-          p.endAt as deadLine,
-          sum(case when ti.isDone = true then 1 else 0 end) as doneCount,
-          count(ti.id) as totalCount,
-          u.userId as leaderUserId,
-          u.nickname as leaderNickname,
-          u.profileImageName as leaderProfileImageUrl
-        from Process p
-        left join p.taskItems ti on ti.deletedAt is null
-        left join p.processUsers pu
-               on pu.deletedAt is null
-              and pu.assignmentRole = com.nect.core.entity.team.process.enums.AssignmentRole.ASSIGNEE
-        left join pu.user u
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
-          and (
-                (p.startAt is null and p.endAt is null)
-             or (p.startAt is null and p.endAt >= :start)
-             or (p.endAt is null and p.startAt <= :end)
-             or (p.startAt <= :end and p.endAt >= :start)
-          )
-        group by p.id, p.missionNumber, p.status, p.title, p.startAt, p.endAt,
-                 u.userId, u.nickname, u.profileImageName
-        order by p.missionNumber asc nulls last, p.startAt asc nulls last, p.id asc
-    """)
-    List<WeekMissionCardRow> findWeekMissionCardsInRange(
-            @Param("projectId") Long projectId,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end
-    );
-
-
-
-    // WEEK_MISSION 중 가장 이른 startAt
-    @Query("""
-        select min(p.startAt)
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
-          and p.startAt is not null
-    """)
-    LocalDate findMinWeekMissionStartAt(@Param("projectId") Long projectId);
-
-    // 전체 프로세스 중 가장 이른 startAt (GENERAL + WEEK_MISSION 포함)
-    @Query("""
-        select min(p.startAt)
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.startAt is not null
-    """)
-    LocalDate findMinProcessStartAt(@Param("projectId") Long projectId);
-
-    @Query("""
-        select p
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
-          and p.startAt <= :date
-          and p.endAt >= :date
-    """)
-    Optional<Process> findWeekMissionContainingDate(
-            @Param("projectId") Long projectId,
-            @Param("date") LocalDate date
-    );
-
-    @Query("""
-        select (count(p) > 0)
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
-          and pf.deletedAt is null
-          and pf.roleField = :roleField
-          and p.startAt <= :end
-          and p.endAt >= :start
-    """)
-    boolean existsOverlappingInRoleLane(
-            @Param("projectId") Long projectId,
-            @Param("roleField") RoleField roleField,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end
-    );
-
-    @Query("""
-        select (count(p) > 0)
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
-          and pf.deletedAt is null
-          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
-          and trim(pf.customFieldName) = :customName
-          and p.startAt <= :end
-          and p.endAt >= :start
-    """)
-    boolean existsOverlappingInCustomLane(
-            @Param("projectId") Long projectId,
-            @Param("customName") String customName,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end
-    );
-
-    interface MissionPeriodRow {
-        LocalDate getStartAt();
-        LocalDate getEndAt();
-    }
-
-    @Query("""
-        select p.startAt as startAt, p.endAt as endAt
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.processType = com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION
-          and p.missionNumber = :missionNumber
-    """)
-    Optional<MissionPeriodRow> findWeekMissionPeriodByMissionNumber(
-            @Param("projectId") Long projectId,
-            @Param("missionNumber") Integer missionNumber
-    );
-
-    @Query("""
-        select case when count(p) > 0 then true else false end
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.id <> :excludeProcessId
-          and pf.deletedAt is null
-          and pf.roleField = :roleField
-          and not (p.endAt < :start or p.startAt > :end)
-    """)
-    boolean existsOverlappingInRoleLaneExcludingProcess(
-            @Param("projectId") Long projectId,
-            @Param("roleField") RoleField roleField,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end,
-            @Param("excludeProcessId") Long excludeProcessId
-    );
-
-    @Query("""
-        select case when count(p) > 0 then true else false end
-        from Process p
-        join p.processFields pf
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.id <> :excludeProcessId
-          and pf.deletedAt is null
-          and pf.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM
-          and pf.customFieldName = :customName
-          and not (p.endAt < :start or p.startAt > :end)
-    """)
-    boolean existsOverlappingInCustomLaneExcludingProcess(
-            @Param("projectId") Long projectId,
-            @Param("customName") String customName,
-            @Param("start") LocalDate start,
-            @Param("end") LocalDate end,
-            @Param("excludeProcessId") Long excludeProcessId
-    );
-
-    @Query("""
-        select
-          p.missionNumber as missionNumber,
-          min(p.startAt) as startDate,
-          max(p.endAt) as endDate
-        from Process p
-        where p.project.id = :projectId
-          and p.deletedAt is null
-          and p.missionNumber is not null
-          and p.startAt is not null
-          and p.endAt is not null
-        group by p.missionNumber
-        order by p.missionNumber asc
-    """)
-    List<WeekMissionRangeRow> findWeekMissionRanges(@Param("projectId") Long projectId);
-
-    interface WeekMissionRangeRow {
-        Integer getMissionNumber();
-        LocalDate getStartDate();
-        LocalDate getEndDate();
-    }
-
 }
 

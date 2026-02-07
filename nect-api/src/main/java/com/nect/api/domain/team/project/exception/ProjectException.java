@@ -8,8 +8,4 @@ public class ProjectException extends CustomException {
     public ProjectException(ResponseCode code) {
         super(code);
     }
-
-    public ProjectException(ResponseCode code, String message) {
-        super(code, message);
-    }
 }

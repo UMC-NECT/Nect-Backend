@@ -35,9 +35,6 @@ public record PostGetResDto(
             Long userId,
 
             @JsonProperty("name")
-            String name,
-
-            @JsonProperty("nickname")
-            String nickname
+            String name
     ) {}
 }

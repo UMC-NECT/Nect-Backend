@@ -3,7 +3,6 @@ package com.nect.api.domain.team.workspace.service;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsPreviewResDto;
 import com.nect.api.domain.team.workspace.enums.BoardsErrorCode;
 import com.nect.api.domain.team.workspace.exception.BoardsException;
-import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.user.User;
@@ -24,12 +23,6 @@ public class BoardsSharedDocumentService {
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
-    private final S3Service s3Service;
-
-    private String toPresignedUserImage(String fileKey) {
-        if (fileKey == null || fileKey.isBlank()) return null;
-        return s3Service.getPresignedGetUrl(fileKey);
-    }
 
     /**
      * 공유 문서함 프리뷰 조회
@@ -60,8 +53,6 @@ public class BoardsSharedDocumentService {
         List<SharedDocumentsPreviewResDto.DocumentDto> result = docs.stream().map(d -> {
             User u = d.getCreatedBy();
 
-            String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
-
             return new SharedDocumentsPreviewResDto.DocumentDto(
                     d.getId(),
                     d.isPinned(),
@@ -75,7 +66,7 @@ public class BoardsSharedDocumentService {
                             u.getUserId(),
                             u.getName(),
                             u.getNickname(),
-                            profileUrl
+                            null // TODO: profile_image_url
                     )
             );
         }).toList();

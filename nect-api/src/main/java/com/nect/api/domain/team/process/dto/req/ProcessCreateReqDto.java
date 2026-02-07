@@ -32,9 +32,6 @@ public record ProcessCreateReqDto(
         @JsonProperty("custom_field_name")
         String customFieldName,
 
-        @JsonProperty("mission_number")
-        Integer missionNumber,
-
         @NotNull
         @JsonProperty("start_date")
         LocalDate startDate,

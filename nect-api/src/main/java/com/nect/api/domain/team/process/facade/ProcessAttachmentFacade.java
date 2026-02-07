@@ -14,14 +14,9 @@ import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
-import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.process.Process;
-import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
-import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,8 +32,10 @@ public class ProcessAttachmentFacade {
     private final FileService fileService;
     private final ProcessAttachmentService processAttachmentService;
 
+    private final NotificationFacade notificationFacade;
+    private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
-    private final ProcessRepository processRepository;
+    private final UserRepository userRepository;
 
     /**
      * 프로세스 모달에서 "파일 업로드" 시:
@@ -47,23 +44,6 @@ public class ProcessAttachmentFacade {
      */
     @Transactional
     public ProcessFileUploadAndAttachResDto uploadAndAttachFile(Long projectId, Long userId, Long processId, MultipartFile file) {
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
-                .orElseThrow(() -> new ProcessException(ProcessErrorCode.PROCESS_NOT_FOUND, "processId=" + processId));
-
-        // 프로세스 타입이 위크미션이면 업로드 전에 리더 체크
-        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
-            boolean isLeader = projectUserRepository.existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(
-                    projectId, userId, ProjectMemberType.LEADER, ProjectMemberStatus.ACTIVE
-            );
-            if (!isLeader) throw new ProcessException(ProcessErrorCode.FORBIDDEN, "WEEK_MISSION은 리더만 업로드/첨부 가능");
-        } else {
-            // 일반 프로세스면 ACTIVE 멤버 체크
-            if (!projectUserRepository.existsByProjectIdAndUserIdAndMemberStatus(projectId, userId, ProjectMemberStatus.ACTIVE)) {
-                throw new ProcessException(ProcessErrorCode.FORBIDDEN, "not active member");
-            }
-        }
-
-        // 파일 업로드 -> 첨부
         FileUploadResDto uploaded = fileService.upload(projectId, userId, file);
 
         ProcessFileAttachResDto attached = processAttachmentService.attachFile(
@@ -72,6 +52,8 @@ public class ProcessAttachmentFacade {
                 processId,
                 new ProcessFileAttachReqDto(uploaded.fileId())
         );
+
+        notifyWorkspaceFileUploaded(projectId, userId, uploaded.fileId(), uploaded.fileName());
 
         return new ProcessFileUploadAndAttachResDto(
                 attached.fileId(),
@@ -82,5 +64,39 @@ public class ProcessAttachmentFacade {
         );
     }
 
+    private void notifyWorkspaceFileUploaded(Long projectId, Long actorId, Long fileId, String fileName) {
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.PROJECT_NOT_FOUND,
+                        "projectId = " + projectId
+                ));
+
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.USER_NOT_FOUND,
+                        "actorId = " + actorId
+                ));
+
+        // 프로젝트 멤버 전체 조회
+        List<User> receivers = projectUserRepository.findAllUsersByProjectId(projectId).stream()
+                .filter(u -> u != null && u.getUserId() != null)
+                .filter(u -> !Objects.equals(u.getUserId(), actorId))
+                .toList();
+
+        if (receivers.isEmpty()) return;
+
+        NotificationCommand command = new NotificationCommand(
+                NotificationType.WORKSPACE_FILE_UPLOADED,
+                NotificationClassification.FILE_UPlOAD,
+                NotificationScope.WORKSPACE_GLOBAL,
+                fileId,
+                new Object[]{ actor.getName() },
+                new Object[]{ fileName },
+                project
+        );
+
+        notificationFacade.notify(receivers, command);
+    }
 
 }

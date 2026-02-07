@@ -29,9 +29,6 @@ public record ProcessBasicUpdateReqDto(
         @JsonProperty("custom_fields")
         List<String> customFields,
 
-        @JsonProperty("mission_number")
-        Integer missionNumber,
-
         @JsonProperty("assignee_ids")
         List<Long> assigneeIds,
 
