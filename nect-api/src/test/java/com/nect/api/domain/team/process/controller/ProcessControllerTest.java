@@ -23,7 +23,6 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.restdocs.payload.FieldDescriptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -128,6 +127,9 @@ class ProcessControllerTest {
                         "작성자닉네임",
                         RoleField.BACKEND,
                         null
+                ),
+                List.of(
+                        new ProcessCreateResDto.AssigneeDto(2L, "담당자이름", "담당자닉", "https://img.com/2.png")
                 )
         );
 
@@ -136,22 +138,18 @@ class ProcessControllerTest {
                 "로그인/회원가입 API 초안 + 문서화",
                 ProcessStatus.IN_PROGRESS,
 
-                // assignee_ids
                 List.of(2L),
-
                 List.of(RoleField.BACKEND, RoleField.FRONTEND),
 
                 null,
+                1,
 
                 LocalDate.of(2026, 1, 19),
                 LocalDate.of(2026, 1, 25),
 
                 List.of(),
-
-                // file_ids
                 List.of(),
 
-                // links (변경됨)
                 List.of(
                         new ProcessCreateReqDto.ProcessLinkItemReqDto("백엔드 Repo", "https://github.com/nect/nect-backend"),
                         new ProcessCreateReqDto.ProcessLinkItemReqDto("피그마", "https://figma.com/file/xxxxx")
@@ -195,16 +193,15 @@ class ProcessControllerTest {
                                                 fieldWithPath("assignee_ids").type(ARRAY).description("담당자 ID 목록"),
                                                 fieldWithPath("role_fields").type(ARRAY).description("분야 목록 (예: BACKEND, FRONTEND 등)"),
                                                 fieldWithPath("custom_field_name").optional().type(STRING).description("커스텀 분야명(null 가능)"),
+                                                fieldWithPath("mission_number").optional().type(NUMBER).description("미션 번호(위크미션이면 1..n, 기본형이면 null 가능)"),
 
-                                                // start/deadline은 네 DTO에서 @NotNull이라 optional 빼는게 맞음
                                                 fieldWithPath("start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
                                                 fieldWithPath("dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
 
                                                 fieldWithPath("mention_user_ids").type(ARRAY).description("멘션된 유저 ID 목록"),
                                                 fieldWithPath("file_ids").type(ARRAY).description("첨부 파일 ID 목록"),
 
-                                                // links 변경
-                                                fieldWithPath("links").type(ARRAY).description("첨부 링크 목록").optional(),
+                                                fieldWithPath("links").optional().type(ARRAY).description("첨부 링크 목록"),
                                                 fieldWithPath("links[].title").type(STRING).description("링크 제목"),
                                                 fieldWithPath("links[].url").type(STRING).description("링크 URL"),
 
@@ -221,7 +218,6 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body").description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("생성된 프로세스 ID"),
-
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시(ISO-8601)"),
 
                                                 fieldWithPath("body.writer").type(OBJECT).description("작성자 정보"),
@@ -229,9 +225,14 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
                                                 fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할 분야(RoleField)"),
-                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 분야명(null 가능)")
-                                        )
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 분야명(null 가능)"),
 
+                                                fieldWithPath("body.assignees").type(ARRAY).description("담당자 정보 목록"),
+                                                fieldWithPath("body.assignees[].user_id").type(NUMBER).description("담당자 유저 ID"),
+                                                fieldWithPath("body.assignees[].name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.assignees[].nickname").type(STRING).description("담당자 닉네임"),
+                                                fieldWithPath("body.assignees[].profile_image_url").type(STRING).description("담당자 프로필 이미지 URL")
+                                        )
                                         .build()
                         )
                 ));
@@ -428,8 +429,15 @@ class ProcessControllerTest {
                 List.of(RoleField.FRONTEND, RoleField.BACKEND, RoleField.CUSTOM),
                 List.of("AI"),
 
+                1,
+
                 List.of(1L, 2L),
                 List.of(3L, 4L)
+        );
+
+        List<AssigneeResDto> assignees = List.of(
+                new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png"),
+                new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png")
         );
 
         ProcessBasicUpdateResDto response = new ProcessBasicUpdateResDto(
@@ -444,6 +452,8 @@ class ProcessControllerTest {
                 List.of("AI"),
 
                 List.of(1L, 2L),
+                assignees,
+
                 List.of(3L, 4L),
 
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0),
@@ -495,7 +505,8 @@ class ProcessControllerTest {
                                                 fieldWithPath("mention_user_ids").optional().type(ARRAY).description("멘션 유저 ID 목록 (미포함 시 변경 없음, []면 비우기)"),
 
                                                 fieldWithPath("role_fields").optional().type(ARRAY).description("역할 분야 목록(RoleField)"),
-                                                fieldWithPath("custom_fields").optional().type(ARRAY).description("커스텀 분야명 목록(CUSTOM 선택 시)")
+                                                fieldWithPath("custom_fields").optional().type(ARRAY).description("커스텀 분야명 목록(CUSTOM 선택 시)"),
+                                                fieldWithPath("mission_number").optional().type(NUMBER).description("미션 번호(미포함 시 변경 없음, null 가능)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -515,6 +526,12 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.custom_fields").type(ARRAY).description("커스텀 분야명 목록(CUSTOM 선택 시)"),
 
                                                 fieldWithPath("body.assignee_ids").type(ARRAY).description("담당자 ID 목록"),
+                                                fieldWithPath("body.assignees").type(ARRAY).description("담당자 정보 목록"),
+                                                fieldWithPath("body.assignees[].user_id").type(NUMBER).description("담당자 유저 ID"),
+                                                fieldWithPath("body.assignees[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.assignees[].nickname").type(STRING).description("담당자 닉네임"),
+                                                fieldWithPath("body.assignees[].user_image").type(STRING).description("담당자 이미지 URL"),
+
                                                 fieldWithPath("body.mention_user_ids").type(ARRAY).description("멘션 유저 ID 목록"),
                                                 fieldWithPath("body.updated_at").type(STRING).description("수정일시(ISO-8601)"),
 
@@ -657,14 +674,15 @@ class ProcessControllerTest {
                 10L,
                 ProcessStatus.IN_PROGRESS,
                 "백엔드 API 초안 작성",
-                1,                  // complete_check_list
-                3,                  // whole_check_list
+                1,
+                3,
                 LocalDate.of(2026, 2, 1),
                 LocalDate.of(2026, 2, 10),
-                5,                  // left_day
+                5,
                 List.of(RoleField.BACKEND),
-                List.of("AI"),      // custom_fields
-                List.of(a1, a2)
+                List.of("AI"),
+                1,
+                List.of(a1, a2) // assignee
         );
 
         ProcessCardResDto p12 = new ProcessCardResDto(
@@ -678,8 +696,11 @@ class ProcessControllerTest {
                 3,
                 List.of(RoleField.BACKEND, RoleField.FRONTEND),
                 List.of("DevOps"),
+                null,
                 List.of(a2)
         );
+
+
 
         ProcessStatusGroupResDto inProgressGroup = new ProcessStatusGroupResDto(
                 ProcessStatus.IN_PROGRESS,
@@ -699,6 +720,7 @@ class ProcessControllerTest {
                 null,
                 List.of(RoleField.BACKEND),
                 List.of(),
+                null,
                 List.of(a1)
         );
 
@@ -720,6 +742,7 @@ class ProcessControllerTest {
                 0,
                 List.of(RoleField.BACKEND),
                 List.of("Auth"),
+                1,
                 List.of(a1, a2)
         );
 
@@ -741,6 +764,7 @@ class ProcessControllerTest {
                 null,
                 List.of(RoleField.BACKEND),
                 List.of("TechDebt"),
+                1,
                 List.of(a2)
         );
 
@@ -808,6 +832,10 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].role_fields").type(ARRAY).description("RoleField 목록"),
                                                 fieldWithPath("body.groups[].processes[].custom_fields").type(ARRAY).description("커스텀 필드명 목록"),
 
+                                                fieldWithPath("body.groups[].processes[].mission_number").optional().type(VARIES).description("위크미션 번호(미션 프로세스면 1..n, 일반 프로세스면 null)"),
+
+                                                fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
+
                                                 fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
@@ -833,6 +861,7 @@ class ProcessControllerTest {
                 ProcessStatus.IN_PROGRESS,
                 List.of(10L, 2L, 12L),
                 "ROLE:BACKEND",
+                1,
                 LocalDate.of(2026, 2, 1),
                 LocalDate.of(2026, 2, 10)
         );
@@ -876,7 +905,8 @@ class ProcessControllerTest {
                                                 fieldWithPath("ordered_process_ids").optional().type(ARRAY).description("정렬 순서대로 나열한 프로세스 ID 목록"),
                                                 fieldWithPath("lane_key").type(STRING).description("레인 키(TEAM, ROLE:XXX, CUSTOM:이름)"),
                                                 fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)")
+                                                fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("mission_number").optional().type(NUMBER).description("미션 번호(위크미션이면 사용, 기본형이면 null 가능)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -888,6 +918,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.status").type(STRING).description("프로세스 상태"),
                                                 fieldWithPath("body.status_order").type(NUMBER).description("해당 status 내 정렬 순서"),
+                                                fieldWithPath("body.groups[].processes[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
                                                 fieldWithPath("body.start_at").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
                                                 fieldWithPath("body.dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)")
                                         )
