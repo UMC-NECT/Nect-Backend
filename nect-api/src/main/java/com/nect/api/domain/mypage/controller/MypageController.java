@@ -10,6 +10,7 @@ import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.user.enums.InterestField;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -72,6 +73,12 @@ public class MypageController {
 
     // TODO: 해주세요
     // 프로젝트 분야 수정
+    @PatchMapping("/projects/{projectId}/project-field")
+    public ApiResponse<Void> editField(@PathVariable Long projectId, @RequestParam("field") InterestField interestField) {
+        projectCommandService.changeProjectInterest(projectId, interestField);
+        return ApiResponse.ok();
+    }
+
 
     // 모집정보 추가
 

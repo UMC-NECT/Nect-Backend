@@ -7,6 +7,7 @@ import com.nect.api.domain.mypage.service.MypageService;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.nect.api.NectDocumentApiTester;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.user.enums.InterestField;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.restdocs.payload.JsonFieldType;
@@ -31,9 +32,7 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.pr
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
-import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -256,6 +255,47 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("projectHistories[].endYearMonth").type(JsonFieldType.STRING).description("종료 년월. 프로젝트 종료 시간 (형식: YYYY.MM, 예: 2024.12)").optional()
                                         )
                                         .build()
+                        )
+                ));
+    }
+
+    @Test
+    void editProjectField() throws Exception {
+        long projectId = 1L;
+
+        doNothing().when(projectCommandService)
+                .changeProjectInterest(eq(projectId), eq(InterestField.IT_WEB_MOBILE));
+
+        mockMvc.perform(
+                        patch("/api/v1/mypage/projects/{projectId}/project-field?field=IT_WEB_MOBILE", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-field-edit",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 분야 수정")
+                                .description("프로젝트 관심 분야 선택 상태를 변경합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .queryParameters(
+                                        parameterWithName("field").description("프로젝트 관심 분야(InterestField)")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
                         )
                 ));
     }

@@ -8,10 +8,13 @@ import com.nect.api.global.code.CommonResponseCode;
 import com.nect.api.global.exception.CustomException;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.ProjectPlanFile;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.repository.matching.RecruitmentRepository;
+import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectPlanFileRepository;
 import com.nect.core.repository.team.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +34,30 @@ public class MyPageProjectCommandService {
     private final ProjectRepository projectRepository;
     private final RecruitmentRepository recruitmentRepository;
     private final ProjectPlanFileRepository planFileRepository;
+    private final ProjectInterestFieldRepository projectInterestFieldRepository;
     private final S3Service s3Service;
 
     private final ProjectListConverter listConverter;
 
     // 프로젝트 분야 수정
+    public void changeProjectInterest(Long projectId, InterestField interestField){
+
+        // 검증
+        if (projectId == null) {
+            throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
+        }
+        if (interestField == null) {
+            throw new CustomException(CommonResponseCode.REQUEST_BODY_MISSING_ERROR);
+        }
+
+        findProject(projectId);
+
+        ProjectInterest projectInterest = projectInterestFieldRepository.findByProjectIdAndInterestField(projectId, interestField)
+                .orElseThrow(() -> new CustomException(CommonResponseCode.NOT_FOUND_ERROR));
+
+        projectInterest.changeSelected(!projectInterest.getSelected());
+        projectInterestFieldRepository.save(projectInterest);
+    }
 
     // 모집정보 추가
 
