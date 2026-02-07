@@ -292,7 +292,7 @@ class ProcessControllerTest {
 
                 // attachments (FILE + LINK 통합)
                 List.of(
-                        new ProcessDetailResDto.AttachmentDto(
+                        new AttachmentDto(
                                 com.nect.api.domain.team.process.enums.AttachmentType.FILE,
                                 1001L,
                                 LocalDateTime.of(2026, 1, 23, 12, 0),
@@ -302,7 +302,7 @@ class ProcessControllerTest {
                                 FileExt.PDF,
                                 1024L
                         ),
-                        new ProcessDetailResDto.AttachmentDto(
+                        new AttachmentDto(
                                 com.nect.api.domain.team.process.enums.AttachmentType.LINK,
                                 2001L,
                                 LocalDateTime.of(2026, 1, 22, 9, 0),

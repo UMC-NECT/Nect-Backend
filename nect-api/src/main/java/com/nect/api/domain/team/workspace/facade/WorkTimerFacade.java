@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.workspace.facade;
 
+import com.nect.api.domain.team.workspace.dto.res.WorkTimerSnapshot;
 import com.nect.api.domain.team.workspace.service.WorkTimerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,5 +17,9 @@ public class WorkTimerFacade {
 
     public void stop(Long projectId, Long userId) {
         workTimerService.stop(projectId, userId);
+    }
+
+    public WorkTimerSnapshot snapshot(Long projectId, Long userId) {
+        return workTimerService.getTodaySnapshot(projectId, userId);
     }
 }

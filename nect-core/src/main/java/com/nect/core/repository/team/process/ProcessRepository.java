@@ -603,5 +603,18 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
         LocalDate getEndDate();
     }
 
+    @Query("""
+        select p
+        from Process p
+        where p.id = :processId
+          and p.project.id = :projectId
+          and p.deletedAt is null
+          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
+    """)
+    Optional<Process> findGeneralDetail(
+            @Param("projectId") Long projectId,
+            @Param("processId") Long processId
+    );
+
 }
 
