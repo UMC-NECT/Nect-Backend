@@ -41,21 +41,22 @@ public class MatchingConverter {
                 .build();
     }
 
-    public static MatchingResDto.UserSummary toUserSummary(User user){
-        // TODO: 프로필 구현 완성 시 수정
+    public static MatchingResDto.UserSummary toUserSummary(User user, String profileImageUrl){
         return MatchingResDto.UserSummary.builder()
+                .userId(user.getUserId())
                 .nickname(user.getNickname())
-                .bio("")
+                .bio(user.getBio())
                 .field(RoleField.BACKEND)
-                .profileUrl("")
+                .profileUrl(profileImageUrl)
                 .build();
     }
 
-    public static MatchingResDto.ProjectSummary toProjectSummary(Project project, long countUserNum) {
+    public static MatchingResDto.ProjectSummary toProjectSummary(Project project, long countUserNum, String projectImageUrl) {
         return MatchingResDto.ProjectSummary.builder()
+                .projectId(project.getId())
                 .title(project.getTitle())
                 .description(project.getDescription())
-                .imageUrl(project.getImageName())
+                .imageUrl(projectImageUrl)
                 .currentMembersNum(countUserNum)
                 .build();
     }

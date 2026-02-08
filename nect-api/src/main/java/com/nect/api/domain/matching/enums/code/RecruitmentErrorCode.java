@@ -9,6 +9,10 @@ import lombok.Getter;
 public enum RecruitmentErrorCode implements ResponseCode {
 
     RECRUITMENT_NOT_OPEN("R400_1", "프로젝트의 해당 분야는 모집중이 아닙니다."),
+
+    ONLY_LEADER_ACCESS("R403_1", "리더만 접근할 수 있는 기능입니다."),
+
+    NOT_FOUND_RECRUITMENT("R404_1", "해당 모집은 존재하지 않습니다."),
     ;
 
 
