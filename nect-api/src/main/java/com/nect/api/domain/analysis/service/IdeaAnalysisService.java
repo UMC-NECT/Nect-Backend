@@ -140,6 +140,7 @@ public class IdeaAnalysisService {
         // 메인 분석 엔티티 생성
         ProjectIdeaAnalysis analysis = ProjectIdeaAnalysis.builder()
                 .userId(userId)
+                .description(response.getDescription())
                 .recommendedProjectName1(projectNames.get(0))
                 .recommendedProjectName2(projectNames.size() > 1 ? projectNames.get(1) : null)
                 .recommendedProjectName3(projectNames.size() > 2 ? projectNames.get(2) : null)
@@ -221,6 +222,8 @@ public class IdeaAnalysisService {
         return IdeaAnalysisEntityConverter.toPageResponseDto(analysisPage, analysisDto);
 
     }
+
+
 
     @Transactional
     public void deleteAnalysis(Long userId, Long analysisId) {

@@ -1,7 +1,6 @@
 package com.nect.api.domain.team.chat.controller;
 
 
-import com.nect.api.domain.team.chat.dto.req.ChatFileSendRequestDto;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageSendRequestDto;
 import com.nect.api.domain.team.chat.service.ChatFileService;
 import com.nect.api.domain.team.chat.service.ChatService;

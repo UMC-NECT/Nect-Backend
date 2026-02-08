@@ -73,5 +73,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage,Long> {
             Pageable pageable
     );
 
+    List<ChatMessage> findAllByChatRoomIdAndIsPinnedTrue(Long chatRoomId);
 }
 
