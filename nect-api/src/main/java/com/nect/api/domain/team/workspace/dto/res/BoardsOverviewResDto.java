@@ -20,7 +20,7 @@ public record BoardsOverviewResDto(
         SharedDocumentsPreviewResDto sharedDocumentsPreview,
 
         @JsonProperty("posts_preview")
-        PostListResDto postsPreview,
+        PostsPreviewResDto postsPreview,
 
         @JsonProperty("calendar_month_indicators")
         CalendarMonthIndicatorsResDto calendarMonthIndicators
@@ -31,7 +31,7 @@ public record BoardsOverviewResDto(
             MemberBoardResDto members,
             ScheduleUpcomingResDto upcomingSchedules,
             SharedDocumentsPreviewResDto sharedDocumentsPreview,
-            PostListResDto postsPreview,
+            PostsPreviewResDto postsPreview,
             CalendarMonthIndicatorsResDto calendarMonthIndicators
     ) {
         return new BoardsOverviewResDto(

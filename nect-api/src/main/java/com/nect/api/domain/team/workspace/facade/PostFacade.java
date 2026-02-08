@@ -87,26 +87,7 @@ public class PostFacade {
     }
 
     // 게시글 목록 프리뷰
-    public PostsPreviewResDto getPostsPreview(Long projectId, Long userId, PostType type, int limit) {
-        int safeLimit = Math.max(1, Math.min(limit, 20));
-
-        PostListResDto list = postService.getPostList(
-                projectId,
-                userId,
-                type,
-                0,
-                safeLimit
-        );
-
-        List<PostsPreviewResDto.Item> items = list.posts().stream()
-                .map(p -> new PostsPreviewResDto.Item(
-                        p.postId(),
-                        p.postType(),
-                        p.title(),
-                        p.createdAt()
-                ))
-                .toList();
-
-        return new PostsPreviewResDto(items);
+    public PostsPreviewResDto getPostsPreview(Long projectId, Long userId) {
+        return postService.getOverviewPostsPreview(projectId, userId);
     }
 }

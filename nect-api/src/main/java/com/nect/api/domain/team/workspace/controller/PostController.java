@@ -92,12 +92,10 @@ public class PostController {
     @GetMapping("/preview")
     public ApiResponse<PostsPreviewResDto> getPostsPreview(
             @PathVariable Long projectId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails,
-            @RequestParam(required = false) PostType type,
-            @RequestParam(defaultValue = "4") int limit
+            @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
         return ApiResponse.ok(
-                postFacade.getPostsPreview(projectId, userDetails.getUserId(), type, limit)
+                postFacade.getPostsPreview(projectId, userDetails.getUserId())
         );
     }
 
