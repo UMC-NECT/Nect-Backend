@@ -146,7 +146,7 @@ class ProjectHistoryControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("History")
+                                        .tag("Process")
                                         .summary("팀 히스토리 로그 조회")
                                         .description("프로젝트 내 팀 히스토리 로그를 커서 기반으로 조회합니다. cursor 미입력 시 최신부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(
@@ -206,7 +206,7 @@ class ProjectHistoryControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("History")
+                                        .tag("Process")
                                         .summary("팀 히스토리 로그 조회(기본)")
                                         .description("cursor 미입력 시 서버 정책으로 최신 로그부터 조회합니다. (서버 정책: 최근 10개 고정)")
                                         .pathParameters(

@@ -39,7 +39,6 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
@@ -420,25 +419,18 @@ class PostControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
-        PostsPreviewResDto response = new PostsPreviewResDto(
+        PostsPreviewResDto postsPreview = new PostsPreviewResDto(
                 List.of(
-                        new PostsPreviewResDto.Item(
-                                100L,
-                                PostType.NOTICE,
-                                "공지 제목",
-                                LocalDateTime.of(2026, 1, 31, 10, 0)
-                        ),
-                        new PostsPreviewResDto.Item(
-                                101L,
-                                PostType.FREE,
-                                "자유글",
-                                LocalDateTime.of(2026, 1, 31, 11, 0)
-                        )
+                        new PostsPreviewResDto.Item(1001L, PostType.NOTICE, "공지 1", LocalDateTime.of(2026, 1, 31, 10, 0)),
+                        new PostsPreviewResDto.Item(1002L, PostType.NOTICE, "공지 2", LocalDateTime.of(2026, 1, 30, 9, 0)),
+                        new PostsPreviewResDto.Item(2001L, PostType.FREE, "자유 1", LocalDateTime.of(2026, 1, 31, 11, 0)),
+                        new PostsPreviewResDto.Item(2002L, PostType.FREE, "자유 2", LocalDateTime.of(2026, 1, 29, 18, 0))
                 )
         );
 
-        given(postFacade.getPostsPreview(eq(projectId), eq(userId), any(), eq(4)))
-                .willReturn(response);
+
+        given(postFacade.getPostsPreview(eq(projectId), eq(userId)))
+                .willReturn(postsPreview);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/boards/posts/preview", projectId)
                         .with(mockUser(userId))
@@ -482,7 +474,7 @@ class PostControllerTest {
                         )
                 ));
 
-        verify(postFacade).getPostsPreview(eq(projectId), eq(userId), any(), eq(4));
+        verify(postFacade).getPostsPreview(eq(projectId), eq(userId));
     }
 
 }

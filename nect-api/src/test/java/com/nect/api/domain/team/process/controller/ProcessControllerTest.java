@@ -147,8 +147,8 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 19),
                 LocalDate.of(2026, 1, 25),
 
-                List.of(),
-                List.of(),
+                List.of(3L),
+                List.of(123L),
 
                 List.of(
                         new ProcessCreateReqDto.ProcessLinkItemReqDto("백엔드 Repo", "https://github.com/nect/nect-backend"),
@@ -274,8 +274,8 @@ class ProcessControllerTest {
                 LocalDate.of(2026, 1, 25),
                 0,
 
-                List.of(),                // role_fields
-                List.of("디자인"),        // custom_fields
+                List.of(RoleField.BACKEND, RoleField.FRONTEND),
+                List.of("디자인"),
 
                 List.of(
                         new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png"),
@@ -597,16 +597,124 @@ class ProcessControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
+        // ===== week1 common lane =====
+        ProcessCardResDto common1 = new ProcessCardResDto(
+                101L,
+                ProcessStatus.PLANNING,
+                "기획 초안 작성",
+                1,
+                3,
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 25),
+                6,
+                List.of(RoleField.BACKEND, RoleField.FRONTEND),
+                List.of("영상편집"),
+                1,
+                List.of(
+                        new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png"),
+                        new AssigneeResDto(2L, "김철수", "철수", null)
+                )
+        );
+
+        ProcessCardResDto common2 = new ProcessCardResDto(
+                102L,
+                ProcessStatus.IN_PROGRESS,
+                "API 설계",
+                2,
+                5,
+                LocalDate.of(2026, 1, 20),
+                LocalDate.of(2026, 1, 24),
+                5,
+                List.of(RoleField.BACKEND),
+                List.of(),
+                1,
+                List.of(
+                        new AssigneeResDto(3L, "박영희", "영희", "https://img.com/u3.png")
+                )
+        );
+
+        ProcessCardResDto backend1 = new ProcessCardResDto(
+                201L,
+                ProcessStatus.DONE,
+                "DB 스키마 확정",
+                4,
+                4,
+                LocalDate.of(2026, 1, 19),
+                LocalDate.of(2026, 1, 21),
+                2,
+                List.of(RoleField.BACKEND),
+                List.of(),
+                1,
+                List.of(
+                        new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png")
+                )
+        );
+
+        ProcessCardResDto custom1 = new ProcessCardResDto(
+                301L,
+                ProcessStatus.PLANNING,
+                "시연 영상 콘티",
+                0,
+                2,
+                LocalDate.of(2026, 1, 22),
+                LocalDate.of(2026, 1, 25),
+                3,
+                List.of(RoleField.PHOTO_VIDEO),
+                List.of("영상편집"),
+                1,
+                List.of(
+                        new AssigneeResDto(4L, "이민수", "민수", null)
+                )
+        );
+
+        FieldGroupResDto fgBackend = new FieldGroupResDto(
+                "ROLE:BACKEND",
+                "BACKEND",
+                0,
+                List.of(backend1)
+        );
+
+        FieldGroupResDto fgCustom = new FieldGroupResDto(
+                "CUSTOM:영상편집",
+                "영상편집",
+                1,
+                List.of(custom1)
+        );
+
         ProcessWeekResDto w1 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 19),
-                List.of(),
-                List.of()
+                List.of(common1, common2),
+                List.of(fgBackend, fgCustom)
+        );
+
+        ProcessCardResDto w2Common = new ProcessCardResDto(
+                401L,
+                ProcessStatus.IN_PROGRESS,
+                "주간 회고",
+                0,
+                1,
+                LocalDate.of(2026, 1, 26),
+                LocalDate.of(2026, 2, 1),
+                7,
+                List.of(RoleField.APP_WEB, RoleField.OPERATIONS_CS),
+                List.of("운영"),
+                2,
+                List.of(
+                        new AssigneeResDto(2L, "김철수", "철수", "https://img.com/u2.png")
+                )
+        );
+
+        FieldGroupResDto fgPlanner = new FieldGroupResDto(
+                "ROLE:APP_WEB",
+                "APP_WEB",
+                0,
+                List.of(w2Common)
         );
 
         ProcessWeekResDto w2 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 26),
-                List.of(),
-                List.of()
+                List.of(),              // common lane empty
+                List.of(fgPlanner)
         );
 
         ProcessWeeksResDto response = new ProcessWeeksResDto(List.of(w1, w2));
@@ -649,8 +757,50 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.weeks").type(ARRAY).description("주차별 결과 목록"),
 
                                                 fieldWithPath("body.weeks[].start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
-                                                subsectionWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
-                                                subsectionWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록")
+
+                                                // ===== common_lane =====
+                                                fieldWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].process_status").type(STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.weeks[].common_lane[].title").type(STRING).description("프로세스 제목"),
+                                                fieldWithPath("body.weeks[].common_lane[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
+                                                fieldWithPath("body.weeks[].common_lane[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
+                                                fieldWithPath("body.weeks[].common_lane[].start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks[].common_lane[].dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks[].common_lane[].left_day").type(NUMBER).description("남은 일수"),
+                                                fieldWithPath("body.weeks[].common_lane[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].mission_number").type(NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee").type(ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
+
+                                                // ===== by_field =====
+                                                fieldWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].field_id").type(STRING).description("fieldId (예: ROLE:BACKEND / CUSTOM:영상편집)"),
+                                                fieldWithPath("body.weeks[].by_field[].field_name").type(STRING).description("fieldName (예: BACKEND / 영상편집)"),
+                                                fieldWithPath("body.weeks[].by_field[].field_order").type(NUMBER).description("fieldOrder"),
+                                                fieldWithPath("body.weeks[].by_field[].processes").type(ARRAY).description("해당 그룹의 프로세스 목록"),
+
+                                                // by_field[].processes[] (ProcessCardResDto 동일)
+                                                fieldWithPath("body.weeks[].by_field[].processes[].process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].process_status").type(STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].title").type(STRING).description("프로세스 제목"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].left_day").type(NUMBER).description("남은 일수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].mission_number").type(NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee").type(ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
                                         )
                                         .build()
                         )

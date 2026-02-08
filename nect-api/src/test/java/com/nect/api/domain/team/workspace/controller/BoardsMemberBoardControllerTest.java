@@ -4,11 +4,14 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.workspace.dto.res.MemberBoardResDto;
+import com.nect.api.domain.team.workspace.dto.res.RoleFieldDto;
 import com.nect.api.domain.team.workspace.facade.BoardsMemberBoardFacade;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -104,31 +108,43 @@ class BoardsMemberBoardControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
-        String bodyJson = """
-            {
-              "members": [
-                {
-                  "user_id": 1,
-                  "name": "홍길동",
-                  "nickname": "길동",
-                  "profile_image_url": "TODO",
-                  "field": null,
-                  "member_type": "MEMBER",
-                  "counts": {
-                    "planning": 2,
-                    "in_progress": 1,
-                    "done": 3
-                  },
-                  "is_working": true,
-                  "today_work_seconds": 3600,
-                  "working_started_at": "2026-01-31T10:00:00"
-                }
-              ]
-            }
-            """;
+        MemberBoardResDto response = new MemberBoardResDto(
+                List.of(
+                        new MemberBoardResDto.MemberDto(
+                                1L,
+                                "홍길동",
+                                "길동",
+                                "https://img.com/u1.png",
+                                RoleFieldDto.of(RoleField.BACKEND),
+                                ProjectMemberType.MEMBER,
+                                new MemberBoardResDto.CountsDto(
+                                        2,  // planning
+                                        1,  // in_progress
+                                        3   // done
+                                ),
+                                true,
+                                3600L,
+                                LocalDateTime.of(2026, 1, 31, 10, 0, 0)
+                        ),
+                        new MemberBoardResDto.MemberDto(
+                                2L,
+                                "김철수",
+                                "철수",
+                                "https://img.com/u2.png",
+                                RoleFieldDto.of(RoleField.CUSTOM, "기획-운영"),
+                                ProjectMemberType.LEADER,
+                                new MemberBoardResDto.CountsDto(
+                                        1,
+                                        4,
+                                        2
+                                ),
+                                false,
+                                1800L,
+                                null
+                        )
+                )
+        );
 
-
-        MemberBoardResDto response = objectMapper.readValue(bodyJson, MemberBoardResDto.class);
         given(facade.getMemberBoard(eq(projectId), eq(userId))).willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/boards/members", projectId)
@@ -157,20 +173,28 @@ class BoardsMemberBoardControllerTest {
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
+
                                                 fieldWithPath("body.members").type(ARRAY).description("프로젝트 멤버 목록"),
+
                                                 fieldWithPath("body.members[].user_id").type(NUMBER).description("멤버 유저 ID"),
                                                 fieldWithPath("body.members[].name").type(STRING).description("멤버 이름"),
                                                 fieldWithPath("body.members[].nickname").type(STRING).description("멤버 닉네임"),
-                                                fieldWithPath("body.members[].profile_image_url").optional().type(STRING).description("프로필 이미지 URL (TODO/NULL 가능)"),
-                                                fieldWithPath("body.members[].field").optional().type(STRING).description("역할 분야(RoleField enum name 또는 CUSTOM:직접입력, null 가능)"),
+                                                fieldWithPath("body.members[].profile_image_url").optional().type(STRING).description("프로필 이미지 URL (없으면 null)"),
+
+                                                fieldWithPath("body.members[].field").optional().type(OBJECT).description("역할 분야"),
+                                                fieldWithPath("body.members[].field.type").optional().type(STRING).description("역할 분야 타입(RoleField enum name)"),
+                                                fieldWithPath("body.members[].field.custom_name").optional().type(STRING).description("CUSTOM일 때 직접 입력 값 (CUSTOM이 아니면 null)"),
+
                                                 fieldWithPath("body.members[].member_type").type(STRING).description("프로젝트 멤버 타입(enum)"),
+
                                                 fieldWithPath("body.members[].counts").type(OBJECT).description("멤버별 담당 프로세스 상태 카운트"),
                                                 fieldWithPath("body.members[].counts.planning").type(NUMBER).description("진행 전 개수"),
                                                 fieldWithPath("body.members[].counts.in_progress").type(NUMBER).description("진행 중 개수"),
                                                 fieldWithPath("body.members[].counts.done").type(NUMBER).description("완료 개수"),
+
                                                 fieldWithPath("body.members[].is_working").type(BOOLEAN).description("현재 근무중 여부"),
                                                 fieldWithPath("body.members[].today_work_seconds").type(NUMBER).description("오늘 누적 근무 시간(초)"),
-                                                fieldWithPath("body.members[].working_started_at").optional().type(STRING).description("근무 시작 시각(yyyy-MM-dd'T'HH:mm:ss) (근무중이 아니면 null 가능)")
+                                                fieldWithPath("body.members[].working_started_at").optional().type(STRING).description("근무 시작 시각(yyyy-MM-dd'T'HH:mm:ss) (근무중이 아니면 null)")
                                         )
                                         .build()
                         )

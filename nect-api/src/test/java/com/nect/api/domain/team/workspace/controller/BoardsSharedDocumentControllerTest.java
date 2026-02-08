@@ -216,8 +216,72 @@ class BoardsSharedDocumentControllerTest {
         DocumentType type = DocumentType.FILE;
         SharedDocumentsSort sort = SharedDocumentsSort.RECENT;
 
-        // SharedDocumentsGetResDto 구조를 여기서 정확히 모르므로 mock으로 대체 (body는 {} 로 직렬화)
-        SharedDocumentsGetResDto response = org.mockito.Mockito.mock(SharedDocumentsGetResDto.class);
+        SharedDocumentsGetResDto response = new SharedDocumentsGetResDto(
+                page,
+                size,
+                3L,
+                1,
+                List.of(
+                        new SharedDocumentsGetResDto.DocumentDto(
+                                2001L,
+                                true,
+                                DocumentType.FILE,
+                                "API 명세서",
+                                "api-spec.pdf",
+                                FileExt.PDF,
+                                "https://s3.amazonaws.com/nect/docs/api-spec.pdf",
+                                null,
+                                1024L,
+                                LocalDateTime.of(2026, 1, 30, 12, 0, 0),           // created_at
+                                new SharedDocumentsGetResDto.UploaderDto(
+                                        1L,
+                                        "홍길동",
+                                        "길동",
+                                        "https://img.com/u1.png"
+                                )
+                        ),
+
+                        // 2) FILE 문서
+                        new SharedDocumentsGetResDto.DocumentDto(
+                                2002L,
+                                false,
+                                DocumentType.FILE,
+                                "ERD v2",
+                                "erd.png",
+                                FileExt.PNG,
+                                "https://s3.amazonaws.com/nect/docs/erd.png",
+                                null,
+                                2048L,
+                                LocalDateTime.of(2026, 1, 29, 18, 30, 0),
+                                new SharedDocumentsGetResDto.UploaderDto(
+                                        2L,
+                                        "김철수",
+                                        "철수",
+                                        "https://img.com/u2.png"
+                                )
+                        ),
+
+                        // 3) LINK 문서
+                        new SharedDocumentsGetResDto.DocumentDto(
+                                3001L,
+                                false,
+                                DocumentType.LINK,
+                                "Backend Repo",
+                                null,
+                                null,
+                                null,
+                                "https://github.com/nect/nect-backend",
+                                null,
+                                LocalDateTime.of(2026, 1, 28, 9, 0, 0),
+                                new SharedDocumentsGetResDto.UploaderDto(
+                                        3L,
+                                        "박영희",
+                                        "영희",
+                                        null
+                                )
+                        )
+                )
+        );
 
         given(facade.getDocuments(eq(projectId), eq(userId), eq(page), eq(size), eq(type), eq(sort)))
                 .willReturn(response);
@@ -262,8 +326,28 @@ class BoardsSharedDocumentControllerTest {
                                                 fieldWithPath("body.size").type(NUMBER).description("페이지 크기"),
                                                 fieldWithPath("body.total_elements").type(NUMBER).description("전체 요소 수"),
                                                 fieldWithPath("body.total_pages").type(NUMBER).description("전체 페이지 수"),
-                                                fieldWithPath("body.documents").type(ARRAY).description("문서 목록")
+                                                fieldWithPath("body.documents").type(ARRAY).description("문서 목록"),
+
+                                                fieldWithPath("body.documents[].document_id").type(NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.documents[].is_pinned").type(BOOLEAN).description("상단 고정 여부"),
+                                                fieldWithPath("body.documents[].document_type").type(STRING).description("문서 타입(FILE/LINK)"),
+                                                fieldWithPath("body.documents[].title").type(STRING).description("문서 제목"),
+
+                                                fieldWithPath("body.documents[].file_name").optional().type(STRING).description("파일명 (FILE일 때만, LINK면 null)"),
+                                                fieldWithPath("body.documents[].file_ext").optional().type(STRING).description("파일 확장자 (FILE일 때만, LINK면 null)"),
+                                                fieldWithPath("body.documents[].file_url").optional().type(STRING).description("파일 URL (FILE일 때만, LINK면 null)"),
+                                                fieldWithPath("body.documents[].link_url").optional().type(STRING).description("링크 URL (LINK일 때만, FILE면 null)"),
+                                                fieldWithPath("body.documents[].file_size").optional().type(NUMBER).description("파일 크기(byte) (FILE일 때만, LINK면 null)"),
+
+                                                fieldWithPath("body.documents[].created_at").type(STRING).description("생성 시각(yyyy-MM-dd'T'HH:mm:ss)"),
+
+                                                fieldWithPath("body.documents[].uploader").type(OBJECT).description("업로더 정보"),
+                                                fieldWithPath("body.documents[].uploader.user_id").type(NUMBER).description("업로더 유저 ID"),
+                                                fieldWithPath("body.documents[].uploader.name").type(STRING).description("업로더 이름"),
+                                                fieldWithPath("body.documents[].uploader.nickname").type(STRING).description("업로더 닉네임"),
+                                                fieldWithPath("body.documents[].uploader.profile_image_url").optional().type(STRING).description("업로더 프로필 이미지 URL (null 가능)")
                                         )
+
                                         .build()
                         )
                 ));
