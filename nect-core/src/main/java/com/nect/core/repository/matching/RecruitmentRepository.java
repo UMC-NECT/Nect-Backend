@@ -41,6 +41,9 @@ public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> 
             @Param("project") Project project
     );
 
+    Optional<Recruitment> findByIdAndProject(Long recruitmentId, Project project);
+
+
     interface ProjectCapacityRow {
         Long getProjectId();
         Integer getCapacitySum();

@@ -404,6 +404,7 @@ public class MatchingControllerTest {
     @Test
     void getReceivedMatchingsByProject() throws Exception {
         MatchingResDto.ProjectSummary projectSummary = MatchingResDto.ProjectSummary.builder()
+                .projectId(1L)
                 .title("NECT")
                 .description("Project description")
                 .imageUrl("https://example.com/image.jpg")
@@ -411,6 +412,7 @@ public class MatchingControllerTest {
                 .build();
 
         MatchingResDto.UserSummary userSummary = MatchingResDto.UserSummary.builder()
+                .userId(1L)
                 .nickname("seoyeon")
                 .bio("Designer")
                 .field(RoleField.BACKEND)
@@ -455,12 +457,14 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.counterParty").description("대상 타입 (PROJECT | USER)"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록(대상이 USER일 때 채워짐)"),
+                                        fieldWithPath("body.userMatchings[].userId").description("유저 ID"),
                                         fieldWithPath("body.userMatchings[].nickname").description("닉네임"),
                                         fieldWithPath("body.userMatchings[].bio").description("한줄 소개"),
                                         fieldWithPath("body.userMatchings[].field").description("분야"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
+                                        fieldWithPath("body.projectMatchings[].projectId").description("프로젝트 ID"),
                                         fieldWithPath("body.projectMatchings[].title").description("프로젝트 제목"),
                                         fieldWithPath("body.projectMatchings[].description").description("프로젝트 설명"),
                                         fieldWithPath("body.projectMatchings[].imageUrl").description("프로젝트 대표 이미지"),
@@ -477,6 +481,7 @@ public class MatchingControllerTest {
         Authentication authentication = new UsernamePasswordAuthenticationToken(testUser, null, Collections.emptyList());
 
         MatchingResDto.UserSummary userSummary = MatchingResDto.UserSummary.builder()
+                .userId(1L)
                 .nickname("seoyeon")
                 .bio("Designer")
                 .field(RoleField.BACKEND)
@@ -484,6 +489,7 @@ public class MatchingControllerTest {
                 .build();
 
         MatchingResDto.ProjectSummary projectSummary = MatchingResDto.ProjectSummary.builder()
+                .projectId(1L)
                 .title("NECT")
                 .description("Project description")
                 .imageUrl("https://example.com/image.jpg")
@@ -529,12 +535,14 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.counterParty").description("대상 타입 (PROJECT | USER)"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록(대상이 USER일 때 채워짐)"),
+                                        fieldWithPath("body.userMatchings[].userId").description("유저 ID"),
                                         fieldWithPath("body.userMatchings[].nickname").description("닉네임"),
                                         fieldWithPath("body.userMatchings[].bio").description("한줄 소개"),
                                         fieldWithPath("body.userMatchings[].field").description("분야"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
+                                        fieldWithPath("body.projectMatchings[].projectId").description("프로젝트 ID"),
                                         fieldWithPath("body.projectMatchings[].title").description("프로젝트 제목"),
                                         fieldWithPath("body.projectMatchings[].description").description("프로젝트 설명"),
                                         fieldWithPath("body.projectMatchings[].imageUrl").description("프로젝트 대표 이미지"),
