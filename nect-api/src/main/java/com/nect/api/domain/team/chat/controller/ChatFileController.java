@@ -2,6 +2,7 @@ package com.nect.api.domain.team.chat.controller;
 
 
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
+import com.nect.api.domain.team.chat.dto.req.SharedDocumentCreateByChatRequestDto;
 import com.nect.api.domain.team.chat.dto.res.*;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.domain.team.chat.service.ChatFileService;
@@ -91,6 +92,19 @@ public class ChatFileController {
         return new RedirectView(downloadUrl);
     }
 
+    @PostMapping("/rooms/{roomId}/shared-documents")
+    public ApiResponse<SharedDocumentCreateResDto> createSharedDocumentFromChat(
+            @PathVariable Long roomId,
+            @RequestParam Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody SharedDocumentCreateByChatRequestDto req
+    ) {
+        Long userId = userDetails.getUserId();
 
+
+        SharedDocumentCreateResDto response =
+                chatFileService.createFromChatFile(projectId, roomId, userId, req.chatFileId());
+        return ApiResponse.ok(response);
+    }
 
 }

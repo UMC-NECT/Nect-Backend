@@ -2,18 +2,30 @@ package com.nect.api.domain.team.chat.service;
 import com.nect.api.domain.team.chat.converter.FileConverter;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
 import com.nect.api.domain.team.chat.dto.res.*;
+import com.nect.api.domain.team.chat.enums.ChatErrorCode;
+import com.nect.api.domain.team.chat.exeption.ChatException;
 import com.nect.api.domain.team.chat.util.FileValidator;
+import com.nect.api.domain.team.file.enums.FileErrorCode;
+import com.nect.api.domain.team.file.exception.FileException;
+import com.nect.api.domain.team.workspace.enums.BoardsErrorCode;
+import com.nect.api.domain.team.workspace.exception.BoardsException;
 import com.nect.api.domain.user.enums.UserErrorCode;
 import com.nect.api.global.code.StorageErrorCode;
 import com.nect.api.global.infra.S3Service;
 import com.nect.api.global.infra.exception.StorageException;
 import com.nect.api.global.infra.redis.RedisPublisher;
+import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.chat.ChatFile;
 import com.nect.core.entity.team.chat.ChatMessage;
 import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.ChatRoomUser;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.user.User;
+import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
+import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.chat.ChatFileRepository;
 import com.nect.core.repository.team.chat.ChatMessageRepository;
 import com.nect.core.repository.team.chat.ChatRoomRepository;
@@ -47,6 +59,8 @@ public class ChatFileService {
     private final RedisPublisher redisPublisher;
     private final S3Service s3Service;
     private final ProjectUserRepository projectUserRepository;
+    private final ProjectRepository projectRepository;
+    private final SharedDocumentRepository sharedDocumentRepository;
 
 
     private String uploadDir;
@@ -247,5 +261,59 @@ validateRoomMember(roomId, userId);
             return null;
         }
         return s3Service.getPresignedGetUrl(fileName);
+    }
+
+    @Transactional
+    public SharedDocumentCreateResDto createFromChatFile(Long projectId, Long roomId,Long userId, Long chatFileId) {
+
+        ProjectUser projectUser = projectUserRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new BoardsException(BoardsErrorCode.PROJECT_MEMBER_FORBIDDEN));
+
+
+        User registrar = userRepository.findById(userId)
+                .orElseThrow(() -> new BoardsException(BoardsErrorCode.USER_NOT_FOUND));
+
+        Project project = projectUser.getProject();
+
+        ChatFile chatFile = chatFileRepository.findById(chatFileId)
+                .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_FILE_NOT_FOUND));
+
+        if (!chatFile.getChatRoom().getId().equals(roomId)) {
+            throw new ChatException(ChatErrorCode.CHAT_FILE_NOT_FOUND);
+        }
+
+        FileExt ext = extractFileExt(chatFile.getOriginalFileName());
+
+        SharedDocument sharedDocument = SharedDocument.ofFile(
+                registrar,
+                project,
+                chatFile.getOriginalFileName(),
+                chatFile.getOriginalFileName(),
+                ext,
+                chatFile.getStoredFileName(),
+                chatFile.getFileSize()
+        );
+
+        SharedDocument savedDoc = sharedDocumentRepository.save(sharedDocument);
+
+        return new SharedDocumentCreateResDto(
+                savedDoc.getId(),
+                savedDoc.getTitle(),
+                savedDoc.getDocumentType()
+        );
+    }
+
+    private FileExt extractFileExt(String fileName) {
+        if (fileName == null || !fileName.contains(".")) {
+            throw new FileException(FileErrorCode.UNSUPPORTED_FILE_EXT, "확장자가 없는 파일입니다. fileName=" + fileName);
+        }
+
+        String extStr = fileName.substring(fileName.lastIndexOf(".") + 1).toUpperCase();
+
+        try {
+            return FileExt.valueOf(extStr);
+        } catch (IllegalArgumentException e) {
+            throw new FileException(FileErrorCode.UNSUPPORTED_FILE_EXT, "지원하지 않는 파일 확장자입니다. fileName=" + fileName);
+        }
     }
 }
