@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
                 )
         }
 )
+
 public class ProjectUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
