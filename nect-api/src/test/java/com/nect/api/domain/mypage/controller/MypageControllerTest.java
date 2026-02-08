@@ -7,6 +7,8 @@ import com.nect.api.domain.mypage.service.MypageService;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.nect.api.NectDocumentApiTester;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.FileExt;
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.service.MypageService;
@@ -312,6 +314,270 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                         fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
                                         fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getProjectField() throws Exception {
+        long projectId = 1L;
+
+        var project = com.nect.core.entity.team.Project.builder()
+                .title("프로젝트")
+                .build();
+        var interests = List.of(
+                new com.nect.core.entity.team.ProjectInterest(project, InterestField.IT_WEB_MOBILE, true),
+                new com.nect.core.entity.team.ProjectInterest(project, InterestField.GAME_ENTERTAINMENT, false)
+        );
+        MyProjectsResponseDto.ProjectFieldResponse response = MyProjectsResponseDto.ProjectFieldResponse.ofProject(interests);
+
+        given(projectQueryService.getProjectFields(eq(projectId))).willReturn(response);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/project-field", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-field-get",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 분야 조회")
+                                .description("프로젝트 관심 분야 목록을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.project_id").type(JsonFieldType.NUMBER).description("프로젝트 ID").optional(),
+                                        fieldWithPath("body.fields").type(JsonFieldType.ARRAY).description("관심 분야 목록"),
+                                        fieldWithPath("body.fields[].field_name").type(JsonFieldType.STRING).description("관심 분야 이름"),
+                                        fieldWithPath("body.fields[].is_selected").type(JsonFieldType.BOOLEAN).description("선택 여부")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getPurposes() throws Exception {
+        long projectId = 1L;
+        MyProjectsResponseDto.StringListResponse response =
+                new MyProjectsResponseDto.StringListResponse(projectId, List.of("목표1", "목표2"));
+
+        given(projectQueryService.getPurposes(eq(projectId))).willReturn(response);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/purposes", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-purposes-get",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 목표 조회")
+                                .description("프로젝트 목표 목록을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.project_id").type(JsonFieldType.NUMBER).description("프로젝트 ID"),
+                                        fieldWithPath("body.values").type(JsonFieldType.ARRAY).description("목표 목록")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getFunctions() throws Exception {
+        long projectId = 1L;
+        MyProjectsResponseDto.StringListResponse response =
+                new MyProjectsResponseDto.StringListResponse(projectId, List.of("기능1", "기능2"));
+
+        given(projectQueryService.getPurposes(eq(projectId))).willReturn(response);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/functions", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-functions-get",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 주요기능 조회")
+                                .description("프로젝트 주요기능 목록을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.project_id").type(JsonFieldType.NUMBER).description("프로젝트 ID"),
+                                        fieldWithPath("body.values").type(JsonFieldType.ARRAY).description("주요기능 목록")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getServiceUsers() throws Exception {
+        long projectId = 1L;
+        MyProjectsResponseDto.StringListResponse response =
+                new MyProjectsResponseDto.StringListResponse(projectId, List.of("사용자1", "사용자2"));
+
+        given(projectQueryService.getServiceUsers(eq(projectId))).willReturn(response);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/service-users", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-service-users-get",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 서비스 사용자 조회")
+                                .description("프로젝트 서비스 사용자 목록을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.project_id").type(JsonFieldType.NUMBER).description("프로젝트 ID"),
+                                        fieldWithPath("body.values").type(JsonFieldType.ARRAY).description("서비스 사용자 목록")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getPlanFiles() throws Exception {
+        long projectId = 1L;
+        List<MyProjectsResponseDto.ProjectPlanFileInfo> files = List.of(
+                new MyProjectsResponseDto.ProjectPlanFileInfo(1L, "기획서", "file-key.pdf", PlanFileType.FILE, FileExt.PDF),
+                new MyProjectsResponseDto.ProjectPlanFileInfo(2L, "피그마", "https://figma.com/xxx", PlanFileType.LINK, null)
+        );
+        MyProjectsResponseDto.ProjectPlanFilesResponse response =
+                new MyProjectsResponseDto.ProjectPlanFilesResponse(projectId, files);
+
+        given(projectQueryService.getPlanFiles(eq(projectId))).willReturn(response);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/plan-file", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-files-get",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 조회")
+                                .description("프로젝트 세부 기획 파일 목록을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.project_id").type(JsonFieldType.NUMBER).description("프로젝트 ID"),
+                                        fieldWithPath("body.files").type(JsonFieldType.ARRAY).description("세부 기획 파일 목록"),
+                                        fieldWithPath("body.files[].plan_file_id").type(JsonFieldType.NUMBER).description("파일 ID"),
+                                        fieldWithPath("body.files[].name").type(JsonFieldType.STRING).description("표시명"),
+                                        fieldWithPath("body.files[].file_name").type(JsonFieldType.STRING).description("파일명 또는 링크"),
+                                        fieldWithPath("body.files[].plan_file_type").type(JsonFieldType.STRING).description("파일 타입 (FILE/LINK)"),
+                                        fieldWithPath("body.files[].file_ext").type(JsonFieldType.STRING).optional().description("파일 확장자")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void downloadPlanFile() throws Exception {
+        long projectId = 1L;
+        long planFileId = 2L;
+        String url = "https://cdn.example.com/download/plan.pdf";
+
+        given(projectQueryService.getPlanFileDownloadUrl(eq(projectId), eq(planFileId))).willReturn(url);
+
+        mockMvc.perform(
+                        get("/api/v1/mypage/projects/{projectId}/plan-file/{planFileId}/download", projectId, planFileId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-download",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 다운로드")
+                                .description("프로젝트 세부 기획 파일 다운로드 URL을 조회합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID"),
+                                        parameterWithName("planFileId").description("파일 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.download_url").type(JsonFieldType.STRING).description("다운로드 URL")
                                 )
                                 .build()
                         )
