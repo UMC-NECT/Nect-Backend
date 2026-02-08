@@ -6,16 +6,21 @@ import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
 import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
+import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
 import com.nect.api.domain.team.project.service.ProjectUserService;
+import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -31,6 +36,7 @@ import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.docu
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.request.RequestDocumentation.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class MypageControllerTest extends NectDocumentApiTester {
@@ -40,6 +46,12 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private ProjectUserService projectUserService;
+
+    @MockitoBean
+    private MyPageProjectCommandService projectCommandService;
+
+    @MockitoBean
+    private MyPageProjectQueryService projectQueryService;
 
     @MockitoBean
     private RecruitmentService recruitmentService;
@@ -75,7 +87,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 조회")
                                         .description("사용자의 마이페이지 프로필 정보를 조회합니다.")
                                         .responseFields(
@@ -114,7 +126,7 @@ class MypageControllerTest extends NectDocumentApiTester {
 
         // 요청 JSON (모든 필드 포함한 완전한 예시)
         String requestJson = "{"
-                + "\"profileImageUrl\": \"https://example.com/profile/kim-junhyeok.jpg\","
+                + "\"profileImageFileName\": \"kim-junhyeok.jpg\","
                 + "\"bio\": \"안녕하세요! 3년차 백엔드 개발자 김준혁입니다. Spring Boot와 Java에 능숙하며 RESTful API 설계 및 구현을 전문으로 합니다.\","
                 + "\"coreCompetencies\": \"Spring Boot, Java, REST API, MySQL, Redis, Docker, Kubernetes, AWS\","
                 + "\"userStatus\": \"JOB_SEEKING\","
@@ -207,11 +219,11 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-patch-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 수정")
                                         .description("마이페이지 프로필 정보를 부분 수정합니다.\n\n" +
                                                 "**수정 가능한 필드**\n" +
-                                                "- 기본정보: 프로필 사진 (profileImageUrl), 자기소개 (bio), 핵심 역량 (coreCompetencies), 사용자 상태 (userStatus), 공개 매칭 여부 (isPublicMatching), 경력 기간 (careerDuration), 관심 직무 (interestedJob), 관심 직종 (interestedField)\n" +
+                                                "- 기본정보: 프로필 사진 파일명 (profileImageFileName), 자기소개 (bio), 핵심 역량 (coreCompetencies), 사용자 상태 (userStatus), 공개 매칭 여부 (isPublicMatching), 경력 기간 (careerDuration), 관심 직무 (interestedJob), 관심 직종 (interestedField)\n" +
                                                 "- 경력관리: 경력 목록 (careers) - 프로젝트명, 산업분야, 기간, 역할, 주요 성과 저장 (projectName, industryField, startDate, endDate, isOngoing, role, achievements)\n" +
                                                 "- 포트폴리오: 포트폴리오 목록 (portfolios) - 제목, 외부 링크, 파일 URL 관리 (title, link, fileUrl)\n" +
                                                 "- 프로젝트 히스토리: 프로젝트 히스토리 목록 (projectHistories) - 프로젝트명, 이미지, 설명, 기간 관리\n\n" +
@@ -222,7 +234,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 "- role도 응답에서 한국어로 변환됩니다 (개발자, 디자이너, 기획자, 마케터).\n" +
                                                 "- 유효하지 않은 userStatus 값이면 M002 에러가 반환됩니다.")
                                         .requestFields(
-                                                fieldWithPath("profileImageUrl").type(JsonFieldType.STRING).description("프로필 사진 URL. 사용자 프로필 이미지 주소 (예: https://example.com/profile.jpg)").optional(),
+                                                fieldWithPath("profileImageFileName").type(JsonFieldType.STRING).description("프로필 사진 파일명. S3 업로드 후 반환받은 파일명 (예: 550e8400-e29b-41d4-a716-446655440000_profile.jpg)").optional(),
                                                 fieldWithPath("bio").type(JsonFieldType.STRING).description("자기소개. 사용자가 작성한 자유로운 형식의 소개글 (예: 안녕하세요! 3년차 백엔드 개발자입니다)").optional(),
                                                 fieldWithPath("coreCompetencies").type(JsonFieldType.STRING).description("핵심 역량. 보유 중인 주요 기술 및 역량을 쉼표로 구분하여 작성 (예: Spring Boot, Java, REST API, MySQL)").optional(),
                                                 fieldWithPath("userStatus").type(JsonFieldType.STRING).description("사용자 상태. 현재 상태를 나타내는 한국어 값 (재학중, 구직중, 재직중)").optional(),
@@ -257,6 +269,249 @@ class MypageControllerTest extends NectDocumentApiTester {
     }
 
     @Test
+    void editProjectField() throws Exception {
+        long projectId = 1L;
+
+        doNothing().when(projectCommandService)
+                .changeProjectInterest(eq(projectId), eq(InterestField.IT_WEB_MOBILE));
+
+        mockMvc.perform(
+                        patch("/api/v1/mypage/projects/{projectId}/project-field?field=IT_WEB_MOBILE", projectId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-field-edit",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 분야 수정")
+                                .description("프로젝트 관심 분야 선택 상태를 변경합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .queryParameters(
+                                        parameterWithName("field").description("프로젝트 관심 분야(InterestField)")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void uploadPlanFile_FILE() throws Exception {
+        long projectId = 1L;
+
+        MockMultipartFile name = new MockMultipartFile(
+                "name",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "기획서".getBytes()
+        );
+        MockMultipartFile planFileType = new MockMultipartFile(
+                "planFileType",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                "\"FILE\"".getBytes()
+        );
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "sample.pdf",
+                MediaType.APPLICATION_PDF_VALUE,
+                "dummy pdf bytes".getBytes()
+        );
+
+        doNothing().when(projectCommandService)
+                .addPlanFile(eq(projectId), anyString(), eq(PlanFileType.FILE), any(), any());
+
+        mockMvc.perform(
+                        multipart("/api/v1/mypage/projects/{projectId}/plan-file", projectId)
+                                .file(name)
+                                .file(planFileType)
+                                .file(file)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.MULTIPART_FORM_DATA)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-upload",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestParts(
+                                partWithName("name").description("파일 표시명"),
+                                partWithName("planFileType").description("파일 타입 (FILE 또는 LINK)"),
+                                partWithName("file").description("업로드할 파일(MultipartFile)"),
+                                partWithName("link").description("링크 URL (planFileType=LINK일 때만 사용)").optional()
+                        ),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 추가")
+                                .description(
+                                        "프로젝트의 세부 기획 파일(업로드 또는 링크)을 추가합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약: 무엇을 하는 API인지 간단히 서술\n" +
+                                        "- 입력 규칙: planFileType별 필수 파트를 명시\n" +
+                                        "- 제약/예외: 파일 확장자/용량 제한 등 핵심 제약을 적기\n\n" +
+                                        "**입력 규칙**\n" +
+                                        "- planFileType=FILE: name, planFileType, file 필수 (link는 무시)\n" +
+                                        "- planFileType=LINK: name, planFileType, link 필수 (file은 무시)\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void editPlanFile_LINK() throws Exception {
+        long projectId = 1L;
+        long planFileId = 10L;
+
+        MockMultipartFile name = new MockMultipartFile(
+                "name",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "Figma 링크".getBytes()
+        );
+        MockMultipartFile planFileType = new MockMultipartFile(
+                "planFileType",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                "\"LINK\"".getBytes()
+        );
+        MockMultipartFile link = new MockMultipartFile(
+                "link",
+                "",
+                MediaType.TEXT_PLAIN_VALUE,
+                "https://figma.com/file/abc".getBytes()
+        );
+
+        doNothing().when(projectCommandService)
+                .editPlanFile(eq(projectId), eq(planFileId), anyString(), eq(PlanFileType.LINK), any(), anyString());
+
+        mockMvc.perform(
+                        multipart("/api/v1/mypage/projects/{projectId}/plan-file/{planFileId}", projectId, planFileId)
+                                .file(name)
+                                .file(planFileType)
+                                .file(link)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .contentType(MediaType.MULTIPART_FORM_DATA)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .with(request -> {
+                                    request.setMethod("PATCH");
+                                    return request;
+                                })
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-edit",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestParts(
+                                partWithName("name").description("파일 표시명"),
+                                partWithName("planFileType").description("파일 타입 (FILE 또는 LINK)"),
+                                partWithName("file").description("업로드할 파일(MultipartFile) - planFileType=FILE일 때만 사용").optional(),
+                                partWithName("link").description("링크 URL - planFileType=LINK일 때만 사용").optional()
+                        ),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 수정")
+                                .description(
+                                        "프로젝트 세부 기획 파일의 내용을 수정합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약으로 변경 범위를 먼저 설명\n" +
+                                        "- planFileType 변경 가능 여부와 필수 파트를 명시\n" +
+                                        "- 기존 FILE ↔ LINK 전환 시 처리(기존 파일 삭제 등) 요약\n\n" +
+                                        "**입력 규칙**\n" +
+                                        "- planFileType=FILE: name, planFileType, file 필수\n" +
+                                        "- planFileType=LINK: name, planFileType, link 필수\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID"),
+                                        parameterWithName("planFileId").description("세부 기획 파일 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void removePlanFile() throws Exception {
+        long projectId = 1L;
+        long planFileId = 10L;
+
+        doNothing().when(projectCommandService).removePlanFile(eq(projectId), eq(planFileId));
+
+        mockMvc.perform(
+                        delete("/api/v1/mypage/projects/{projectId}/plan-file/{planFileId}", projectId, planFileId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-plan-file-remove",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("마이페이지")
+                                .summary("프로젝트 세부 기획 파일 삭제")
+                                .description(
+                                        "프로젝트 세부 기획 파일을 삭제합니다.\n\n" +
+                                        "**설명 작성 가이드(Description 텍스트 규칙)**\n" +
+                                        "- 1줄 요약으로 삭제 대상과 범위를 명확히\n" +
+                                        "- 삭제 시 파일 스토리지 제거 여부를 간단히 명시\n"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID"),
+                                        parameterWithName("planFileId").description("세부 기획 파일 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
     void getProfileAnalysis() throws Exception {
         // given
         ProfileSettingsDto.ProfileAnalysisResponseDto mockResponse = new ProfileSettingsDto.ProfileAnalysisResponseDto(
@@ -272,7 +527,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile-analysis",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("mypage")
+                                        .tag("마이페이지")
                                         .summary("마이페이지 프로필 분석 불러오기")
                                         .description("데이터베이스에 저장된 AI 프로필 분석 결과를 조회합니다. 분석 결과가 없으면 profileType과 tags는 null입니다.")
                                         .responseFields(
@@ -316,7 +571,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("프로젝트 멤버 필드(파트) 변경")
                                 .description("프로젝트 내 멤버의 필드(파트) 및 커스텀 필드를 변경합니다.")
                                 .requestHeaders(
@@ -363,7 +618,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("프로젝트 멤버 강퇴")
                                 .description("프로젝트에서 특정 멤버를 강퇴합니다.")
                                 .requestHeaders(
@@ -416,7 +671,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("프로젝트 멤버 타입 변경")
                                 .description("프로젝트에서 특정 멤버의 타입을 변경합니다. (LEADER | LEAD | MEMBER)")
                                 .requestHeaders(
@@ -475,7 +730,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("모집정보 생성")
                                 .description("프로젝트에 대한 모집정보를 추가합니다. 작성자는 프로젝트 리더여야 합니다.")
                                 .requestHeaders(
@@ -538,7 +793,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("모집정보 수정")
                                 .description("기존 모집정보를 수정합니다. 작성자는 프로젝트 리더여야 합니다.")
                                 .requestHeaders(
@@ -598,7 +853,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("마이페이지")
                                 .summary("프로젝트 모집정보 조회")
                                 .description("프로젝트에 등록된 모든 모집정보를 조회합니다.")
                                 .requestHeaders(

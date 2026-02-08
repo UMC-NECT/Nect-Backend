@@ -1,9 +1,13 @@
 package com.nect.api.domain.team.workspace.dto.res;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nect.api.domain.team.process.dto.res.AttachmentDto;
+import com.nect.core.entity.team.enums.DocumentType;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.workspace.enums.PostType;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PostGetResDto(
         @JsonProperty("post_id")
@@ -18,9 +22,6 @@ public record PostGetResDto(
         @JsonProperty("content")
         String content,
 
-        @JsonProperty("is_pinned")
-        Boolean isPinned,
-
         @JsonProperty("like_count")
         Long likeCount,
 
@@ -28,7 +29,10 @@ public record PostGetResDto(
         LocalDateTime createdAt,
 
         @JsonProperty("author")
-        AuthorDto author
+        AuthorDto author,
+
+        @JsonProperty("attachments")
+        List<PostAttachmentResDto> attachments
 ) {
     public record AuthorDto(
             @JsonProperty("user_id")

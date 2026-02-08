@@ -53,20 +53,23 @@ public class IdeaAnalysisService {
             OpenAiResponse openAiResponse = openAiClient.createResponse(openAiRequest);
             IdeaAnalysisResponseDto response = responseConverter.toIdeaAnalysisResponse(openAiResponse);
 
-            LocalDate targetDate = requestDto.getTargetCompletionDate();
+
+            LocalDate startDate = LocalDate.now();
+
             int totalWeeks = response.getProjectDuration().getTotalWeeks();
-            LocalDate startDate = targetDate.minusWeeks(totalWeeks).plusDays(1);
+
+            LocalDate endDate = startDate.plusWeeks(totalWeeks).minusDays(1);
+
 
             response.getProjectDuration().setStartDate(startDate);
-            response.getProjectDuration().setEndDate(targetDate);
+            response.getProjectDuration().setEndDate(endDate);
             response.getProjectDuration().setDisplayText(
                     totalWeeks + "주 (" +
                             startDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) +
                             " ~ " +
-                            targetDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) +
+                            endDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) +
                             ")"
             );
-
 
             calculateWeeklyDates(response.getWeeklyRoadmap(), startDate);
             validateRoleFieldConsistency(response);
@@ -81,6 +84,7 @@ public class IdeaAnalysisService {
         } catch (Exception e) {
             throw new IdeaAnalysisException(IdeaAnalysisErrorCode.ANALYSIS_FAILED, "AI 분석 중  오류가 발생했습니다.", e);       }
     }
+
 
     /**
      * 주차별 날짜 계산
@@ -140,6 +144,7 @@ public class IdeaAnalysisService {
         // 메인 분석 엔티티 생성
         ProjectIdeaAnalysis analysis = ProjectIdeaAnalysis.builder()
                 .userId(userId)
+                .description(response.getDescription())
                 .recommendedProjectName1(projectNames.get(0))
                 .recommendedProjectName2(projectNames.size() > 1 ? projectNames.get(1) : null)
                 .recommendedProjectName3(projectNames.size() > 2 ? projectNames.get(2) : null)
@@ -221,6 +226,8 @@ public class IdeaAnalysisService {
         return IdeaAnalysisEntityConverter.toPageResponseDto(analysisPage, analysisDto);
 
     }
+
+
 
     @Transactional
     public void deleteAnalysis(Long userId, Long analysisId) {

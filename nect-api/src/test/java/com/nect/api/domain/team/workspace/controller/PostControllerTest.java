@@ -6,12 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.workspace.dto.req.PostCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.PostUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.*;
-import com.nect.api.domain.team.workspace.enums.PostSort;
 import com.nect.api.domain.team.workspace.facade.PostFacade;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.team.enums.DocumentType;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.workspace.enums.PostType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -110,7 +111,6 @@ class PostControllerTest {
         long userId = 1L;
 
         PostCreateReqDto request = new PostCreateReqDto(
-                PostType.NOTICE,
                 "공지 제목",
                 "공지 내용",
                 true,
@@ -144,10 +144,9 @@ class PostControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
-                                                fieldWithPath("post_type").type(STRING).description("게시글 타입"),
                                                 fieldWithPath("title").type(STRING).description("제목"),
                                                 fieldWithPath("content").type(STRING).description("내용"),
-                                                fieldWithPath("is_pinned").type(BOOLEAN).optional().description("상단 고정 여부"),
+                                                fieldWithPath("is_notice").type(BOOLEAN).optional().description("공지 여부(true면 공지)"),
                                                 fieldWithPath("mention_user_ids").type(ARRAY).optional().description("멘션 유저 ID 목록")
                                         )
                                         .responseFields(
@@ -173,15 +172,38 @@ class PostControllerTest {
         long postId = 100L;
         long userId = 1L;
 
+        List<PostAttachmentResDto> attachments = List.of(
+                new PostAttachmentResDto(
+                        10L,
+                        DocumentType.FILE,
+                        "file-title",
+                        null,
+                        "spec.pdf",
+                        FileExt.PDF,
+                        12345L,
+                        "https://presigned-url.example.com/spec.pdf"
+                ),
+                new PostAttachmentResDto(
+                        11L,
+                        DocumentType.LINK,
+                        "피그마 링크",
+                        "https://figma.com/xxx",
+                        null,
+                        null,
+                        0L,
+                        null
+                )
+        );
+
         PostGetResDto response = new PostGetResDto(
                 postId,
                 PostType.NOTICE,
                 "공지 제목",
                 "공지 내용",
-                true,
                 7L,
                 LocalDateTime.of(2026, 1, 31, 10, 0),
-                new PostGetResDto.AuthorDto(1L, "노수민", "패트")
+                new PostGetResDto.AuthorDto(1L, "노수민", "패트"),
+                attachments
         );
 
         given(postFacade.getPost(eq(projectId), eq(userId), eq(postId)))
@@ -208,24 +230,33 @@ class PostControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .responseFields(
-                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
-                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
-                                                fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+                                                fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(JsonFieldType.STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상세 설명"),
 
-                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.post_id").type(NUMBER).description("게시글 ID"),
-                                                fieldWithPath("body.post_type").type(STRING).description("게시글 타입"),
-                                                fieldWithPath("body.title").type(STRING).description("제목"),
-                                                fieldWithPath("body.content").type(STRING).description("내용"),
-                                                fieldWithPath("body.is_pinned").type(BOOLEAN).description("상단 고정 여부"),
-                                                fieldWithPath("body.like_count").type(NUMBER).description("좋아요 수"),
-                                                fieldWithPath("body.created_at").type(STRING).description("작성 시각(ISO-8601)"),
+                                                fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.post_id").type(JsonFieldType.NUMBER).description("게시글 ID"),
+                                                fieldWithPath("body.post_type").type(JsonFieldType.STRING).description("게시글 타입"),
+                                                fieldWithPath("body.title").type(JsonFieldType.STRING).description("제목"),
+                                                fieldWithPath("body.content").type(JsonFieldType.STRING).description("내용"),
+                                                fieldWithPath("body.like_count").type(JsonFieldType.NUMBER).description("좋아요 수"),
+                                                fieldWithPath("body.created_at").type(JsonFieldType.STRING).description("작성 시각(ISO-8601)"),
 
-                                                fieldWithPath("body.author").type(OBJECT).description("작성자 정보"),
-                                                fieldWithPath("body.author.user_id").type(NUMBER).description("작성자 유저 ID"),
-                                                fieldWithPath("body.author.name").type(STRING).description("작성자 이름"),
-                                                fieldWithPath("body.author.nickname").type(STRING).description("작성자 별명")
+                                                fieldWithPath("body.author").type(JsonFieldType.OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.author.user_id").type(JsonFieldType.NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.author.name").type(JsonFieldType.STRING).description("작성자 이름"),
+                                                fieldWithPath("body.author.nickname").type(JsonFieldType.STRING).description("작성자 별명"),
+
+                                                fieldWithPath("body.attachments").type(JsonFieldType.ARRAY).description("첨부 목록(FILE/LINK 통합)"),
+                                                fieldWithPath("body.attachments[].document_id").type(JsonFieldType.NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.attachments[].document_type").type(JsonFieldType.STRING).description("문서 타입(FILE|LINK)"),
+                                                fieldWithPath("body.attachments[].title").type(JsonFieldType.STRING).description("제목(파일/링크 공통)"),
+                                                fieldWithPath("body.attachments[].link_url").type(JsonFieldType.STRING).optional().description("링크 URL(LINK일 때)"),
+                                                fieldWithPath("body.attachments[].file_name").type(JsonFieldType.STRING).optional().description("파일명(FILE일 때)"),
+                                                fieldWithPath("body.attachments[].file_ext").type(JsonFieldType.STRING).optional().description("파일 확장자(FILE일 때)"),
+                                                fieldWithPath("body.attachments[].file_size").type(JsonFieldType.NUMBER).description("파일 크기(FILE일 때, LINK는 0)"),
+                                                fieldWithPath("body.attachments[].download_url").type(JsonFieldType.STRING).optional().description("다운로드 URL(FILE일 때 presigned)")
                                         )
                                         .build()
                         )
@@ -247,7 +278,6 @@ class PostControllerTest {
                                 PostType.NOTICE,
                                 "공지 제목",
                                 "공지 내용...",
-                                true,
                                 7L,
                                 LocalDateTime.of(2026, 1, 31, 10, 0)
                         ),
@@ -256,24 +286,21 @@ class PostControllerTest {
                                 PostType.FREE,
                                 "자유글",
                                 "자유 내용...",
-                                false,
                                 1L,
                                 LocalDateTime.of(2026, 1, 31, 11, 0)
                         )
                 ),
-                new PostListResDto.PageInfo(0, 20, 2L, 1, false)
+                new PostListResDto.PageInfo(0, 10, 2L, 1, false)
         );
 
-        given(postFacade.getPostList(eq(projectId), eq(userId), any(), eq(PostSort.LATEST), eq(0), eq(20)))
+        given(postFacade.getPostList(eq(projectId), eq(userId), any(), eq(0), eq(10)))
                 .willReturn(response);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/boards/posts", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .param("type", "NOTICE")
-                        .param("sort", "LATEST")
                         .param("page", "0")
-                        .param("size", "20")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andDo(document("post-list",
@@ -283,7 +310,7 @@ class PostControllerTest {
                                 ResourceSnippetParameters.builder()
                                         .tag("Post")
                                         .summary("게시글 목록 조회")
-                                        .description("프로젝트 게시판의 게시글 목록을 페이징 조회합니다. pinned 우선 정렬이 적용될 수 있습니다.")
+                                        .description("프로젝트 게시판의 게시글 목록을 페이징 조회합니다. (기본 최신순)")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
                                         )
@@ -292,9 +319,7 @@ class PostControllerTest {
                                         )
                                         .queryParameters(
                                                 ResourceDocumentation.parameterWithName("type").optional().description("게시글 타입(미지정 시 전체)"),
-                                                ResourceDocumentation.parameterWithName("sort").optional().description("정렬 기준(LATEST|OLDEST|POPULAR)"),
-                                                ResourceDocumentation.parameterWithName("page").optional().description("페이지 번호(0부터)"),
-                                                ResourceDocumentation.parameterWithName("size").optional().description("페이지 크기(기본 20, 최대 50)")
+                                                ResourceDocumentation.parameterWithName("page").optional().description("페이지 번호(0부터)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -308,7 +333,6 @@ class PostControllerTest {
                                                 fieldWithPath("body.posts[].post_type").type(STRING).description("게시글 타입"),
                                                 fieldWithPath("body.posts[].title").type(STRING).description("제목"),
                                                 fieldWithPath("body.posts[].content_preview").type(STRING).description("내용 프리뷰(일부)"),
-                                                fieldWithPath("body.posts[].is_pinned").type(BOOLEAN).description("상단 고정 여부"),
                                                 fieldWithPath("body.posts[].like_count").type(NUMBER).description("좋아요 수"),
                                                 fieldWithPath("body.posts[].created_at").type(STRING).description("작성 시각(ISO-8601)"),
 
@@ -323,7 +347,7 @@ class PostControllerTest {
                         )
                 ));
 
-        verify(postFacade).getPostList(eq(projectId), eq(userId), any(), eq(PostSort.LATEST), eq(0), eq(20));
+        verify(postFacade).getPostList(eq(projectId), eq(userId), any(), eq(0), eq(10));
     }
 
     @Test
@@ -333,9 +357,7 @@ class PostControllerTest {
         long postId = 100L;
         long userId = 1L;
 
-        // PostUpdateReqDto에서 is_pinned가 primitive boolean이므로 null(변경 없음) 표현 불가
         PostUpdateReqDto request = new PostUpdateReqDto(
-                PostType.FREE,
                 "수정 제목",
                 "수정 내용",
                 false,
@@ -370,10 +392,9 @@ class PostControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
-                                                fieldWithPath("post_type").type(STRING).optional().description("게시글 타입(미지정 시 유지)"),
                                                 fieldWithPath("title").type(STRING).optional().description("제목(미지정 시 유지)"),
                                                 fieldWithPath("content").type(STRING).optional().description("내용(미지정 시 유지)"),
-                                                fieldWithPath("is_pinned").type(BOOLEAN).description("상단 고정 여부"),
+                                                fieldWithPath("is_notice").type(BOOLEAN).optional().description("공지 여부(미지정 시 유지)"),
                                                 fieldWithPath("mention_user_ids").type(ARRAY).optional().description("멘션 유저 ID 목록")
                                         )
                                         .responseFields(
@@ -394,100 +415,6 @@ class PostControllerTest {
     }
 
     @Test
-    @DisplayName("게시글 좋아요 토글")
-    void togglePostLike() throws Exception {
-        long projectId = 1L;
-        long postId = 100L;
-        long userId = 1L;
-
-        PostLikeToggleResDto response = new PostLikeToggleResDto(postId, true, 8L);
-
-        given(postFacade.togglePostLike(eq(projectId), eq(userId), eq(postId)))
-                .willReturn(response);
-
-        mockMvc.perform(post("/api/v1/projects/{projectId}/boards/posts/{postId}/likes", projectId, postId)
-                        .with(mockUser(userId))
-                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andDo(document("post-like-toggle",
-                        preprocessRequest(prettyPrint()),
-                        preprocessResponse(prettyPrint()),
-                        resource(
-                                ResourceSnippetParameters.builder()
-                                        .tag("Post")
-                                        .summary("게시글 좋아요 토글")
-                                        .description("게시글 좋아요를 토글합니다.")
-                                        .pathParameters(
-                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
-                                                ResourceDocumentation.parameterWithName("postId").description("게시글 ID")
-                                        )
-                                        .requestHeaders(
-                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
-                                        )
-                                        .responseFields(
-                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
-                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
-                                                fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
-
-                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
-                                                fieldWithPath("body.post_id").type(NUMBER).description("게시글 ID"),
-                                                fieldWithPath("body.liked").type(BOOLEAN).description("좋아요 상태(true=좋아요됨)"),
-                                                fieldWithPath("body.like_count").type(NUMBER).description("요청 처리 후 좋아요 수")
-                                        )
-                                        .build()
-                        )
-                ));
-
-        verify(postFacade).togglePostLike(eq(projectId), eq(userId), eq(postId));
-    }
-
-    @Test
-    @DisplayName("게시글 삭제")
-    void deletePost() throws Exception {
-        long projectId = 1L;
-        long postId = 100L;
-        long userId = 1L;
-
-        willDoNothing().given(postFacade).deletePost(eq(projectId), eq(userId), eq(postId));
-
-        mockMvc.perform(delete("/api/v1/projects/{projectId}/boards/posts/{postId}", projectId, postId)
-                        .with(mockUser(userId))
-                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andDo(document("post-delete",
-                        preprocessRequest(prettyPrint()),
-                        preprocessResponse(prettyPrint()),
-                        resource(
-                                ResourceSnippetParameters.builder()
-                                        .tag("Post")
-                                        .summary("게시글 삭제")
-                                        .description("게시글을 삭제(soft delete)합니다. 작성자만 삭제할 수 있습니다.")
-                                        .pathParameters(
-                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
-                                                ResourceDocumentation.parameterWithName("postId").description("게시글 ID")
-                                        )
-                                        .requestHeaders(
-                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
-                                        )
-                                        .responseFields(
-                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
-                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
-                                                fieldWithPath("status.message").type(STRING).description("메시지"),
-                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
-
-                                                fieldWithPath("body").type(NULL).optional().description("응답 바디(없음)")
-                                        )
-                                        .build()
-                        )
-                ));
-
-        verify(postFacade).deletePost(eq(projectId), eq(userId), eq(postId));
-    }
-
-    @Test
     @DisplayName("게시글 프리뷰 조회")
     void getPostsPreview() throws Exception {
         long projectId = 1L;
@@ -499,14 +426,12 @@ class PostControllerTest {
                                 100L,
                                 PostType.NOTICE,
                                 "공지 제목",
-                                true,
                                 LocalDateTime.of(2026, 1, 31, 10, 0)
                         ),
                         new PostsPreviewResDto.Item(
                                 101L,
                                 PostType.FREE,
                                 "자유글",
-                                false,
                                 LocalDateTime.of(2026, 1, 31, 11, 0)
                         )
                 )
@@ -551,7 +476,6 @@ class PostControllerTest {
                                                 fieldWithPath("body.posts[].post_id").type(NUMBER).description("게시글 ID"),
                                                 fieldWithPath("body.posts[].post_type").type(STRING).description("게시글 타입"),
                                                 fieldWithPath("body.posts[].title").type(STRING).description("제목"),
-                                                fieldWithPath("body.posts[].is_pinned").type(BOOLEAN).description("상단 고정 여부"),
                                                 fieldWithPath("body.posts[].created_at").type(STRING).description("작성 시각(ISO-8601)")
                                         )
                                         .build()
@@ -560,4 +484,5 @@ class PostControllerTest {
 
         verify(postFacade).getPostsPreview(eq(projectId), eq(userId), any(), eq(4));
     }
+
 }

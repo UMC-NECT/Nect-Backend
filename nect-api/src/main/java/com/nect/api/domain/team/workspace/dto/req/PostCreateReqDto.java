@@ -6,17 +6,14 @@ import com.nect.core.entity.team.workspace.enums.PostType;
 import java.util.List;
 
 public record PostCreateReqDto(
-        @JsonProperty("post_type")
-        PostType postType,
-
         @JsonProperty("title")
         String title,
 
         @JsonProperty("content")
         String content,
 
-        @JsonProperty("is_pinned")
-        Boolean isPinned,
+        @JsonProperty("is_notice")
+        Boolean isNotice,
 
         @JsonProperty("mention_user_ids")
         List<Long> mentionUserIds

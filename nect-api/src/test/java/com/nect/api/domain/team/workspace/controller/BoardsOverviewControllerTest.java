@@ -177,7 +177,6 @@ class BoardsOverviewControllerTest {
                                 PostType.NOTICE,
                                 "공지 제목",
                                 "공지 내용 프리뷰...",
-                                true,
                                 10L,
                                 LocalDateTime.of(2026, 1, 31, 12, 0, 0)
                         ),
@@ -186,7 +185,6 @@ class BoardsOverviewControllerTest {
                                 PostType.FREE,
                                 "자유 글 제목",
                                 "자유 글 프리뷰...",
-                                false,
                                 3L,
                                 LocalDateTime.of(2026, 1, 30, 9, 30, 0)
                         )

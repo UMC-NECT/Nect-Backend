@@ -3,6 +3,7 @@ package com.nect.api.domain.team.workspace.service;
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
+import com.nect.api.domain.team.process.dto.res.AttachmentDto;
 import com.nect.api.domain.team.workspace.dto.req.PostCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.PostUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.*;
@@ -13,11 +14,13 @@ import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.workspace.Post;
 import com.nect.core.entity.team.workspace.PostLike;
 import com.nect.core.entity.team.workspace.PostMention;
+import com.nect.core.entity.team.workspace.PostSharedDocument;
 import com.nect.core.entity.team.workspace.enums.PostType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
@@ -25,6 +28,7 @@ import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.workspace.PostLikeRepository;
 import com.nect.core.repository.team.workspace.PostMentionRepository;
 import com.nect.core.repository.team.workspace.PostRepository;
+import com.nect.core.repository.team.workspace.PostSharedDocumentRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -46,6 +50,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostMentionRepository postMentionRepository;
+    private final PostSharedDocumentRepository postSharedDocumentRepository;
 
     private final ProjectHistoryPublisher historyPublisher;
     private final NotificationFacade notificationFacade;
@@ -93,6 +98,21 @@ public class PostService {
         notificationFacade.notify(receivers, command);
     }
 
+    private void validateMaxLength(String value, int max, String fieldName) {
+        if (value == null) return;
+        // 공백 포함 길이(문자 수) 기준
+        int len = value.codePointCount(0, value.length());
+        if (len > max) {
+            throw new PostException(PostErrorCode.INVALID_REQUEST,
+                    fieldName + " is too long. max=" + max + ", actual=" + len);
+        }
+    }
+
+    private PostType resolvePostType(Boolean isNotice) {
+        return Boolean.TRUE.equals(isNotice) ? PostType.NOTICE : PostType.FREE;
+    }
+
+
     // 게시글 생성 서비스
     @Transactional
     public PostCreateResDto createPost(Long projectId, Long userId, PostCreateReqDto req) {
@@ -118,18 +138,21 @@ public class PostService {
         if (req.content() == null || req.content().isBlank()) {
             throw new PostException(PostErrorCode.INVALID_REQUEST, "content is blank");
         }
-        if (req.postType() == null) {
-            throw new PostException(PostErrorCode.INVALID_REQUEST, "postType is null");
-        }
+
+        // 길이 제한(공백 포함)
+        validateMaxLength(req.title(), 200, "title");
+        validateMaxLength(req.content(), 1000, "content");
+
+        PostType postType = resolvePostType(req.isNotice());
+
 
         // 게시글 생성
         Post post = Post.builder()
                 .author(author)
                 .project(project)
-                .postType(req.postType())
+                .postType(postType)
                 .title(req.title())
                 .content(req.content())
-                .isPinned(Boolean.TRUE.equals(req.isPinned()))
                 .build();
 
         Post saved = postRepository.save(post);
@@ -154,7 +177,6 @@ public class PostService {
                 Map.of(
                         "postType", saved.getPostType().name(),
                         "title", saved.getTitle(),
-                        "isPinned", saved.getIsPinned(),
                         "mentionUserIds", mentionIds
                 )
         );
@@ -182,19 +204,40 @@ public class PostService {
                 .orElseThrow(() -> new PostException(PostErrorCode.INVALID_REQUEST,
                         "post not found or not in project. projectId=" + projectId + ", postId=" + postId));
 
+        // attachments 조회
+        List<PostSharedDocument> psds = postSharedDocumentRepository.findAllActiveByPostIdWithDocument(postId);
+
+        List<PostAttachmentResDto> attachments = psds.stream()
+                .map(psd -> {
+                    SharedDocument d = psd.getDocument();
+
+
+                    return new PostAttachmentResDto(
+                            d.getId(),
+                            d.getDocumentType(),
+                            d.getTitle(),
+                            d.getLinkUrl(),
+                            d.getFileName(),
+                            d.getFileExt(),
+                            d.getFileSize(),
+                            null
+                    );
+                })
+                .toList();
+
         return new PostGetResDto(
                 post.getId(),
                 post.getPostType(),
                 post.getTitle(),
                 post.getContent(),
-                post.getIsPinned(),
                 post.getLikeCount(),
                 post.getCreatedAt(),
                 new PostGetResDto.AuthorDto(
                         post.getAuthor().getUserId(),
                         post.getAuthor().getName(),
                         post.getAuthor().getNickname()
-                )
+                ),
+                attachments
         );
     }
 
@@ -209,7 +252,7 @@ public class PostService {
 
     // 게시글 목록 조회 서비스
     @Transactional(readOnly = true)
-    public PostListResDto getPostList(Long projectId, Long userId, PostType type, PostSort sort, int page, int size) {
+    public PostListResDto getPostList(Long projectId, Long userId, PostType type, int page, int size) {
         // 프로젝트 존재 확인
         projectRepository.findById(projectId)
                 .orElseThrow(() -> new PostException(PostErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
@@ -221,56 +264,84 @@ public class PostService {
                     "projectId=" + projectId + ", userId=" + userId);
         }
 
-        if (page < 0 || size <= 0 || size > 50) {
-            throw new PostException(PostErrorCode.INVALID_REQUEST, "invalid page/size");
+        // page 검증
+        if (page < 0) {
+            throw new PostException(PostErrorCode.INVALID_REQUEST, "invalid page");
         }
 
-        PostSort safeSort = (sort == null) ? PostSort.LATEST : sort;
+        int fixedSize = Math.min(Math.max(size, 1), 50);
 
-        // pinned 우선 + 정렬
-        Sort jpaSort = switch (safeSort) {
-            case LATEST -> Sort.by(
-                    Sort.Order.desc("isPinned"),
-                    Sort.Order.desc("createdAt"),
-                    Sort.Order.desc("id")
-            );
-            case OLDEST -> Sort.by(
-                    Sort.Order.desc("isPinned"),
-                    Sort.Order.asc("createdAt"),
-                    Sort.Order.asc("id")
-            );
-            case POPULAR -> Sort.by(
-                    Sort.Order.desc("isPinned"),
-                    Sort.Order.desc("likeCount"),
-                    Sort.Order.desc("createdAt"),
-                    Sort.Order.desc("id")
-            );
-        };
+        Sort baseSort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
-        Pageable pageable = PageRequest.of(page, size, jpaSort);
-        Page<Post> result = postRepository.findPosts(projectId, type, pageable);
+        // 공지만
+        if (type == PostType.NOTICE) {
+            List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
 
-        List<PostListResDto.PostSummaryDto> posts = result.getContent().stream()
+            List<PostListResDto.PostSummaryDto> mapped = notices.stream()
+                    .map(p -> new PostListResDto.PostSummaryDto(
+                            p.getId(),
+                            p.getPostType(),
+                            p.getTitle(),
+                            preview(p.getContent(), 100),
+                            p.getLikeCount(),
+                            p.getCreatedAt()
+                    ))
+                    .toList();
+
+            PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
+                    0,
+                    fixedSize,
+                    mapped.size(),
+                    1,
+                    false
+            );
+            return new PostListResDto(mapped, pageInfo);
+        }
+
+
+        // FREE만 페이지네이션
+        Pageable pageable = PageRequest.of(page, fixedSize, baseSort);
+        Page<Post> freePage = postRepository.findFreePosts(projectId, pageable);
+
+        List<PostListResDto.PostSummaryDto> result = new java.util.ArrayList<>();
+
+        // page==0 일 때만 공지 전부 상단에 붙이기
+        if (type == null && page == 0) {
+            List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
+            result.addAll(notices.stream()
+                    .map(p -> new PostListResDto.PostSummaryDto(
+                            p.getId(),
+                            p.getPostType(),
+                            p.getTitle(),
+                            preview(p.getContent(), 100),
+                            p.getLikeCount(),
+                            p.getCreatedAt()
+                    ))
+                    .toList());
+        }
+
+        // FREE 페이징 결과 붙이기
+        result.addAll(freePage.getContent().stream()
                 .map(p -> new PostListResDto.PostSummaryDto(
                         p.getId(),
                         p.getPostType(),
                         p.getTitle(),
                         preview(p.getContent(), 100),
-                        p.getIsPinned(),
                         p.getLikeCount(),
                         p.getCreatedAt()
                 ))
-                .toList();
+                .toList());
 
+        // pageInfo는 FREE 기준으로만 계산 (공지는 제외)
         PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages(),
-                result.hasNext()
+                freePage.getNumber(),
+                freePage.getSize(),
+                freePage.getTotalElements(),
+                freePage.getTotalPages(),
+                freePage.hasNext()
         );
 
-        return new PostListResDto(posts, pageInfo);
+        return new PostListResDto(result, pageInfo);
     }
 
     // 게시글 수정 서비스
@@ -303,11 +374,23 @@ public class PostService {
                     "postId=" + postId + ", userId=" + userId);
         }
 
+        // 값 검증(빈문자 방지)
+        if (req.title() != null && req.title().isBlank())
+            throw new PostException(PostErrorCode.INVALID_REQUEST, "title is blank");
+        if (req.content() != null && req.content().isBlank())
+            throw new PostException(PostErrorCode.INVALID_REQUEST, "content is blank");
+
+        // 길이 제한(공백 포함)
+        validateMaxLength(req.title(), 200, "title");
+        validateMaxLength(req.content(), 1000, "content");
+
+        // 공지 토글: req.isNotice()가 들어온 경우에만 바꿈
+        PostType newType = (req.isNotice() == null) ? null : resolvePostType(req.isNotice());
+
         // before 스냅샷
         final PostType beforeType = post.getPostType();
         final String beforeTitle = post.getTitle();
         final String beforeContent = post.getContent();
-        final Boolean beforePinned = post.getIsPinned();
 
         final List<Long> beforeMentionIds = postMentionRepository.findAllByPostId(post.getId()).stream()
                 .filter(m -> !m.isDeleted())
@@ -317,15 +400,8 @@ public class PostService {
                 .sorted()
                 .toList();
 
-        // 값 검증
-        if (req.title() != null && req.title().isBlank()) {
-            throw new PostException(PostErrorCode.INVALID_REQUEST, "title is blank");
-        }
-        if (req.content() != null && req.content().isBlank()) {
-            throw new PostException(PostErrorCode.INVALID_REQUEST, "content is blank");
-        }
 
-        post.update(req.postType(), req.title(), req.content(), req.isPinned());
+        post.update(newType, req.title(), req.content());
 
         // 멘션 교체 (null이면 변경 안 함 / []이면 전부 제거)
         List<Long> mentionIdsForRes = syncMentions(post, req.mentionUserIds(), projectId);
@@ -350,7 +426,6 @@ public class PostService {
         final PostType afterType = post.getPostType();
         final String afterTitle = post.getTitle();
         final String afterContent = post.getContent();
-        final Boolean afterPinned = post.getIsPinned();
 
         final List<Long> afterMentionIds = (mentionIdsForRes == null)
                 ? null
@@ -367,9 +442,6 @@ public class PostService {
         if (!Objects.equals(beforeContent, afterContent)) {
             changed.put("content", Map.of("before", beforeContent, "after", afterContent));
         }
-        if (!Objects.equals(beforePinned, afterPinned)) {
-            changed.put("isPinned", Map.of("before", beforePinned, "after", afterPinned));
-        }
 
         if (afterMentionIds != null && !Objects.equals(beforeMentionIds, afterMentionIds)) {
             changed.put("mentions", Map.of("before", beforeMentionIds, "after", afterMentionIds));
@@ -385,14 +457,12 @@ public class PostService {
         meta.put("before", Map.of(
                 "postType", beforeType,
                 "title", beforeTitle,
-                "content", beforeContent,
-                "isPinned", beforePinned
+                "content", beforeContent
         ));
         meta.put("after", Map.of(
                 "postType", afterType,
                 "title", afterTitle,
                 "content", afterContent,
-                "isPinned", afterPinned,
                 "mentionUserIds", (afterMentionIds != null ? afterMentionIds : beforeMentionIds)
         ));
 
@@ -533,7 +603,6 @@ public class PostService {
         // before 스냅샷
         final PostType beforeType = post.getPostType();
         final String beforeTitle = post.getTitle();
-        final Boolean beforePinned = post.getIsPinned();
 
         // soft delete
         post.softDelete();
@@ -545,7 +614,6 @@ public class PostService {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("postType", beforeType);
         meta.put("title", beforeTitle);
-        meta.put("isPinned", beforePinned);
         meta.put("deletedAt", post.getDeletedAt());
 
         historyPublisher.publish(

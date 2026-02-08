@@ -46,12 +46,11 @@ public class PostController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestParam(required = false) PostType type,
-            @RequestParam(defaultValue = "LATEST") PostSort sort,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "0") int page
     ) {
         Long userId = userDetails.getUserId();
-        return ApiResponse.ok(postFacade.getPostList(projectId, userId, type, sort, page, size));
+        int fixedSize = 10;
+        return ApiResponse.ok(postFacade.getPostList(projectId, userId, type, page, fixedSize));
     }
 
     // 게시글 수정
