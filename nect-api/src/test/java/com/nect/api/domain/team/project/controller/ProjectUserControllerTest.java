@@ -71,7 +71,9 @@ public class ProjectUserControllerTest {
     @Test
     void getProjectsByUser() throws Exception {
         UserProjectDto dto = UserProjectDto.builder()
-                        .projectId(1L).memberType(ProjectMemberType.MEMBER).build();
+                        .projectId(1L)
+                        .projectTitle("Nect 프로젝트")
+                        .memberType(ProjectMemberType.MEMBER).build();
 
         given(projectUserService.findProjectsByUser(anyLong())).willReturn(List.of(dto));
 
@@ -96,6 +98,7 @@ public class ProjectUserControllerTest {
 
                                         fieldWithPath("body").description("응답 데이터"),
                                         fieldWithPath("body[].projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body[].projectTitle").description("프로젝트 제목"),
                                         fieldWithPath("body[].memberType").description("프로젝트 멤버 타입(MEMBER | LEADER)")
                                 )
                                 .build()
