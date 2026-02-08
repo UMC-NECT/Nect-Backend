@@ -1,13 +1,10 @@
 package com.nect.api.domain.home.facade;
 
-import com.nect.api.domain.home.dto.HomeMemberItem;
-import com.nect.api.domain.home.dto.HomeMembersResponse;
-import com.nect.api.domain.home.dto.HomeProjectItem;
-import com.nect.api.domain.home.dto.HomeProjectResponse;
-import com.nect.api.domain.home.dto.HomeHeaderResponse;
+import com.nect.api.domain.home.dto.*;
 import com.nect.api.domain.home.exception.HomeInvalidParametersException;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.domain.home.service.HomeProjectQueryService;
+import com.nect.api.domain.home.service.HomeStatisticsQueryService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
@@ -32,6 +29,7 @@ public class MainHomeFacade {
 
     private final HomeProjectQueryService homeProjectQueryService;
     private final HomeMemberQueryService homeMemberQueryService;
+    private final HomeStatisticsQueryService statisticsQueryService;
     private final S3Service s3Service;
 
     // 모집 중인 프로젝트
@@ -115,6 +113,16 @@ public class MainHomeFacade {
         return homeMemberQueryService.getHeaderProfile(userId);
     }
 
+    // 홈화면 통계 조회
+    public HomeStatisticResponse statisticResponse() {
+        return new HomeStatisticResponse(
+                statisticsQueryService.getTotalProjectCount(),
+                statisticsQueryService.getMatchingSuccessRate(),
+                statisticsQueryService.getReParticipantRate(),
+                statisticsQueryService.getTotalUserCount()
+        );
+    }
+
     // List<Project> -> List<HomeProjectItem>
     private List<HomeProjectItem> responsesFromProjects(List<Project> projects) {
         HomeProjectQueryService.HomeProjectBatch batch = homeProjectQueryService.loadHomeProjectBatch(projects);
@@ -131,7 +139,7 @@ public class MainHomeFacade {
 
                     return HomeProjectItem.of(
                             projectId,
-                            resolveProjectImage(p),
+                            s3Service.getPresignedGetUrl(p.getImageName()),
                             p.getTitle(),
                             author == null ? null : author.getName(),
                             author == null ? null : author.getRole().name(),
@@ -184,11 +192,5 @@ public class MainHomeFacade {
     private int safeCount(int count) {
         return Math.max(1, count);
     }
-
-    private String resolveProjectImage(Project project) {
-        String imageName = project.getImageName();
-        return imageName == null ? null : s3Service.getPresignedGetUrl(imageName);
-    }
-
 
 }

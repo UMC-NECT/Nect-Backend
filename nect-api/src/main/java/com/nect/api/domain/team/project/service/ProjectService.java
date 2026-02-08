@@ -6,6 +6,7 @@ import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.domain.user.enums.UserErrorCode;
 import com.nect.api.domain.user.service.UserService;
+import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.analysis.*;
 import com.nect.core.entity.team.Project;
@@ -13,27 +14,25 @@ import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.enums.ProjectStatus;
-import com.nect.core.entity.team.enums.ProjectStatus;
-import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.team.process.ProcessTaskItem;
 import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.analysis.*;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -53,6 +52,7 @@ public class ProjectService {
     private final ProjectUserRepository projectUserRepository;
     private final ProcessRepository processRepository;
     private final UserService userService;
+    private final ProjectInterestFieldRepository projectInterestFieldRepository;
 
     public Project getProject(Long projectId){
         return projectRepository.findById(projectId)
@@ -136,12 +136,23 @@ public class ProjectService {
             project.setProjectPeriod(analysis.getProjectStartDate(), analysis.getProjectEndDate());
 
             setRecruitmentStatus(project, RecruitmentStatus.OPEN);
-            return projectRepository.save(project);
+            Project savedProject = projectRepository.save(project);
+            saveDefaultInterestFields(savedProject);
+            return savedProject;
         } catch (Exception e) {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
 
+
+    private void saveDefaultInterestFields(Project project) {
+        List<ProjectInterest> fields = java.util.Arrays.stream(InterestField.values())
+                .filter(field -> field != InterestField.OTHER)
+                .map(field -> new ProjectInterest(project, field, false))
+                .collect(Collectors.toList());
+
+        projectInterestFieldRepository.saveAll(fields);
+    }
 
     private void saveTeamRoles(Long projectId, ProjectIdeaAnalysis analysis) {
         try {

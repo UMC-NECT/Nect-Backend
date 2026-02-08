@@ -6,6 +6,7 @@ import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
+import com.nect.api.domain.home.dto.HomeStatisticResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
@@ -140,6 +141,48 @@ class HomeControllerTest {
                                         parameterWithName("count").description("조회할 프로젝트 개수")
                                 )
                                 .responseFields(projectResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("홈화면 통계 조회 API")
+    void 홈화면_통계_조회_API() throws Exception {
+        HomeStatisticResponse response = new HomeStatisticResponse(
+                120,
+                65,
+                40,
+                3200
+        );
+
+        given(mainHomeFacade.statisticResponse()).willReturn(response);
+
+        mockMvc.perform(get("/api/v1/home/statistics")
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("home-statistics",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("홈")
+                                .summary("홈화면 통계 조회")
+                                .description("홈 화면에 표시되는 통계 정보를 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.OBJECT).description("응답 상태"),
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상세 설명"),
+
+                                        fieldWithPath("body").type(JsonFieldType.OBJECT).description("응답 바디"),
+                                        fieldWithPath("body.totalProjectCount").type(JsonFieldType.NUMBER).description("전체 프로젝트 수"),
+                                        fieldWithPath("body.matchingSuccessRate").type(JsonFieldType.NUMBER).description("매칭 성공률(%)"),
+                                        fieldWithPath("body.reParticipateRate").type(JsonFieldType.NUMBER).description("재참여율(%)"),
+                                        fieldWithPath("body.totalUserCount").type(JsonFieldType.NUMBER).description("전체 사용자 수")
+                                )
                                 .build()
                         )
                 ));

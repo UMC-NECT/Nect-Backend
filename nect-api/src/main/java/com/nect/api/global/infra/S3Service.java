@@ -20,7 +20,7 @@ import java.util.UUID;
 
 @Service
 public class S3Service {
-    private static final long PRESIGNED_EXPIRE_MILLIS = 5 * 60 * 1000; // 5분
+    private static final long PRESIGNED_EXPIRE_MILLIS = 60 * 60 * 1000; // 1시간
     private final AmazonS3 amazonS3;
     @Value("${spring.cloud.cloud-flare.r2.bucket}")
     private String bucket;
