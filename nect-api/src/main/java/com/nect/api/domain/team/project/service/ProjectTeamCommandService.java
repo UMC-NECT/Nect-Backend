@@ -34,6 +34,14 @@ public class ProjectTeamCommandService {
         }
     }
 
+    private void assertActiveLeader(Long projectId, Long userId) {
+        boolean isLeader = projectUserRepository.existsActiveLeader(projectId, userId);
+        if (!isLeader) {
+            throw new ProjectException(ProjectErrorCode.LEADER_ONLY_ACTION,
+                    "projectId=" + projectId + ", userId=" + userId);
+        }
+    }
+
     private String normalize(String s) {
         if (s == null) return null;
         String t = s.trim();
@@ -43,6 +51,7 @@ public class ProjectTeamCommandService {
     @Transactional
     public ProjectPartCreateResDto createProjectPart(Long projectId, Long userId, ProjectPartCreateReqDto req) {
         assertActiveProjectMember(projectId, userId);
+        assertActiveLeader(projectId, userId);
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
@@ -122,6 +131,7 @@ public class ProjectTeamCommandService {
     @Transactional
     public ProjectPartUpdateResDto updateProjectPart(Long projectId, Long partId, Long userId, ProjectPartUpdateReqDto req) {
         assertActiveProjectMember(projectId, userId);
+        assertActiveLeader(projectId, userId);
 
         ProjectTeamRole part = projectTeamRoleRepository.findByIdAndProject_IdAndDeletedAtIsNull(partId, projectId)
                 .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_PART_NOT_FOUND,
