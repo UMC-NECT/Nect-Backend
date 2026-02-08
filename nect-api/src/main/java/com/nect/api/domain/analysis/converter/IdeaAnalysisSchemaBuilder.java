@@ -21,6 +21,7 @@ public class IdeaAnalysisSchemaBuilder {
         return Map.of(
                 "type", "object",
                 "properties", Map.of(
+                        "description", Map.of("type", "string"),
                         "recommended_project_names", Map.of(
                                 "type", "array",
                                 "items", Map.of("type", "string")
@@ -92,6 +93,7 @@ public class IdeaAnalysisSchemaBuilder {
                         )
                 ),
                 "required", List.of(
+                        "description",
                         "recommended_project_names",
                         "project_duration",
                         "team_composition",

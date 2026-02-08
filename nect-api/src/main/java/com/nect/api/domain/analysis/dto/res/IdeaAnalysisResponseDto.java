@@ -18,6 +18,7 @@ import java.util.List;
 public class IdeaAnalysisResponseDto {
     private Long analysisId;
 
+    private String description;
 
     private List<String> recommendedProjectNames;
 

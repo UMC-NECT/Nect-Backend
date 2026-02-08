@@ -88,4 +88,10 @@ public class Project extends BaseEntity {
     public void updateRegularMeetingText(String regularMeetingText) {
         this.regularMeetingText = regularMeetingText;
     }
+
+
+    public void setProjectPeriod(LocalDate startDate, LocalDate endDate) {
+        this.plannedStartedOn = startDate;
+        this.plannedEndedOn = endDate;
+    }
 }
