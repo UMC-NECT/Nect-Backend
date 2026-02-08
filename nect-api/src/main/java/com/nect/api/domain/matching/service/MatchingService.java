@@ -7,6 +7,7 @@ import com.nect.api.domain.matching.enums.code.MatchingErrorCode;
 import com.nect.api.domain.matching.exception.MatchingException;
 import com.nect.api.domain.team.project.service.ProjectService;
 import com.nect.api.domain.user.service.UserService;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Matching;
 import com.nect.core.entity.matching.enums.MatchingRejectReason;
 import com.nect.core.entity.matching.enums.MatchingRequestType;
@@ -29,6 +30,7 @@ public class MatchingService {
     private final MatchingRepository matchingRepository;
     private final UserService userService;
     private final ProjectService projectService;
+    private final S3Service s3Service;
 
     public Matching createUserToProjectMatching(
             User requestUser,
@@ -129,7 +131,10 @@ public class MatchingService {
 
             List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
                     .map(Matching::getRequestUser)
-                    .map(MatchingConverter::toUserSummary)
+                    .map(u -> MatchingConverter.toUserSummary(
+                            u,
+                            s3Service.getPresignedGetUrl(u.getProfileImageName()))
+                    )
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -148,7 +153,8 @@ public class MatchingService {
                     .map(Matching::getProject)
                     .map(project -> MatchingConverter.toProjectSummary(
                             project,
-                            projectService.getUserNumberOfProject(project)
+                            projectService.getUserNumberOfProject(project),
+                            s3Service.getPresignedGetUrl(project.getImageName())
                         )
                     )
                     .toList();
@@ -179,7 +185,10 @@ public class MatchingService {
 
             List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
                     .map(Matching::getTargetUser)
-                    .map(MatchingConverter::toUserSummary)
+                    .map(u -> MatchingConverter.toUserSummary(
+                            u,
+                            s3Service.getPresignedGetUrl(u.getProfileImageName())
+                    ))
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -196,7 +205,8 @@ public class MatchingService {
                     .map(Matching::getProject)
                     .map(project -> MatchingConverter.toProjectSummary(
                             project,
-                            projectService.getUserNumberOfProject(project)
+                            projectService.getUserNumberOfProject(project),
+                            s3Service.getPresignedGetUrl(project.getImageName())
                             )
                     )
                     .toList();

@@ -46,6 +46,7 @@ public class MatchingResDto {
 
     @Builder
     public record UserSummary(
+            Long userId,
             String nickname,
             String bio,
             RoleField field,
@@ -54,6 +55,7 @@ public class MatchingResDto {
 
     @Builder
     public record ProjectSummary(
+            Long projectId,
             String title,
             String description,
             long currentMembersNum,
