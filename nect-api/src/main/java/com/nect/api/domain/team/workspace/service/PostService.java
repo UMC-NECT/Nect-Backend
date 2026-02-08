@@ -625,4 +625,36 @@ public class PostService {
                 meta
         );
     }
+
+    @Transactional(readOnly = true)
+    public PostsPreviewResDto getOverviewPostsPreview(Long projectId, Long userId) {
+
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new PostException(PostErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
+
+        boolean isMember = projectUserRepository.existsByProjectIdAndUserId(projectId, userId);
+        if (!isMember) {
+            throw new PostException(PostErrorCode.PROJECT_MEMBER_FORBIDDEN,
+                    "projectId=" + projectId + ", userId=" + userId);
+        }
+
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable top2 = PageRequest.of(0, 2, sort);
+
+        List<Post> notices = postRepository.findNoticePosts(projectId, top2).getContent();
+        List<Post> frees = postRepository.findFreeOnlyPosts(projectId, top2).getContent();
+
+        //  공지 상단 고정 + (각 그룹 최신순)
+        List<PostsPreviewResDto.Item> items = new ArrayList<>(4);
+
+        items.addAll(notices.stream()
+                .map(p -> new PostsPreviewResDto.Item(p.getId(), p.getPostType(), p.getTitle(), p.getCreatedAt()))
+                .toList());
+
+        items.addAll(frees.stream()
+                .map(p -> new PostsPreviewResDto.Item(p.getId(), p.getPostType(), p.getTitle(), p.getCreatedAt()))
+                .toList());
+
+        return new PostsPreviewResDto(items);
+    }
 }

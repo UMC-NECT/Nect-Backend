@@ -183,7 +183,7 @@ class WeekMissionControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Week-Mission")
+                                        .tag("Process")
                                         .summary("주차별 위크미션 조회")
                                         .description("start_date 기준으로 weeks 만큼 위크미션 주차 목록을 조회합니다. start_date 미입력 시 서버 정책에 따른 기본 시작일로 동작합니다.")
                                         .pathParameters(
@@ -233,7 +233,7 @@ class WeekMissionControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Week-Mission")
+                                        .tag("Process")
                                         .summary("위크미션 상세 조회")
                                         .description("위크미션(프로세스) 상세를 조회합니다. (체크리스트 포함)")
                                         .pathParameters(
@@ -282,7 +282,7 @@ class WeekMissionControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Week-Mission")
+                                        .tag("Process")
                                         .summary("위크미션 상태 변경")
                                         .description("위크미션 프로세스의 상태를 변경합니다.")
                                         .pathParameters(
@@ -341,7 +341,7 @@ class WeekMissionControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Week-Mission")
+                                        .tag("Process")
                                         .summary("위크미션 TASK 항목 수정")
                                         .description("위크미션 프로세스 내 TaskItem의 내용을 수정합니다.")
                                         .pathParameters(
@@ -399,7 +399,7 @@ class WeekMissionControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Week-Mission")
+                                        .tag("Process")
                                         .summary("미션 주차 드롭다운 조회")
                                         .description("멤버형 모달에서 미션(주차) 선택을 위한 드롭다운 목록을 조회합니다.")
                                         .pathParameters(

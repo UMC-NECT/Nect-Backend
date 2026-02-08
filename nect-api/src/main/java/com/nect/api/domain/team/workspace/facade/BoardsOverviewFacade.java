@@ -43,10 +43,9 @@ public class BoardsOverviewFacade {
         SharedDocumentsPreviewResDto sharedDocumentsPreview =
                 sharedDocumentFacade.getPreview(projectId, userId, docsLimit);
 
-        // 기본값 : 공지로 설정
-        PostType safeType = (postType == null) ? PostType.NOTICE : postType;
-        PostListResDto postsPreview =
-                postFacade.getPostList(projectId, userId, safeType,0, postsLimit);
+        // 공지 2 + 자유글 2
+        PostsPreviewResDto postsPreview =
+                postFacade.getPostsPreview(projectId, userId);
 
         CalendarMonthIndicatorsResDto calendarIndicators = null;
         if (year != null && month != null) {

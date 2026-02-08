@@ -1,16 +1,13 @@
-package com.nect.api.domain.team.workspace.controller;
+package com.nect.api.domain.team.project.controller;
 
-import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.workspace.dto.res.MemberBoardResDto;
-import com.nect.api.domain.team.workspace.dto.res.RoleFieldDto;
-import com.nect.api.domain.team.workspace.facade.BoardsMemberBoardFacade;
+import com.nect.api.domain.team.project.dto.ProjectPartsResDto;
+import com.nect.api.domain.team.project.service.ProjectRoleQueryService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
-import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,11 +25,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
+import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @AutoConfigureRestDocs
 @Transactional
-class BoardsMemberBoardControllerTest {
+class ProjectRoleControllerTest {
 
     protected static final String AUTH_HEADER = "Authorization";
     protected static final String TEST_ACCESS_TOKEN = "Bearer testAccessToken";
@@ -63,7 +60,7 @@ class BoardsMemberBoardControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private BoardsMemberBoardFacade facade;
+    private ProjectRoleQueryService projectRoleQueryService;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -103,65 +100,48 @@ class BoardsMemberBoardControllerTest {
     }
 
     @Test
-    @DisplayName("팀원 프로필 보드 조회")
-    void getMemberBoard() throws Exception {
+    @DisplayName("작업실 전용 프로젝트 파트 목록 조회")
+    void readProjectParts() throws Exception {
         long projectId = 1L;
         long userId = 1L;
 
-        MemberBoardResDto response = new MemberBoardResDto(
+        ProjectPartsResDto response = new ProjectPartsResDto(
                 List.of(
-                        new MemberBoardResDto.MemberDto(
+                        new ProjectPartsResDto.PartDto(
                                 1L,
-                                "홍길동",
-                                "길동",
-                                "https://img.com/u1.png",
-                                RoleFieldDto.of(RoleField.BACKEND),
-                                ProjectMemberType.MEMBER,
-                                new MemberBoardResDto.CountsDto(
-                                        2,  // planning
-                                        1,  // in_progress
-                                        3   // done
-                                ),
-                                true,
-                                3600L,
-                                LocalDateTime.of(2026, 1, 31, 10, 0, 0)
+                                RoleField.BACKEND,
+                                null,
+                                "Backend",
+                                2
                         ),
-                        new MemberBoardResDto.MemberDto(
+                        new ProjectPartsResDto.PartDto(
                                 2L,
-                                "김철수",
-                                "철수",
-                                "https://img.com/u2.png",
-                                RoleFieldDto.of(RoleField.CUSTOM, "기획-운영"),
-                                ProjectMemberType.LEADER,
-                                new MemberBoardResDto.CountsDto(
-                                        1,
-                                        4,
-                                        2
-                                ),
-                                false,
-                                1800L,
-                                null
+                                RoleField.CUSTOM,
+                                "데이터",
+                                "데이터",
+                                1
                         )
                 )
         );
 
-        given(facade.getMemberBoard(eq(projectId), eq(userId))).willReturn(response);
+        given(projectRoleQueryService.readProjectParts(eq(projectId), eq(userId)))
+                .willReturn(response);
 
-        mockMvc.perform(get("/api/v1/projects/{projectId}/boards/members", projectId)
+        mockMvc.perform(get("/api/v1/projects/{projectId}/roles", projectId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andDo(document("boards-memberboard-get",
+                .andDo(document("project-role-read-parts",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("Boards")
-                                        .summary("팀원 프로필 보드 조회")
-                                        .description("팀보드 좌측 하단 '팀원 프로필 보드'를 조회합니다. 프로젝트 멤버들의 기본 정보와 멤버별 담당 프로세스 상태 카운트(진행 전/중/완료), 근무 상태 정보를 제공합니다.")
+                                        .tag("Project")
+                                        .summary("프로젝트 파트 목록 조회(작업실)")
+                                        .description("작업실에서 프로젝트의 파트(역할) 목록을 조회합니다.")
                                         .pathParameters(
-                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID")
+                                                parameterWithName("projectId").description("프로젝트 ID")
                                         )
                                         .requestHeaders(
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
@@ -172,34 +152,20 @@ class BoardsMemberBoardControllerTest {
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
 
-                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body").type(OBJECT).description("프로젝트 파트 목록 조회 결과"),
+                                                fieldWithPath("body.parts").type(ARRAY).description("파트 목록"),
 
-                                                fieldWithPath("body.members").type(ARRAY).description("프로젝트 멤버 목록"),
+                                                fieldWithPath("body.parts[].part_id").type(NUMBER).description("파트 ID"),
 
-                                                fieldWithPath("body.members[].user_id").type(NUMBER).description("멤버 유저 ID"),
-                                                fieldWithPath("body.members[].name").type(STRING).description("멤버 이름"),
-                                                fieldWithPath("body.members[].nickname").type(STRING).description("멤버 닉네임"),
-                                                fieldWithPath("body.members[].profile_image_url").optional().type(STRING).description("프로필 이미지 URL (없으면 null)"),
-
-                                                fieldWithPath("body.members[].field").optional().type(OBJECT).description("역할 분야"),
-                                                fieldWithPath("body.members[].field.type").optional().type(STRING).description("역할 분야 타입(RoleField enum name)"),
-                                                fieldWithPath("body.members[].field.custom_name").optional().type(STRING).description("CUSTOM일 때 직접 입력 값 (CUSTOM이 아니면 null)"),
-
-                                                fieldWithPath("body.members[].member_type").type(STRING).description("프로젝트 멤버 타입(enum)"),
-
-                                                fieldWithPath("body.members[].counts").type(OBJECT).description("멤버별 담당 프로세스 상태 카운트"),
-                                                fieldWithPath("body.members[].counts.planning").type(NUMBER).description("진행 전 개수"),
-                                                fieldWithPath("body.members[].counts.in_progress").type(NUMBER).description("진행 중 개수"),
-                                                fieldWithPath("body.members[].counts.done").type(NUMBER).description("완료 개수"),
-
-                                                fieldWithPath("body.members[].is_working").type(BOOLEAN).description("현재 근무중 여부"),
-                                                fieldWithPath("body.members[].today_work_seconds").type(NUMBER).description("오늘 누적 근무 시간(초)"),
-                                                fieldWithPath("body.members[].working_started_at").optional().type(STRING).description("근무 시작 시각(yyyy-MM-dd'T'HH:mm:ss) (근무중이 아니면 null)")
+                                                fieldWithPath("body.parts[].role_field").type(STRING).description("파트 타입(RoleField)"),
+                                                fieldWithPath("body.parts[].custom_role_field_name").optional().type(STRING).description("CUSTOM 파트명"),
+                                                fieldWithPath("body.parts[].part_label").type(STRING).description("표시 라벨(part_label)"),
+                                                fieldWithPath("body.parts[].required_count").type(NUMBER).description("모집 인원")
                                         )
                                         .build()
                         )
                 ));
 
-        verify(facade).getMemberBoard(eq(projectId), eq(userId));
+        verify(projectRoleQueryService).readProjectParts(eq(projectId), eq(userId));
     }
 }
