@@ -27,7 +27,7 @@ public class ProfileSettingsDto {
     ) {}
 
     public record ProfileSettingsRequestDto(
-            String profileImageUrl,
+            String profileImageFileName,
             String bio,
             String coreCompetencies,
             String userStatus,

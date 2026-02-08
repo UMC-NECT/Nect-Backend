@@ -4,6 +4,7 @@ import com.nect.api.domain.team.workspace.dto.res.MemberBoardResDto;
 import com.nect.api.domain.team.workspace.dto.res.RoleFieldDto;
 import com.nect.api.domain.team.workspace.enums.BoardsErrorCode;
 import com.nect.api.domain.team.workspace.exception.BoardsException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.workspace.ProjectUserWorkDaily;
@@ -30,6 +31,13 @@ public class BoardsMemberBoardService {
     private final ProjectUserRepository projectUserRepository;
     private final ProcessRepository processRepository;
     private final ProjectUserWorkDailyRepository projectUserWorkDailyRepository;
+    private final S3Service s3Service;
+
+    private String toPresignedUserImage(String fileKey) {
+        if (fileKey == null || fileKey.isBlank()) return null;
+        return s3Service.getPresignedGetUrl(fileKey);
+    }
+
 
     // 멤버 보드 조회 서비스
     @Transactional(readOnly = true)
@@ -100,11 +108,13 @@ public class BoardsMemberBoardService {
                     ? RoleFieldDto.of(m.getRoleField(), m.getCustomRoleFieldName())
                     : RoleFieldDto.of(m.getRoleField());
 
+            String userImageUrl = toPresignedUserImage(m.getProfileImageName());
+
             return new MemberBoardResDto.MemberDto(
                     m.getUserId(),
                     m.getName(),
                     m.getNickname(),
-                    null, // profile_image_url (TODO)
+                    userImageUrl,
                     fieldDto,
                     m.getMemberType(),
                     new MemberBoardResDto.CountsDto(arr[0], arr[1], arr[2]),

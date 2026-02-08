@@ -4,19 +4,22 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.SharedDocument;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "post_attachment",
+        name = "post_shared_document",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_post_attachment_post_document", columnNames = {"post_id", "document_id"})
+                @UniqueConstraint(columnNames = {"post_id", "document_id"})
         }
 )
-public class PostAttachment extends BaseEntity {
+public class PostSharedDocument extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,11 +32,24 @@ public class PostAttachment extends BaseEntity {
     @JoinColumn(name = "document_id", nullable = false)
     private SharedDocument document;
 
-    void setPost(Post post) {
+    @Column(name = "attached_at", nullable = false)
+    private LocalDateTime attachedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Builder
+    private PostSharedDocument(Post post, SharedDocument document, LocalDateTime attachedAt) {
         this.post = post;
+        this.document = document;
+        this.attachedAt = attachedAt;
     }
 
-    void setDocument(SharedDocument document) {
-        this.document = document;
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
     }
 }

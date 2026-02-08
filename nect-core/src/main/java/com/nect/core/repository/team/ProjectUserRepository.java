@@ -2,7 +2,6 @@ package com.nect.core.repository.team;
 
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.chat.ChatRoomUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
@@ -148,6 +147,8 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             pu.userId as userId,
             u.name as name,
             u.nickname as nickname,
+            u.profileImageName as profileImageName,
+            u.bio as bio,
             pu.roleField as roleField,
             pu.customRoleFieldName as customRoleFieldName,
             pu.memberType as memberType
@@ -195,11 +196,45 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userIds") List<Long> userIds
     );
 
+    @Query("""
+        select count(pu) > 0
+        from ProjectUser pu
+        where pu.project = :project
+            and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEAD
+            and pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+            and pu.roleField = :roleField
+            and (
+                :roleField <> com.nect.core.entity.user.enums.RoleField.CUSTOM
+                or pu.customRoleFieldName = :customRoleFieldName
+                )
+    """)
+    boolean existsActiveLeadInProject(
+            @Param("project") Project project,
+            @Param("roleField") RoleField roleField,
+            @Param("customRoleFieldName") String customRoleFieldName
+    );
+
+
+    boolean existsByProjectIdAndUserIdAndMemberTypeAndMemberStatus(Long projectId, Long userId, ProjectMemberType projectMemberType, ProjectMemberStatus projectMemberStatus);
+
+    @Query("""
+        select
+          u.userId as userId,
+          u.nickname as nickname,
+          u.profileImageName as profileImageName
+        from ProjectUser pu
+        join User u
+          on u.userId = pu.userId
+        where pu.project.id = :projectId
+          and pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+          and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
+    """)
+    Optional<ProjectLeaderProfileRow> findActiveLeaderProfile(@Param("projectId") Long projectId);
+
     interface UserFieldIdsRow {
         Long getUserId();
         Long getFieldId();
     }
-
 
     interface ProjectLeaderRow {
         Long getProjectId();
@@ -211,7 +246,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getActiveCount();
     }
 
-
     interface UserRoleFieldsRow {
         Long getUserId();
         RoleField getRoleField();
@@ -222,6 +256,8 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getUserId();
         String getName();
         String getNickname();
+        String getProfileImageName();
+        String getBio();
         RoleField getRoleField();
         String getCustomRoleFieldName();
         ProjectMemberType getMemberType();
@@ -242,6 +278,27 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     FROM ProjectUser pu
 """)
     long countDistinctUsers();
+
+
+    interface ProjectLeaderProfileRow {
+        Long getUserId();
+        String getNickname();
+        String getProfileImageUrl();
+    }
+
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN ProjectUser pu ON u.userId = pu.userId
+        WHERE pu.project.id = :projectId
+          AND pu.userId = :userId
+          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+    """)
+    Optional<User> findActiveUserByProjectIdAndUserId(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId
+    );
+
 
 
 }

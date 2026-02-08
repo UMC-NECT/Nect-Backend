@@ -1,7 +1,9 @@
 package com.nect.api.domain.team.process.controller;
 
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
+import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateAndAttachResDto;
 import com.nect.api.domain.team.process.dto.res.ProcessLinkCreateResDto;
+import com.nect.api.domain.team.process.facade.ProcessAttachmentFacade;
 import com.nect.api.domain.team.process.service.ProcessAttachmentService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -15,16 +17,17 @@ import org.springframework.web.bind.annotation.*;
 public class ProcessLinkController {
 
     private final ProcessAttachmentService processAttachmentService;
+    private final ProcessAttachmentFacade processAttachmentFacade;
 
     @PostMapping
-    public ApiResponse<ProcessLinkCreateResDto> create(
+    public ApiResponse<ProcessLinkCreateAndAttachResDto> create(
             @PathVariable Long projectId,
             @PathVariable Long processId,
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProcessLinkCreateReqDto req
     ) {
         Long userId = userDetails.getUserId();
-        return ApiResponse.ok(processAttachmentService.createLink(projectId, userId, processId, req));
+        return ApiResponse.ok(processAttachmentFacade.createAndAttachLink(projectId, userId, processId, req));
     }
 
     @DeleteMapping("/{linkId}")

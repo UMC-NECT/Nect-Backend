@@ -8,11 +8,21 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.nect.api.NectDocumentApiTester;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.user.enums.InterestField;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.service.MypageService;
+import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
+import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
+import com.nect.api.domain.team.project.dto.ProjectUserResDto;
+import com.nect.api.domain.team.project.service.ProjectUserService;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,14 +31,19 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.multipart;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
@@ -40,6 +55,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private MypageService mypageService;
+
+    @MockitoBean
+    private ProjectUserService projectUserService;
 
     @MockitoBean
     private MyPageProjectCommandService projectCommandService;
@@ -117,7 +135,7 @@ class MypageControllerTest extends NectDocumentApiTester {
 
         // 요청 JSON (모든 필드 포함한 완전한 예시)
         String requestJson = "{"
-                + "\"profileImageUrl\": \"https://example.com/profile/kim-junhyeok.jpg\","
+                + "\"profileImageFileName\": \"kim-junhyeok.jpg\","
                 + "\"bio\": \"안녕하세요! 3년차 백엔드 개발자 김준혁입니다. Spring Boot와 Java에 능숙하며 RESTful API 설계 및 구현을 전문으로 합니다.\","
                 + "\"coreCompetencies\": \"Spring Boot, Java, REST API, MySQL, Redis, Docker, Kubernetes, AWS\","
                 + "\"userStatus\": \"JOB_SEEKING\","
@@ -214,7 +232,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         .summary("마이페이지 프로필 수정")
                                         .description("마이페이지 프로필 정보를 부분 수정합니다.\n\n" +
                                                 "**수정 가능한 필드**\n" +
-                                                "- 기본정보: 프로필 사진 (profileImageUrl), 자기소개 (bio), 핵심 역량 (coreCompetencies), 사용자 상태 (userStatus), 공개 매칭 여부 (isPublicMatching), 경력 기간 (careerDuration), 관심 직무 (interestedJob), 관심 직종 (interestedField)\n" +
+                                                "- 기본정보: 프로필 사진 파일명 (profileImageFileName), 자기소개 (bio), 핵심 역량 (coreCompetencies), 사용자 상태 (userStatus), 공개 매칭 여부 (isPublicMatching), 경력 기간 (careerDuration), 관심 직무 (interestedJob), 관심 직종 (interestedField)\n" +
                                                 "- 경력관리: 경력 목록 (careers) - 프로젝트명, 산업분야, 기간, 역할, 주요 성과 저장 (projectName, industryField, startDate, endDate, isOngoing, role, achievements)\n" +
                                                 "- 포트폴리오: 포트폴리오 목록 (portfolios) - 제목, 외부 링크, 파일 URL 관리 (title, link, fileUrl)\n" +
                                                 "- 프로젝트 히스토리: 프로젝트 히스토리 목록 (projectHistories) - 프로젝트명, 이미지, 설명, 기간 관리\n\n" +
@@ -225,7 +243,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 "- role도 응답에서 한국어로 변환됩니다 (개발자, 디자이너, 기획자, 마케터).\n" +
                                                 "- 유효하지 않은 userStatus 값이면 M002 에러가 반환됩니다.")
                                         .requestFields(
-                                                fieldWithPath("profileImageUrl").type(JsonFieldType.STRING).description("프로필 사진 URL. 사용자 프로필 이미지 주소 (예: https://example.com/profile.jpg)").optional(),
+                                                fieldWithPath("profileImageFileName").type(JsonFieldType.STRING).description("프로필 사진 파일명. S3 업로드 후 반환받은 파일명 (예: 550e8400-e29b-41d4-a716-446655440000_profile.jpg)").optional(),
                                                 fieldWithPath("bio").type(JsonFieldType.STRING).description("자기소개. 사용자가 작성한 자유로운 형식의 소개글 (예: 안녕하세요! 3년차 백엔드 개발자입니다)").optional(),
                                                 fieldWithPath("coreCompetencies").type(JsonFieldType.STRING).description("핵심 역량. 보유 중인 주요 기술 및 역량을 쉼표로 구분하여 작성 (예: Spring Boot, Java, REST API, MySQL)").optional(),
                                                 fieldWithPath("userStatus").type(JsonFieldType.STRING).description("사용자 상태. 현재 상태를 나타내는 한국어 값 (재학중, 구직중, 재직중)").optional(),
@@ -529,6 +547,162 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("프로필 분석 키워드 태그 (예: #프로그래밍전문가, #백엔드개발자)").optional()
                                         )
                                         .build()
+                        )
+                ));
+    }
+
+    @Test
+    void updateProjectUserField() throws Exception {
+        Long projectUserId = 1L;
+
+        ProjectUserFieldResDto resDto = ProjectUserFieldResDto.builder()
+                .projectUserId(projectUserId)
+                .field(RoleField.CUSTOM)
+                .customField("Designer")
+                .build();
+
+        given(projectUserService.changeProjectUserFieldInProject(eq(projectUserId), any(ProjectUserFieldReqDto.class)))
+                .willReturn(resDto);
+
+        String requestJson = """
+                {
+                  "field": "CUSTOM",
+                  "customField": "Designer"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/mypage/{projectUserId}/field", projectUserId)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("patch-project-user-field",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("mypage")
+                                .summary("프로젝트 멤버 필드(파트) 변경")
+                                .description("프로젝트 내 멤버의 필드(파트) 및 커스텀 필드를 변경합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .requestFields(
+                                        fieldWithPath("field").description("변경할 필드 식별자"),
+                                        fieldWithPath("customField").description("커스텀 필드명 (RoleField.CUSTOM 인 경우 필수)").optional()
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body").description("응답 데이터"),
+                                        fieldWithPath("body.projectUserId").description("프로젝트 유저 ID"),
+                                        fieldWithPath("body.field").description("적용된 필드"),
+                                        fieldWithPath("body.customField").description("적용된 커스텀 필드명").optional()
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void kickProjectUser() throws Exception {
+        ProjectUserResDto resDto = ProjectUserResDto.builder()
+                .id(1L)
+                .userId(1L)
+                .projectId(1L)
+                .field(RoleField.BACKEND)
+                .memberType(ProjectMemberType.MEMBER)
+                .memberStatus(ProjectMemberStatus.KICKED)
+                .build();
+
+        given(projectUserService.kickProjectUser(anyLong(), eq(1L)))
+                .willReturn(resDto);
+
+        mockMvc.perform(patch("/api/v1/mypage/{projectUserId}/kick", 1L)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("patch-project-user-kick",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("mypage")
+                                .summary("프로젝트 멤버 강퇴")
+                                .description("프로젝트에서 특정 멤버를 강퇴합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body").description("응답 데이터"),
+                                        fieldWithPath("body.id").description("프로젝트 유저 ID"),
+                                        fieldWithPath("body.userId").description("유저 ID"),
+                                        fieldWithPath("body.projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body.field").description("분야"),
+                                        fieldWithPath("body.memberType").description("멤버 타입"),
+                                        fieldWithPath("body.memberStatus").description("멤버 상태 (KICK)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void updateProjectUserType() throws Exception {
+        ProjectUserResDto resDto = ProjectUserResDto.builder()
+                .id(1L)
+                .userId(1L)
+                .projectId(1L)
+                .field(RoleField.BACKEND)
+                .memberType(ProjectMemberType.LEAD)
+                .memberStatus(ProjectMemberStatus.ACTIVE)
+                .build();
+
+        given(projectUserService.changeProjectUserTypeInProject(anyLong(), eq(1L), eq(ProjectMemberType.LEAD)))
+                .willReturn(resDto);
+
+        String requestJson = """
+                {
+                  "memberType": "LEAD"
+                }
+                """;
+
+        mockMvc.perform(patch("/api/v1/mypage/{projectUserId}/type", 1L)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("patch-project-user-type",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("mypage")
+                                .summary("프로젝트 멤버 타입 변경")
+                                .description("프로젝트에서 특정 멤버의 타입을 변경합니다. (LEADER | LEAD | MEMBER)")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .requestFields(
+                                        fieldWithPath("memberType").description("변경할 프로젝트 멤버 타입")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body").description("응답 데이터"),
+                                        fieldWithPath("body.id").description("프로젝트 유저 ID"),
+                                        fieldWithPath("body.userId").description("유저 ID"),
+                                        fieldWithPath("body.projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body.field").description("분야"),
+                                        fieldWithPath("body.memberType").description("멤버 타입 (변경된 타입)"),
+                                        fieldWithPath("body.memberStatus").description("멤버 상태")
+                                )
+                                .build()
                         )
                 ));
     }

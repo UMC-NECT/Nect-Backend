@@ -6,12 +6,20 @@ import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
 import com.nect.api.domain.mypage.service.MypageService;
+import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
+import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
+import com.nect.api.domain.team.project.dto.ProjectUserResDto;
+import com.nect.api.domain.team.project.dto.ProjectUserTypeReqDto;
+import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.user.enums.InterestField;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,6 +34,7 @@ public class MypageController {
     private final MypageService mypageService;
     private final MyPageProjectQueryService projectQueryService;
     private final MyPageProjectCommandService projectCommandService;
+    private final ProjectUserService projectUserService;
 
     /**
      * 프로필 조회
@@ -71,7 +80,6 @@ public class MypageController {
         return ApiResponse.ok(mypageService.getProfileAnalysis(userDetails.getUserId()));
     }
 
-    // TODO: 해주세요
     // 프로젝트 분야 수정
     @PatchMapping("/projects/{projectId}/project-field")
     public ApiResponse<Void> editField(@PathVariable Long projectId, @RequestParam("field") InterestField interestField) {
@@ -150,6 +158,47 @@ public class MypageController {
     ){
         projectCommandService.removePlanFile(projectId, planFileId);
         return ApiResponse.ok();
+    }
+
+
+
+    /**
+     * 프로젝트 멤버 필드 변경
+     */
+    @PatchMapping("/{projectUserId}/field")
+    public ApiResponse<ProjectUserFieldResDto> updateProjectUserField(
+            @PathVariable @Positive Long projectUserId,
+            @RequestBody @Valid ProjectUserFieldReqDto reqDto
+    ) {
+        return ApiResponse.ok(projectUserService.changeProjectUserFieldInProject(projectUserId, reqDto));
+    }
+
+    /**
+     * 프로젝트 멤버 내보내기 (상태 변경)
+     */
+    @PatchMapping("/{projectUserId}/kick")
+    public ApiResponse<ProjectUserResDto> kickProjectUser(
+            @PathVariable @Positive Long projectUserId,
+            @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        return ApiResponse.ok(projectUserService.kickProjectUser(user.getUserId(), projectUserId));
+    }
+
+    /**
+     * 프로젝트 멤버 역할 변경 (LEADER | LEAD | MEMBER)
+     */
+    @PatchMapping("/{projectUserId}/type")
+    public ApiResponse<ProjectUserResDto> updateProjectUserType(
+            @PathVariable @Positive Long projectUserId,
+            @RequestBody @Valid ProjectUserTypeReqDto req,
+            @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        return ApiResponse.ok(projectUserService.changeProjectUserTypeInProject(
+                        user.getUserId(),
+                        projectUserId,
+                        req.memberType()
+                )
+        );
     }
 
 

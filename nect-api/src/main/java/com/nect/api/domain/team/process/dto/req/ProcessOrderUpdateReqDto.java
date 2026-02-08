@@ -16,6 +16,9 @@ public record ProcessOrderUpdateReqDto(
         @JsonProperty("lane_key")
         String laneKey,
 
+        @JsonProperty("mission_number")
+        Integer missionNumber,
+
         @JsonProperty("start_date")
         LocalDate startDate,
 

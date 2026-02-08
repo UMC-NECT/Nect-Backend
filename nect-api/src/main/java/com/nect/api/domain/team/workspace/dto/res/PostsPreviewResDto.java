@@ -20,9 +20,6 @@ public record PostsPreviewResDto(
             @JsonProperty("title")
             String title,
 
-            @JsonProperty("is_pinned")
-            Boolean isPinned,
-
             @JsonProperty("created_at")
             LocalDateTime createdAt
     ) {}

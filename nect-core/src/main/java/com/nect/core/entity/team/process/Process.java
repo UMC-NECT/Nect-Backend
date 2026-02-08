@@ -75,11 +75,6 @@ public class Process extends BaseEntity {
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
     @SQLRestriction("deleted_at is null")
     @BatchSize(size = 100)
-    private final List<Link> links = new ArrayList<>();
-
-    @OneToMany(mappedBy = "process", cascade = CascadeType.ALL)
-    @SQLRestriction("deleted_at is null")
-    @BatchSize(size = 100)
     private final List<ProcessFeedback> feedbacks = new ArrayList<>();
 
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -121,16 +116,20 @@ public class Process extends BaseEntity {
         if (doc == null || doc.getId() == null) {
             throw new IllegalArgumentException("문서 객체 또는 문서 ID는 null일 수 없습니다.");
         }
+        if (doc.getDeletedAt() != null) {
+            throw new IllegalArgumentException("삭제된 문서는 첨부할 수 없습니다. documentId=" + doc.getId());
+        }
 
         boolean exists = sharedDocuments.stream()
                 .anyMatch(psd ->
-                        psd.getDocument() != null
+                        psd.getDeletedAt() == null
+                                && psd.getDocument() != null
                                 && psd.getDocument().getId() != null
                                 && psd.getDocument().getId().equals(doc.getId())
                 );
 
         if (exists) {
-            throw new IllegalStateException("해당 문서는 이미 첨부되었습니다. documentId = " + doc.getId());
+            throw new IllegalStateException("해당 문서는 이미 첨부되었습니다. documentId=" + doc.getId());
         }
 
         ProcessSharedDocument psd = ProcessSharedDocument.builder()
@@ -147,10 +146,6 @@ public class Process extends BaseEntity {
         this.taskItems.add(item);
     }
 
-    public void addLink(Link link) {
-        link.setProcess(this);
-        this.links.add(link);
-    }
 
     public void addProcessUser(ProcessUser pu) {
         pu.setProcess(this);
@@ -227,7 +222,6 @@ public class Process extends BaseEntity {
 
         this.taskItems.forEach(ProcessTaskItem::softDelete);
         this.feedbacks.forEach(ProcessFeedback::softDelete);
-        this.links.forEach(Link::softDelete);
         this.sharedDocuments.forEach(ProcessSharedDocument::softDelete);
         this.processFields.forEach(ProcessField::softDelete);
         this.processUsers.forEach(ProcessUser::delete);

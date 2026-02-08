@@ -46,7 +46,7 @@ public class BoardsOverviewFacade {
         // 기본값 : 공지로 설정
         PostType safeType = (postType == null) ? PostType.NOTICE : postType;
         PostListResDto postsPreview =
-                postFacade.getPostList(projectId, userId, safeType, PostSort.LATEST, 0, postsLimit);
+                postFacade.getPostList(projectId, userId, safeType,0, postsLimit);
 
         CalendarMonthIndicatorsResDto calendarIndicators = null;
         if (year != null && month != null) {
