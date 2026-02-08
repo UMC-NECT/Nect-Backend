@@ -1,9 +1,7 @@
 package com.nect.api.domain.mypage.controller;
 
-import com.nect.api.domain.mypage.dto.UserTeamRoleCreateReqDto;
-import com.nect.api.domain.mypage.dto.UserTeamRoleCreateResDto;
-import com.nect.api.domain.mypage.dto.UserTeamRoleUpdateReqDto;
-import com.nect.api.domain.mypage.dto.UserTeamRoleUpdateResDto;
+import com.nect.api.domain.mypage.dto.*;
+import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
 import com.nect.api.domain.mypage.service.UserTeamRoleService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -17,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserTeamRoleController {
 
     private final UserTeamRoleService userTeamRoleService;
+    private final UserTeamRoleQueryService userTeamRoleQueryService;
 
 
     // 마이페이지 팀 파트 생성(추가)
@@ -40,5 +39,15 @@ public class UserTeamRoleController {
     ) {
         Long userId = userDetails.getUserId();
         return ApiResponse.ok(userTeamRoleService.update(projectId, userId, userTeamRoleId, req));
+    }
+
+    // 마이페이지 파트 목록 조회
+    @GetMapping
+    public ApiResponse<UserTeamRolesResDto> readMyPageParts(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(userTeamRoleQueryService.readMyPageParts(projectId, userId));
     }
 }

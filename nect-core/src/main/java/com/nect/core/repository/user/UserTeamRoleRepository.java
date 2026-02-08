@@ -4,6 +4,7 @@ import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long> {
@@ -17,5 +18,7 @@ public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long
     );
 
     Optional<UserTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
+
+    List<UserTeamRole> findAllByProject_IdAndUser_UserIdAndDeletedAtIsNullOrderByIdAsc(Long projectId, Long userId);
 
 }

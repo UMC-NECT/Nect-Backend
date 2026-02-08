@@ -1,15 +1,12 @@
 package com.nect.api.domain.team.project.service;
 
-import com.nect.api.domain.team.project.dto.ProjectPartsResDto;
 import com.nect.api.domain.team.project.dto.ProjectUsersResDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.global.infra.S3Service;
-import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
-import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +21,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectTeamQueryService {
-    private final ProjectTeamRoleRepository projectTeamRoleRepository;
+public class ProjectMemberQueryService {
     private final ProjectUserRepository projectUserRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
@@ -35,40 +31,10 @@ public class ProjectTeamQueryService {
         return s3Service.getPresignedGetUrl(fileKey);
     }
 
-    // 프로젝트 파트 목록 조회 서비스
+    // 프로젝트 멤버 전체 조회 서비스 (작업실 / 마이페이지 둘 다 사용)
     @Transactional(readOnly = true)
-    public ProjectPartsResDto readProjectParts(Long projectId, Long userId) {
-        assertActiveProjectMember(projectId, userId);
-
-        List<ProjectTeamRole> roles = projectTeamRoleRepository.findAllActiveByProjectId(projectId);
-
-        List<ProjectPartsResDto.PartDto> parts = roles.stream()
-                .map(ptr -> {
-                    RoleField rf = ptr.getRoleField();
-                    String customName = ptr.getCustomRoleFieldName();
-
-                    String label = (rf == RoleField.CUSTOM)
-                            ? customName
-                            : rf.getLabelEn();
-
-                    return new ProjectPartsResDto.PartDto(
-                            ptr.getId(),
-                            rf,
-                            customName,
-                            label,
-                            ptr.getRequiredCount()
-                    );
-                })
-                .toList();
-
-        return new ProjectPartsResDto(parts);
-    }
-
-
-    // 프로젝트 멤버 전체 조회 서비스
-    @Transactional(readOnly = true)
-    public ProjectUsersResDto readProjectUsers(Long projectId, Long userId) {
-        assertActiveProjectMember(projectId, userId);
+    public ProjectUsersResDto readProjectUsers(Long projectId, Long requesterUserId) {
+        assertActiveProjectMember(projectId, requesterUserId);
 
         List<ProjectUserRepository.MemberBoardRow> rows =
                 projectUserRepository.findActiveMemberBoardRows(projectId);
@@ -111,7 +77,6 @@ public class ProjectTeamQueryService {
         return new ProjectUsersResDto(users);
     }
 
-
     private void assertActiveProjectMember(Long projectId, Long userId) {
         boolean ok = projectUserRepository.existsByProjectIdAndUserIdAndMemberStatus(
                 projectId, userId, ProjectMemberStatus.ACTIVE
@@ -120,6 +85,5 @@ public class ProjectTeamQueryService {
             throw new ProjectException(ProjectErrorCode.PROJECT_MEMBER_FORBIDDEN,
                     "projectId=" + projectId + ", userId=" + userId);
         }
-
     }
 }
