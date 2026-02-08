@@ -2,18 +2,17 @@ package com.nect.api.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.chat.dto.req.ChatMessageDto;
-import com.nect.api.domain.team.chat.dto.res.ChatFileDetailDto;
-import com.nect.api.domain.team.chat.dto.res.ChatFileResponseDto;
-import com.nect.api.domain.team.chat.dto.res.ChatFileUploadResponseDto;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomAlbumDetailDto;
-import com.nect.api.domain.team.chat.dto.res.ChatRoomAlbumResponseDto;
+import com.nect.api.domain.team.chat.dto.req.SharedDocumentCreateByChatRequestDto;
+import com.nect.api.domain.team.chat.dto.res.*;
 import com.nect.api.domain.team.chat.service.ChatFileService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.chat.enums.MessageType;
+import com.nect.core.entity.team.enums.DocumentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +59,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -84,6 +84,9 @@ class ChatFileControllerTest {
 
     @MockitoBean
     private TokenBlacklistService tokenBlacklistService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUpAuth() {
@@ -500,5 +503,71 @@ class ChatFileControllerTest {
                 ));
 
         verify(chatFileService).getDownloadUrl(eq(fileId), eq(userId));
+    }
+
+    @Test
+    @DisplayName("채팅 파일을 공유 문서함으로 등록 API")
+    void createSharedDocumentFromChat() throws Exception {
+        // Given
+        Long roomId = 1L;
+        Long projectId = 10L;
+        Long chatFileId = 100L;
+        Long userId = 1L;
+
+        SharedDocumentCreateByChatRequestDto request = new SharedDocumentCreateByChatRequestDto(chatFileId);
+
+        SharedDocumentCreateResDto response = new SharedDocumentCreateResDto(
+                50L,                    // 생성된 문서 ID
+                "회의록_최종.pdf",        // 제목
+                DocumentType.FILE       // 문서 타입
+        );
+
+        // chatFileService (또는 위 컨트롤러 구조에 따라 주입된 서비스) Mocking
+        given(chatFileService.createFromChatFile(eq(projectId), eq(roomId), eq(userId), eq(chatFileId)))
+                .willReturn(response);
+
+        // When & Then
+        mockMvc.perform(
+                        post("/api/v1/chats/rooms/{roomId}/shared-documents", roomId)
+                                .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                                .with(mockUser(userId))
+                                .param("projectId", String.valueOf(projectId))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.body.document_id").value(50))
+                .andExpect(jsonPath("$.body.title").value("회의록_최종.pdf"))
+                .andDo(document("chat-file-to-shared-document",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("채팅")
+                                .summary("채팅 파일을 공유 문서함으로 등록 API")
+                                .description("채팅방에 업로드된 파일을 해당 프로젝트의 공유 문서함 자산으로 등록합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("roomId").description("채팅방 ID")
+                                )
+                                .queryParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestFields(
+                                        fieldWithPath("chat_file_id").description("등록할 채팅 파일 엔티티 ID")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상세 설명").optional(),
+                                        fieldWithPath("body.document_id").description("생성된 공유 문서 ID"),
+                                        fieldWithPath("body.title").description("문서 제목"),
+                                        fieldWithPath("body.document_type").description("문서 타입 (FILE/LINK)")
+                                )
+                                .build()
+                        )
+                ));
     }
 }

@@ -284,6 +284,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
             @Param("userId") Long userId
     );
 
-
+    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
 
 }
