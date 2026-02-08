@@ -4,10 +4,7 @@ import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,7 +55,17 @@ public class Project extends BaseEntity {
     @Column(name = "planned_ended_on")
     private LocalDate plannedEndedOn;
 
+    @Column(name = "purposes", columnDefinition = "TEXT DEFAULT ''", nullable = false)
+    @Setter
+    private String purposes;
 
+    @Column(name = "service_users", columnDefinition = "TEXT DEFAULT ''", nullable = false)
+    @Setter
+    private String serviceUsers;
+
+    @Column(name = "main_functions", columnDefinition = "TEXT DEFAULT ''", nullable = false)
+    @Setter
+    private String mainFunctions;
 
     @Builder
     protected Project(String title,
@@ -73,6 +80,9 @@ public class Project extends BaseEntity {
         this.status = (status == null) ? ProjectStatus.ACTIVE : status;
         this.noticeText = noticeText;
         this.regularMeetingText = regularMeetingText;
+        this.purposes = "";
+        this.serviceUsers = "";
+        this.mainFunctions = "";
     }
 
     public void end() {

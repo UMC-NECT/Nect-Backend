@@ -1,11 +1,13 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
-import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
-import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
 import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
 import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
@@ -14,11 +16,15 @@ import com.nect.api.domain.team.project.dto.ProjectUserTypeReqDto;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
+import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.user.enums.InterestField;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/mypage")
@@ -74,6 +80,88 @@ public class MypageController {
         return ApiResponse.ok(mypageService.getProfileAnalysis(userDetails.getUserId()));
     }
 
+    // 프로젝트 분야 수정
+    @PatchMapping("/projects/{projectId}/project-field")
+    public ApiResponse<Void> editField(@PathVariable Long projectId, @RequestParam("field") InterestField interestField) {
+        projectCommandService.changeProjectInterest(projectId, interestField);
+        return ApiResponse.ok();
+    }
+
+
+    // 모집정보 추가
+
+    // 프로젝트 목표 작성
+    @PatchMapping("/projects/{projectId}/purposes")
+    public ApiResponse<Void> writePurposes(
+            @PathVariable Long projectId,
+            @Valid @RequestBody MyProjectStringListRequest request
+    ) {
+        projectCommandService.changePurpose(projectId, request.contents());
+        return ApiResponse.ok();
+    }
+
+
+    // 주요기능 작성
+    @PatchMapping("/projects/{projectId}/functions")
+    public ApiResponse<Void> writeMainFunctions(
+            @PathVariable Long projectId,
+            @Valid @RequestBody MyProjectStringListRequest request
+    ) {
+        projectCommandService.changeMainFunctions(projectId, request.contents());
+        return ApiResponse.ok();
+    }
+
+
+    // 서비스 사용자 작성
+    @PatchMapping("/projects/{projectId}/service-users")
+    public ApiResponse<Void> writeServiceUsers(
+            @PathVariable Long projectId,
+            @Valid @RequestBody MyProjectStringListRequest request
+    ) {
+        projectCommandService.changeServiceUsers(projectId, request.contents());
+        return ApiResponse.ok();
+    }
+
+
+    // 프로젝트 세부 기획 파일 추가
+    @PostMapping(value = "/projects/{projectId}/plan-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> uploadPlanFile(
+            @PathVariable Long projectId,
+            @RequestPart("name") String name,
+            @RequestPart("planFileType") PlanFileType planFileType,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "link", required = false) String link
+    ) {
+        projectCommandService.addPlanFile(projectId, name, planFileType, file, link);
+        return ApiResponse.ok();
+    }
+
+    // 프로젝트 세부 기획 파일 수정
+    @PatchMapping(value = "/projects/{projectId}/plan-file/{planFileId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> editPlanFile(
+            @PathVariable Long projectId,
+            @PathVariable Long planFileId,
+            @RequestPart("name") String name,
+            @RequestPart("planFileType") PlanFileType planFileType,
+            @RequestPart(value = "file", required = false) MultipartFile file,
+            @RequestPart(value = "link", required = false) String link
+    ) {
+        projectCommandService.editPlanFile(projectId, planFileId, name, planFileType, file, link);
+        return ApiResponse.ok();
+    }
+
+    // 프로젝트 세부 기획 파일 삭제
+    @DeleteMapping(value = "/projects/{projectId}/plan-file/{planFileId}")
+    public ApiResponse<Void> removePlanFile(
+            @PathVariable Long projectId,
+            @PathVariable Long planFileId
+    ){
+        projectCommandService.removePlanFile(projectId, planFileId);
+        return ApiResponse.ok();
+    }
+
+
+
     /**
      * 프로젝트 멤버 필드 변경
      */
@@ -113,31 +201,5 @@ public class MypageController {
         );
     }
 
-    // TODO: 해주세요
-    // 프로젝트 분야 수정
-
-    // 모집정보 추가
-
-    // 프로젝트 목표 추가
-
-    // 프로젝트 목표 수정
-
-    // 프로젝트 목표 삭제
-
-    // 주요기능 추가
-
-    // 주요기능 수정
-
-    // 주요기능 삭제
-
-    // 서비스 사용자 추가
-
-    // 서비스 사용자 수정
-
-    // 서비스 사용자 삭제
-
-    // 프로젝트 세부 기획 파일 추가
-
-    // 프로젝트 세부 기획 파일 삭제
 
 }
