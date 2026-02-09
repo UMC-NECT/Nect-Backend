@@ -98,7 +98,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("마이페이지")
+                                        .tag("Mypage")
                                         .summary("마이페이지 프로필 조회")
                                         .description("사용자의 마이페이지 프로필 정보를 조회합니다.")
                                         .responseFields(
@@ -230,7 +230,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-patch-profile",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("마이페이지")
+                                        .tag("Mypage")
                                         .summary("마이페이지 프로필 수정")
                                         .description("마이페이지 프로필 정보를 부분 수정합니다.\n\n" +
                                                 "**수정 가능한 필드**\n" +
@@ -296,7 +296,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 분야 수정")
                                 .description("프로젝트 관심 분야 선택 상태를 변경합니다.")
                                 .pathParameters(
@@ -345,7 +345,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 분야 조회")
                                 .description("프로젝트 관심 분야 목록을 조회합니다.")
                                 .pathParameters(
@@ -388,7 +388,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 목표 조회")
                                 .description("프로젝트 목표 목록을 조회합니다.")
                                 .pathParameters(
@@ -429,7 +429,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 주요기능 조회")
                                 .description("프로젝트 주요기능 목록을 조회합니다.")
                                 .pathParameters(
@@ -470,7 +470,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 서비스 사용자 조회")
                                 .description("프로젝트 서비스 사용자 목록을 조회합니다.")
                                 .pathParameters(
@@ -515,7 +515,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 세부 기획 파일 조회")
                                 .description("프로젝트 세부 기획 파일 목록을 조회합니다.")
                                 .pathParameters(
@@ -561,7 +561,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 세부 기획 파일 다운로드")
                                 .description("프로젝트 세부 기획 파일 다운로드 URL을 조회합니다.")
                                 .pathParameters(
@@ -630,7 +630,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 partWithName("link").description("링크 URL (planFileType=LINK일 때만 사용)").optional()
                         ),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 세부 기획 파일 추가")
                                 .description(
                                         "프로젝트의 세부 기획 파일(업로드 또는 링크)을 추가합니다.\n\n" +
@@ -711,7 +711,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 partWithName("link").description("링크 URL - planFileType=LINK일 때만 사용").optional()
                         ),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 세부 기획 파일 수정")
                                 .description(
                                         "프로젝트 세부 기획 파일의 내용을 수정합니다.\n\n" +
@@ -759,7 +759,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 세부 기획 파일 삭제")
                                 .description(
                                         "프로젝트 세부 기획 파일을 삭제합니다.\n\n" +
@@ -802,7 +802,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                 .andDo(document("mypage-get-profile-analysis",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("마이페이지")
+                                        .tag("Mypage")
                                         .summary("마이페이지 프로필 분석 불러오기")
                                         .description("데이터베이스에 저장된 AI 프로필 분석 결과를 조회합니다. 분석 결과가 없으면 profileType과 tags는 null입니다.")
                                         .responseFields(
@@ -846,7 +846,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("Mypage")
                                 .summary("프로젝트 멤버 필드(파트) 변경")
                                 .description("프로젝트 내 멤버의 필드(파트) 및 커스텀 필드를 변경합니다.")
                                 .requestHeaders(
@@ -893,7 +893,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("Mypage")
                                 .summary("프로젝트 멤버 강퇴")
                                 .description("프로젝트에서 특정 멤버를 강퇴합니다.")
                                 .requestHeaders(
@@ -946,7 +946,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("mypage")
+                                .tag("Mypage")
                                 .summary("프로젝트 멤버 타입 변경")
                                 .description("프로젝트에서 특정 멤버의 타입을 변경합니다. (LEADER | LEAD | MEMBER)")
                                 .requestHeaders(
