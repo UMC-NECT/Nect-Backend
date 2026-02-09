@@ -144,7 +144,7 @@ class MypageProjectMemberControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("MyPage")
+                                        .tag("Mypage")
                                         .summary("마이페이지 전용 프로젝트 유저 조회")
                                         .description("마이페이지에서 프로젝트별 유저(멤버) 목록을 조회합니다. (공용 멤버 조회 서비스 재사용)")
                                         .pathParameters(

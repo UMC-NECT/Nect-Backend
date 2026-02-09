@@ -92,7 +92,7 @@ class DmQueryControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("dm-messages",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("개인 메시지")
+                                .tag("Direct Message")
                                 .summary("DM 메시지 조회")
                                 .description("상대 유저와의 DM 메시지 목록을 조회합니다.")
                                 .requestHeaders(
@@ -124,7 +124,7 @@ class DmQueryControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("dm-rooms",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("개인 메시지")
+                                .tag("Direct Message")
                                 .summary("DM 채팅방 목록 조회")
                                 .description("로그인 유저의 DM 채팅방 목록을 조회합니다.")
                                 .requestHeaders(

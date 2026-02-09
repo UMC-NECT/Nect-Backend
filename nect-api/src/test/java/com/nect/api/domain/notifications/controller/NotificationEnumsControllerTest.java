@@ -78,7 +78,7 @@ class NotificationEnumsControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("notifications-enums-classifications",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("알림")
+                                .tag("Notifications")
                                 .summary("알림 분류 enum 조회")
                                 .description("알림 분류(NotificationClassification) enum 목록을 조회합니다.")
                                 .requestHeaders(
@@ -100,7 +100,7 @@ class NotificationEnumsControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("notifications-enums-scopes",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("알림")
+                                .tag("Notifications")
                                 .summary("알림 범위 enum 조회")
                                 .description("알림 범위(NotificationScope) enum 목록을 조회합니다.")
                                 .requestHeaders(
@@ -122,7 +122,7 @@ class NotificationEnumsControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("notifications-enums-types-matching-rejected",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("알림")
+                                .tag("Notifications")
                                 .summary("알림 타입 MATCHING_REJECTED 조회")
                                 .description("MATCHING_REJECTED 알림 타입 메시지 포맷을 조회합니다.")
                                 .requestHeaders(
@@ -144,7 +144,7 @@ class NotificationEnumsControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("notifications-enums-filters",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("알림")
+                                .tag("Notifications")
                                 .summary("알림 검색 필터 enum 조회")
                                 .description("알림 검색 필터(NotificationSearchFilter) enum 목록을 조회합니다.")
                                 .requestHeaders(
