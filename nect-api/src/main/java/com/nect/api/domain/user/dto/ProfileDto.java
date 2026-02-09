@@ -32,10 +32,4 @@ public class ProfileDto {
             Integer logic,
             Integer leadership
     ) {}
-
-    public record UserInfoResponseDto(
-            String name,
-            String role,
-            String email
-    ) {}
 }
