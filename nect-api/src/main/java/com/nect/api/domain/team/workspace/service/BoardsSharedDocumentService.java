@@ -1,6 +1,7 @@
 package com.nect.api.domain.team.workspace.service;
 
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
+import com.nect.api.domain.team.workspace.dto.req.SharedDocumentLinkCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.SharedDocumentNameUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentNameUpdateResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsGetResDto;
@@ -257,5 +258,51 @@ public class BoardsSharedDocumentService {
                 doc.getId(),
                 meta
         );
+    }
+
+    // 링크 생성 서비스
+    @Transactional
+    public SharedDocument createLink(Long projectId, Long userId, SharedDocumentLinkCreateReqDto req, User actor) {
+
+        if (req == null || req.linkUrl() == null || req.linkUrl().isBlank()) {
+            throw new BoardsException(BoardsErrorCode.INVALID_REQUEST, "link_url is required");
+        }
+        if (req.title() == null || req.title().isBlank()) {
+            throw new BoardsException(BoardsErrorCode.INVALID_REQUEST, "title is required");
+        }
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new BoardsException(BoardsErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
+
+        if (!projectUserRepository.existsByProjectIdAndUserId(projectId, userId)) {
+            throw new BoardsException(BoardsErrorCode.PROJECT_MEMBER_FORBIDDEN,
+                    "projectId=" + projectId + ", userId=" + userId);
+        }
+
+        SharedDocument doc = SharedDocument.ofLink(
+                actor,
+                project,
+                req.title().trim(),
+                req.linkUrl().trim()
+        );
+
+        SharedDocument saved = sharedDocumentRepository.save(doc);
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("documentId", saved.getId());
+        meta.put("type", "LINK");
+        meta.put("title", saved.getTitle());
+        meta.put("url", saved.getLinkUrl());
+
+        historyPublisher.publish(
+                projectId,
+                userId,
+                HistoryAction.LINK_CREATED,
+                HistoryTargetType.DOCUMENT,
+                saved.getId(),
+                meta
+        );
+
+        return saved;
     }
 }

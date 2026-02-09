@@ -82,4 +82,12 @@ public interface ProcessSharedDocumentRepository extends JpaRepository<ProcessSh
           and psd.process.id in :processIds
     """)
     List<AttachmentMetaRow> findAttachmentMetasByProcessIds(@Param("processIds") List<Long> processIds);
+
+    @Query("""
+        select (count(psd) > 0)
+        from ProcessSharedDocument psd
+        where psd.document.id = :documentId
+          and psd.deletedAt is null
+    """)
+    boolean existsActiveByDocumentId(@Param("documentId") Long documentId);
 }

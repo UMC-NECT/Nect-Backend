@@ -3,7 +3,9 @@ package com.nect.api.domain.team.workspace.controller;
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.team.workspace.dto.req.SharedDocumentLinkCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.SharedDocumentNameUpdateReqDto;
+import com.nect.api.domain.team.workspace.dto.res.SharedDocumentCreatedResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentNameUpdateResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsGetResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsPreviewResDto;
@@ -23,6 +25,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -30,6 +33,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,14 +46,12 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -454,4 +456,151 @@ class BoardsSharedDocumentControllerTest {
 
         verify(facade).delete(eq(projectId), eq(userId), eq(documentId));
     }
+
+    @Test
+    @DisplayName("공유 문서함 파일 업로드")
+    void uploadSharedDocumentFile() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "api-spec.pdf",
+                "application/pdf",
+                "dummy pdf content".getBytes()
+        );
+
+        SharedDocumentCreatedResDto res = new SharedDocumentCreatedResDto(
+                500L,
+                DocumentType.FILE,
+                "api-spec.pdf",
+                null,
+                "api-spec.pdf",
+                FileExt.PDF,
+                1234L,
+                "https://example.com/presigned/500"
+        );
+
+        given(facade.uploadFile(eq(projectId), eq(userId), any(MultipartFile.class)))
+                .willReturn(res);
+
+        mockMvc.perform(multipart("/api/v1/projects/{projectId}/boards/shared-documents/files", projectId)
+                        .file(file)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("boards-shared-documents-file-upload",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Boards")
+                                        .summary("공유 문서함 파일 업로드")
+                                        .description("공유 문서함에 파일을 업로드합니다. (R2 업로드 + SharedDocument(FILE) 생성)")
+                                        .pathParameters(
+                                                parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.document_id").type(NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.document_type").type(STRING).description("문서 타입(FILE)"),
+                                                fieldWithPath("body.title").type(STRING).description("표시명(title)"),
+                                                fieldWithPath("body.link_url").optional().type(STRING).description("링크 URL (FILE이면 null)"),
+
+                                                fieldWithPath("body.file_name").type(STRING).description("파일명"),
+                                                fieldWithPath("body.file_ext").type(STRING).description("파일 확장자"),
+                                                fieldWithPath("body.file_size").type(NUMBER).description("파일 크기(byte)"),
+                                                fieldWithPath("body.download_url").type(STRING).description("Presigned 다운로드 URL")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(facade).uploadFile(eq(projectId), eq(userId), any(MultipartFile.class));
+    }
+
+    @Test
+    @DisplayName("공유 문서함 링크 생성")
+    void createSharedDocumentLink() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        SharedDocumentLinkCreateReqDto req = new SharedDocumentLinkCreateReqDto(
+                "Backend Repo",
+                "https://github.com/nect/nect-backend"
+        );
+
+        SharedDocumentCreatedResDto res = new SharedDocumentCreatedResDto(
+                600L,
+                DocumentType.LINK,
+                "Backend Repo",
+                "https://github.com/nect/nect-backend",
+                null,
+                null,
+                0L,
+                null
+        );
+
+        given(facade.createLink(eq(projectId), eq(userId), any(SharedDocumentLinkCreateReqDto.class)))
+                .willReturn(res);
+
+        mockMvc.perform(post("/api/v1/projects/{projectId}/boards/shared-documents/links", projectId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("boards-shared-documents-link-create",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Boards")
+                                        .summary("공유 문서함 링크 생성")
+                                        .description("공유 문서함에 링크를 생성합니다. (SharedDocument(LINK) 생성)")
+                                        .pathParameters(
+                                                parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("title").type(STRING).description("표시명(title)"),
+                                                fieldWithPath("link_url").type(STRING).description("링크 URL")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.document_id").type(NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.document_type").type(STRING).description("문서 타입(LINK)"),
+                                                fieldWithPath("body.title").type(STRING).description("표시명(title)"),
+                                                fieldWithPath("body.link_url").type(STRING).description("링크 URL"),
+
+                                                fieldWithPath("body.file_name").optional().type(STRING).description("파일명 (LINK면 null)"),
+                                                fieldWithPath("body.file_ext").optional().type(STRING).description("파일 확장자 (LINK면 null)"),
+                                                fieldWithPath("body.file_size").optional().type(NUMBER).description("파일 크기 (LINK면 0 또는 null)"),
+                                                fieldWithPath("body.download_url").optional().type(STRING).description("다운로드 URL (LINK면 null)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(facade).createLink(eq(projectId), eq(userId), any(SharedDocumentLinkCreateReqDto.class));
+    }
+
+
 }

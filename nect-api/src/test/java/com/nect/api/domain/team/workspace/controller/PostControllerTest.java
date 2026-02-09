@@ -428,6 +428,50 @@ class PostControllerTest {
     }
 
     @Test
+    @DisplayName("게시글 삭제")
+    void deletePost() throws Exception {
+        long projectId = 1L;
+        long postId = 100L;
+        long userId = 1L;
+
+        doNothing().when(postFacade).deletePost(eq(projectId), eq(userId), eq(postId));
+
+        mockMvc.perform(delete("/api/v1/projects/{projectId}/boards/posts/{postId}", projectId, postId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("post-delete",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Post")
+                                        .summary("게시글 삭제")
+                                        .description("게시글을 삭제합니다. 작성자만 삭제할 수 있습니다. (soft delete)")
+                                        .pathParameters(
+                                                ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
+                                                ResourceDocumentation.parameterWithName("postId").description("게시글 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+                                                fieldWithPath("body").optional().type(NULL).description("응답 바디(삭제는 null)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(postFacade).deletePost(eq(projectId), eq(userId), eq(postId));
+    }
+
+
+    @Test
     @DisplayName("게시글 프리뷰 조회")
     void getPostsPreview() throws Exception {
         long projectId = 1L;
