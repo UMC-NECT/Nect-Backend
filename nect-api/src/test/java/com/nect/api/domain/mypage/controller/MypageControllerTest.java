@@ -422,7 +422,7 @@ class MypageControllerTest extends NectDocumentApiTester {
         MyProjectsResponseDto.StringListResponse response =
                 new MyProjectsResponseDto.StringListResponse(projectId, List.of("기능1", "기능2"));
 
-        given(projectQueryService.getPurposes(eq(projectId))).willReturn(response);
+        given(projectQueryService.getFunctions(eq(projectId))).willReturn(response);
 
         mockMvc.perform(
                         get("/api/v1/mypage/projects/{projectId}/functions", projectId)
