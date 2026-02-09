@@ -508,20 +508,22 @@ public class WeekMissionService {
         meta.put("title", process.getTitle());
         meta.put("taskItemId", item.getId());
 
-        meta.put("before", Map.of(
-                "content", beforeContent,
-                "isDone", beforeDone,
-                "sortOrder", beforeSortOrder,
-                "roleField", beforeRole == null ? null : beforeRole.name(),
-                "customRoleFieldName", beforeCustom
-        ));
-        meta.put("after", Map.of(
-                "content", item.getContent(),
-                "isDone", item.isDone(),
-                "sortOrder", item.getSortOrder(),
-                "roleField", item.getRoleField() == null ? null : item.getRoleField().name(),
-                "customRoleFieldName", item.getCustomRoleFieldName()
-        ));
+        Map<String, Object> beforeMap = new LinkedHashMap<>();
+        beforeMap.put("content", beforeContent);
+        beforeMap.put("isDone", beforeDone);
+        beforeMap.put("sortOrder", beforeSortOrder);
+        beforeMap.put("roleField", beforeRole == null ? null : beforeRole.name());
+        beforeMap.put("customRoleFieldName", beforeCustom);
+
+        Map<String, Object> afterMap = new LinkedHashMap<>();
+        afterMap.put("content", item.getContent());
+        afterMap.put("isDone", item.isDone());
+        afterMap.put("sortOrder", item.getSortOrder());
+        afterMap.put("roleField", item.getRoleField() == null ? null : item.getRoleField().name());
+        afterMap.put("customRoleFieldName", item.getCustomRoleFieldName());
+
+        meta.put("before", beforeMap);
+        meta.put("after", afterMap);
 
         publishWeekMissionHistory(
                 projectId, userId, processId,

@@ -16,9 +16,7 @@ import java.time.LocalDateTime;
         name = "user_team_roles",
         indexes = {
                 @Index(name = "idx_user_team_roles_project_id", columnList = "project_id"),
-                @Index(name = "idx_user_team_roles_user_id", columnList = "user_id"),
-                @Index(name = "idx_user_team_roles_project_user", columnList = "project_id, user_id"),
-                @Index(name = "idx_user_team_roles_project_user_role", columnList = "project_id, user_id, role_field")
+                @Index(name = "idx_user_team_roles_project_role", columnList = "project_id, role_field")
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -32,10 +30,6 @@ public class UserTeamRole {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role_field", nullable = false, length = 50)
@@ -53,24 +47,22 @@ public class UserTeamRole {
     private LocalDateTime deletedAt;
 
     @Builder
-    private UserTeamRole(Project project, User user, RoleField roleField, String customRoleFieldName, Integer requiredCount) {
+    private UserTeamRole(Project project, RoleField roleField, String customRoleFieldName, Integer requiredCount) {
         this.project = project;
-        this.user = user;
         this.roleField = roleField;
         this.customRoleFieldName = customRoleFieldName;
         this.requiredCount = requiredCount;
     }
 
-    public static UserTeamRole of(Project project, User user, RoleField roleField, String customRoleFieldName, Integer requiredCount) {
+    public static UserTeamRole of(Project project, RoleField roleField, String customRoleFieldName, Integer requiredCount) {
         return UserTeamRole.builder()
                 .project(project)
-                .user(user)
                 .roleField(roleField)
                 .customRoleFieldName(customRoleFieldName)
                 .requiredCount(requiredCount)
                 .build();
     }
-
+    
     public boolean isDeleted() {
         return deletedAt != null;
     }

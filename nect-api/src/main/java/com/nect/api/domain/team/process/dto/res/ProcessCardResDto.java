@@ -44,5 +44,11 @@ public record ProcessCardResDto(
         boolean hasOpenFeedback,
 
         @JsonProperty("assignee")
-        List<AssigneeResDto> assignee
+        List<AssigneeResDto> assignee,
+
+        @JsonProperty("attachment_summary")
+        AttachmentSummaryDto attachmentSummary,
+
+        @JsonProperty("attachments_meta")
+        List<AttachmentMetaDto> attachmentsMeta
 ) {}

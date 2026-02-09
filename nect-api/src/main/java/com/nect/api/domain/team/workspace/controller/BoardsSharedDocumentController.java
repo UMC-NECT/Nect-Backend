@@ -1,6 +1,8 @@
 package com.nect.api.domain.team.workspace.controller;
 
+import com.nect.api.domain.team.workspace.dto.req.SharedDocumentLinkCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.SharedDocumentNameUpdateReqDto;
+import com.nect.api.domain.team.workspace.dto.res.SharedDocumentCreatedResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentNameUpdateResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsGetResDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentsPreviewResDto;
@@ -10,8 +12,10 @@ import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.DocumentType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -72,5 +76,27 @@ public class    BoardsSharedDocumentController {
         Long userId = userDetails.getUserId();
         facade.delete(projectId, userId, documentId);
         return ApiResponse.ok(null);
+    }
+
+    // 파일 첨부 + 업로드
+    @PostMapping(value = "/shared-documents/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<SharedDocumentCreatedResDto> uploadSharedDocumentFile(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestPart("file") MultipartFile file
+    ) {
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(facade.uploadFile(projectId, userId, file));
+    }
+
+    // 링크 첨부
+    @PostMapping("/shared-documents/links")
+    public ApiResponse<SharedDocumentCreatedResDto> createSharedDocumentLink(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody SharedDocumentLinkCreateReqDto req
+    ) {
+        Long userId = userDetails.getUserId();
+        return ApiResponse.ok(facade.createLink(projectId, userId, req));
     }
 }

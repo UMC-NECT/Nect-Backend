@@ -20,7 +20,7 @@ public class UserTeamRoleQueryService {
     private final UserTeamRoleRepository userTeamRoleRepository;
     private final ProjectUserRepository projectUserRepository;
 
-    // 마이페이지 팀 파트 조회(UserTeamRole 사용)
+    // 마이페이지 팀 파트 조회(UserTeamRole 사용), 프로젝트 멤버면 조회 가능
     @Transactional(readOnly = true)
     public UserTeamRolesResDto readMyPageParts(Long projectId, Long requesterUserId) {
 
@@ -37,7 +37,7 @@ public class UserTeamRoleQueryService {
         }
 
         List<UserTeamRole> roles =
-                userTeamRoleRepository.findAllByProject_IdAndUser_UserIdAndDeletedAtIsNullOrderByIdAsc(projectId, requesterUserId);
+                userTeamRoleRepository.findAllByProject_IdAndDeletedAtIsNullOrderByIdAsc(projectId);
 
         List<UserTeamRolesResDto.PartDto> parts = roles.stream()
                 .map(r -> new UserTeamRolesResDto.PartDto(

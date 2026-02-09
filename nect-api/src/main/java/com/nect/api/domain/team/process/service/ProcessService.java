@@ -15,6 +15,7 @@ import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.DocumentType;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.Project;
@@ -31,10 +32,7 @@ import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
-import com.nect.core.repository.team.process.ProcessFeedbackRepository;
-import com.nect.core.repository.team.process.ProcessLaneOrderRepository;
-import com.nect.core.repository.team.process.ProcessMentionRepository;
-import com.nect.core.repository.team.process.ProcessRepository;
+import com.nect.core.repository.team.process.*;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -60,6 +58,7 @@ public class ProcessService {
     private final ProcessLaneOrderRepository processLaneOrderRepository;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
     private final ProcessFeedbackRepository processFeedbackRepository;
+    private final ProcessSharedDocumentRepository processSharedDocumentRepository;
 
     private final S3Service s3Service;
     private final ProcessLaneOrderService processLaneOrderService;
@@ -1413,6 +1412,43 @@ public class ProcessService {
         );
     }
 
+    private Map<Long, AttachmentSummaryDto> buildAttachmentSummaryMap(List<Long> processIds) {
+        if (processIds == null || processIds.isEmpty()) return Map.of();
+
+        var rows = processSharedDocumentRepository.aggregateAttachmentsByProcessIds(processIds);
+
+        Map<Long, Long> fileCount = new HashMap<>();
+        Map<Long, Long> linkCount = new HashMap<>();
+        Map<Long, LinkedHashSet<FileExt>> extSet = new HashMap<>();
+
+        for (var r : rows) {
+            Long pid = r.getProcessId();
+            DocumentType type = r.getDocumentType();
+            FileExt ext = r.getFileExt();
+            long cnt = (r.getCnt() == null) ? 0L : r.getCnt();
+
+            if (type == DocumentType.LINK) {
+                linkCount.put(pid, linkCount.getOrDefault(pid, 0L) + cnt);
+            } else { // FILE
+                fileCount.put(pid, fileCount.getOrDefault(pid, 0L) + cnt);
+                if (ext != null) {
+                    extSet.computeIfAbsent(pid, k -> new LinkedHashSet<>()).add(ext);
+                }
+            }
+        }
+
+        Map<Long, AttachmentSummaryDto> out = new HashMap<>();
+        for (Long pid : processIds) {
+            long f = fileCount.getOrDefault(pid, 0L);
+            long l = linkCount.getOrDefault(pid, 0L);
+
+            List<FileExt> exts = extSet.getOrDefault(pid, new LinkedHashSet<>()).stream().toList();
+
+            out.put(pid, new AttachmentSummaryDto(f + l, f, l, exts));
+        }
+        return out;
+    }
+
     private LocalDate normalizeWeekStart(LocalDate date) {
         if (date == null) {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "startDate must not be null");
@@ -1420,7 +1456,12 @@ public class ProcessService {
         return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
-    private ProcessCardResDto toProcessCardResDTO(Process p,  boolean hasOpenFeedback) {
+    private ProcessCardResDto toProcessCardResDTO(
+            Process p,
+            boolean hasOpenFeedback,
+            AttachmentSummaryDto attachmentSummary,
+            List<AttachmentMetaDto> attachmentsMeta
+    ) {
         int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
         int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
                 .filter(ProcessTaskItem::isDone)
@@ -1432,7 +1473,7 @@ public class ProcessService {
                 .filter(pf -> pf.getDeletedAt() == null)
                 .map(ProcessField::getRoleField)
                 .filter(Objects::nonNull)
-                .filter(rf -> rf != RoleField.CUSTOM) // 커스텀은 별도 리스트로
+                .filter(rf -> rf != RoleField.CUSTOM)
                 .distinct()
                 .toList();
 
@@ -1452,8 +1493,7 @@ public class ProcessService {
                 .map(pu -> {
                     User u = pu.getUser();
                     String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
-                    String nickname = u.getNickname();
-                    return new AssigneeResDto(u.getUserId(), u.getName(), nickname, profileUrl);
+                    return new AssigneeResDto(u.getUserId(), u.getName(), u.getNickname(), profileUrl);
                 })
                 .toList();
 
@@ -1472,8 +1512,51 @@ public class ProcessService {
                 customFields,
                 missionNumber,
                 hasOpenFeedback,
-                assignees
+                assignees,
+                (attachmentSummary == null ? AttachmentSummaryDto.empty() : attachmentSummary),
+                (attachmentsMeta == null ? List.of() : attachmentsMeta)
         );
+    }
+
+    private Map<Long, List<AttachmentMetaDto>> buildAttachmentMetaMap(List<Long> processIds) {
+        if (processIds == null || processIds.isEmpty()) return Map.of();
+
+        var rows = processSharedDocumentRepository.findAttachmentMetasByProcessIds(processIds);
+
+        Map<Long, List<AttachmentMetaDto>> out = new HashMap<>();
+
+        for (var r : rows) {
+            Long pid = r.getProcessId();
+            if (pid == null) continue;
+
+            AttachmentType type = (r.getDocumentType() == DocumentType.LINK)
+                    ? AttachmentType.LINK
+                    : AttachmentType.FILE;
+
+            LocalDateTime attachedAt = (r.getAttachedAt() != null)
+                    ? r.getAttachedAt()
+                    : r.getCreatedAt();
+
+            AttachmentMetaDto dto = new AttachmentMetaDto(
+                    type,
+                    r.getDocumentId(),
+                    attachedAt,
+                    r.getFileExt() // LINK면 null 가능
+            );
+
+            out.computeIfAbsent(pid, k -> new ArrayList<>()).add(dto);
+        }
+
+        // attachedAt desc 정렬 (원하는 정책)
+        out.replaceAll((pid, list) ->
+                list.stream()
+                        .sorted(Comparator.comparing(
+                                (AttachmentMetaDto m) -> m.attachedAt() == null ? LocalDateTime.MIN : m.attachedAt()
+                        ).reversed())
+                        .toList()
+        );
+
+        return out;
     }
 
     private Integer calcLeftDay(LocalDate deadLine) {
@@ -1603,19 +1686,33 @@ public class ProcessService {
         List<Process> processes = processRepository.findAllInRangeOrdered(projectId, rangeStart, rangeEnd);
         if (processes == null) processes = List.of();
 
-        Set<Long> openFeedbackProcessIds = new HashSet<>();
-        if (!processes.isEmpty()) {
+        final Set<Long> openFeedbackProcessIds;
+        final Map<Long, AttachmentSummaryDto> attachmentSummaryMap;
+        final Map<Long, List<AttachmentMetaDto>> attachmentMetaMap;
+
+        if (processes.isEmpty()) {
+            openFeedbackProcessIds = Set.of();
+            attachmentSummaryMap = Map.of();
+            attachmentMetaMap = Map.of();
+        } else {
             List<Long> processIds = processes.stream()
                     .map(Process::getId)
                     .filter(Objects::nonNull)
                     .toList();
 
-            if (!processIds.isEmpty()) {
-                openFeedbackProcessIds.addAll(
-                        processFeedbackRepository.findOpenFeedbackProcessIds(processIds)
-                );
-            }
+            openFeedbackProcessIds = processIds.isEmpty()
+                    ? Set.of()
+                    : new HashSet<>(processFeedbackRepository.findOpenFeedbackProcessIds(processIds));
+
+            attachmentSummaryMap = processIds.isEmpty()
+                    ? Map.of()
+                    : buildAttachmentSummaryMap(processIds);
+
+            attachmentMetaMap = processIds.isEmpty()
+                    ? Map.of()
+                    : buildAttachmentMetaMap(processIds);
         }
+
 
         // 프로세스를 주차별로 묶기
         // startAt이 null이면 rangeStart 주로 보내거나, common 처리 가능
@@ -1644,7 +1741,9 @@ public class ProcessService {
                     List<ProcessCardResDto> cards = entry.getValue().stream()
                             .map(p -> {
                                 boolean hasOpenFeedback = openFeedbackProcessIds.contains(p.getId());
-                                return toProcessCardResDTO(p, hasOpenFeedback);
+                                AttachmentSummaryDto summary = attachmentSummaryMap.getOrDefault(p.getId(), AttachmentSummaryDto.empty());
+                                List<AttachmentMetaDto> metas = attachmentMetaMap.getOrDefault(p.getId(), List.of());
+                                return toProcessCardResDTO(p, hasOpenFeedback, summary, metas);
                             })
                             .toList();
 
@@ -1727,7 +1826,7 @@ public class ProcessService {
          */
 
         // lane 대상 프로세스 목록
-        List<Process> laneProcesses = List.of();
+        List<Process> laneProcesses;
 
         if (TEAM_LANE_KEY.equals(dbLaneKey)) { // 팀(전체)
             laneProcesses = processRepository.findAllForTeamBoard(projectId);
@@ -1746,25 +1845,40 @@ public class ProcessService {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "invalid lane_key prefix. laneKey=" + laneKey);
         }
 
-        Set<Long> openFeedbackProcessIds = Collections.emptySet();
-        if (laneProcesses != null && !laneProcesses.isEmpty()) {
+        if (laneProcesses == null) laneProcesses = List.of();
+
+        final Set<Long> openFeedbackProcessIds;
+        final Map<Long, AttachmentSummaryDto> attachmentSummaryMap;
+        final Map<Long, List<AttachmentMetaDto>> attachmentMetaMap;
+
+        if (laneProcesses.isEmpty()) {
+            openFeedbackProcessIds = Set.of();
+            attachmentSummaryMap = Map.of();
+            attachmentMetaMap = Map.of();
+        } else {
             List<Long> processIds = laneProcesses.stream()
                     .map(Process::getId)
                     .filter(Objects::nonNull)
                     .toList();
 
-            if (!processIds.isEmpty()) {
-                openFeedbackProcessIds = new HashSet<>(
-                        processFeedbackRepository.findOpenFeedbackProcessIds(processIds)
-                );
-            }
+            openFeedbackProcessIds = processIds.isEmpty()
+                    ? Set.of()
+                    : new HashSet<>(processFeedbackRepository.findOpenFeedbackProcessIds(processIds));
+
+            attachmentSummaryMap = processIds.isEmpty()
+                    ? Map.of()
+                    : buildAttachmentSummaryMap(processIds);
+
+            attachmentMetaMap = processIds.isEmpty()
+                    ? Map.of()
+                    : buildAttachmentMetaMap(processIds);
         }
 
         List<ProcessStatusGroupResDto> groups = List.of(
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.PLANNING, laneProcesses, openFeedbackProcessIds),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.IN_PROGRESS, laneProcesses, openFeedbackProcessIds),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.DONE, laneProcesses, openFeedbackProcessIds),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.BACKLOG, laneProcesses, openFeedbackProcessIds)
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.PLANNING, laneProcesses, openFeedbackProcessIds, attachmentSummaryMap, attachmentMetaMap),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.IN_PROGRESS, laneProcesses, openFeedbackProcessIds, attachmentSummaryMap, attachmentMetaMap),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.DONE, laneProcesses, openFeedbackProcessIds, attachmentSummaryMap, attachmentMetaMap),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.BACKLOG, laneProcesses, openFeedbackProcessIds, attachmentSummaryMap, attachmentMetaMap)
         );
 
         return new ProcessPartResDto(toApiLaneKey(dbLaneKey), groups);
@@ -1775,32 +1889,30 @@ public class ProcessService {
             String laneKey,
             ProcessStatus status,
             List<Process> laneProcessesAll,
-            Set<Long> openFeedbackProcessIds
+            Set<Long> openFeedbackProcessIds,
+            Map<Long, AttachmentSummaryDto> attachmentSummaryMap,
+            Map<Long, List<AttachmentMetaDto>> attachmentMetaMap
     ) {
-        // 해당 status인 프로세스만
         List<Process> laneProcesses = laneProcessesAll.stream()
                 .filter(p -> p.getStatus() == status)
                 .toList();
 
-        // order row 없으면 생성 (tail 부여)
-        processLaneOrderService.ensureLaneOrderRowsExistWriteTx(
-                projectId, status, laneKey, laneProcesses
-        );
+        processLaneOrderService.ensureLaneOrderRowsExistWriteTx(projectId, status, laneKey, laneProcesses);
 
-        // order row 기준 processId 순서 확보
         List<ProcessLaneOrder> orders = processLaneOrderRepository.findLaneOrders(projectId, laneKey, status);
         List<Long> orderedIds = orders.stream().map(o -> o.getProcess().getId()).toList();
 
-        // 혹시라도 (order에는 있는데 laneProcesses에는 없는) 케이스 방어
-        // laneProcesses 기준으로 map
-        Map<Long, Process> map = laneProcesses.stream().collect(Collectors.toMap(Process::getId, p -> p));
+        Map<Long, Process> map = laneProcesses.stream()
+                .collect(Collectors.toMap(Process::getId, p -> p));
 
         List<ProcessCardResDto> cards = new ArrayList<>();
         for (Long id : orderedIds) {
             Process p = map.get(id);
             if (p != null) {
                 boolean hasOpenFeedback = openFeedbackProcessIds.contains(p.getId());
-                cards.add(toProcessCardResDTO(p, hasOpenFeedback));
+                AttachmentSummaryDto summary = attachmentSummaryMap.getOrDefault(p.getId(), AttachmentSummaryDto.empty());
+                List<AttachmentMetaDto> metas = attachmentMetaMap.getOrDefault(p.getId(), List.of());
+                cards.add(toProcessCardResDTO(p, hasOpenFeedback, summary, metas));
             }
         }
 

@@ -9,16 +9,16 @@ import java.util.Optional;
 
 public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long> {
 
-    boolean existsByProject_IdAndUser_UserIdAndRoleFieldAndDeletedAtIsNull(
-            Long projectId, Long userId, RoleField roleField
+    boolean existsByProject_IdAndRoleFieldAndDeletedAtIsNull(
+            Long projectId, RoleField roleField
     );
 
-    boolean existsByProject_IdAndUser_UserIdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
-            Long projectId, Long userId, RoleField roleField, String customRoleFieldName
+    boolean existsByProject_IdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
+            Long projectId, RoleField roleField, String customRoleFieldName
     );
 
     Optional<UserTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
 
-    List<UserTeamRole> findAllByProject_IdAndUser_UserIdAndDeletedAtIsNullOrderByIdAsc(Long projectId, Long userId);
+    List<UserTeamRole> findAllByProject_IdAndDeletedAtIsNullOrderByIdAsc(Long projectId);
 
 }
