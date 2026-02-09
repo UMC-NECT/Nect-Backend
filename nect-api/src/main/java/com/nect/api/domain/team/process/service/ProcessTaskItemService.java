@@ -193,7 +193,15 @@ public class ProcessTaskItemService {
     public ProcessTaskItemResDto update(Long projectId, Long userId, Long processId, Long taskItemId, ProcessTaskItemUpsertReqDto req) {
         assertWritableMember(projectId, userId);
 
-        getActiveProcess(projectId, processId);
+        Process process = getActiveProcess(projectId, processId);
+
+        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
+            throw new ProcessException(
+                    ProcessErrorCode.WEEK_MISSION_FORBIDDEN,
+                    "위크 미션 TASK는 processes 경로에서 수정할 수 없습니다. projectId=" + projectId + ", processId=" + processId
+            );
+        }
+
 
         ProcessTaskItem item = getTaskItem(processId, taskItemId);
 
