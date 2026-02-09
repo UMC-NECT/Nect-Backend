@@ -179,24 +179,26 @@ class BoardsScheduleControllerTest {
         String from = "2026-01-31";
         int limit = 6;
 
-        // TODO: ScheduleUpcomingResDto 실제 JSON 구조에 맞춰 bodyJson 수정
-        String bodyJson = """
-            {
-              "from": "2026-01-31",
-              "limit": 6,
-              "schedules": [
-                {
-                  "schedule_id": 1,
-                  "title": "회의",
-                  "start_at": "2026-02-01T10:00:00",
-                  "end_at": "2026-02-01T11:00:00"
-                }
-              ]
-            }
-            """;
-
-        ScheduleUpcomingResDto response =
-                objectMapper.readValue(bodyJson, ScheduleUpcomingResDto.class);
+        ScheduleUpcomingResDto response = new ScheduleUpcomingResDto(
+                List.of(
+                        new ScheduleUpcomingResDto.Item(
+                                1L,
+                                "회의",
+                                LocalDateTime.of(2026, 2, 1, 10, 0, 0),
+                                LocalDateTime.of(2026, 2, 1, 11, 0, 0),
+                                false,
+                                false
+                        ),
+                        new ScheduleUpcomingResDto.Item(
+                                2L,
+                                "해커톤(멀티데이)",
+                                LocalDateTime.of(2026, 2, 3, 0, 0, 0),
+                                LocalDateTime.of(2026, 2, 5, 23, 59, 59),
+                                true,
+                                true
+                        )
+                )
+        );
 
         given(facade.getUpcoming(eq(projectId), eq(userId), eq(from), eq(limit))).willReturn(response);
 
@@ -230,8 +232,18 @@ class BoardsScheduleControllerTest {
                                                 fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
                                                 fieldWithPath("status.message").type(STRING).description("메시지"),
                                                 fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
-                                                subsectionWithPath("body").type(OBJECT).description("응답 바디 (다가오는 일정 리스트)")
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.items").type(ARRAY).description("다가오는 일정 목록"),
+
+                                                fieldWithPath("body.items[].schedule_id").type(NUMBER).description("일정 ID"),
+                                                fieldWithPath("body.items[].title").type(STRING).description("일정 제목"),
+                                                fieldWithPath("body.items[].start_at").type(STRING).description("시작 시각(yyyy-MM-dd'T'HH:mm:ss)"),
+                                                fieldWithPath("body.items[].end_at").type(STRING).description("종료 시각(yyyy-MM-dd'T'HH:mm:ss)"),
+                                                fieldWithPath("body.items[].all_day").type(BOOLEAN).description("종일 일정 여부"),
+                                                fieldWithPath("body.items[].is_multi_day").type(BOOLEAN).description("멀티데이 일정 여부(2일 이상)")
                                         )
+
                                         .build()
                         )
                 ));

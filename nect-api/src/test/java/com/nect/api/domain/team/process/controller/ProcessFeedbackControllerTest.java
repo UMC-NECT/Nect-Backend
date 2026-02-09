@@ -185,28 +185,29 @@ class ProcessFeedbackControllerTest {
     }
 
     @Test
-    @DisplayName("피드백 수정")
-    void updateFeedback() throws Exception {
+    @DisplayName("피드백_수정_요청")
+    void updateFeedback_statusOnly() throws Exception {
         long projectId = 1L;
         long processId = 10L;
         long feedbackId = 100L;
         long userId = 1L;
 
         ProcessFeedbackUpdateReqDto request = new ProcessFeedbackUpdateReqDto(
-                "수정된 피드백 내용"
+                "수정된 피드백 내용",
+                ProcessFeedbackStatus.OPEN
         );
 
         FeedbackCreatedByResDto createdBy = new FeedbackCreatedByResDto(
                 userId,
                 "임시유저",
                 "패트",
-                List.of()
+                List.of("디자인")
         );
 
         ProcessFeedbackUpdateResDto response = new ProcessFeedbackUpdateResDto(
                 feedbackId,
-                "수정된 피드백 내용",
-                ProcessFeedbackStatus.OPEN,
+                "기존 피드백 내용",
+                ProcessFeedbackStatus.RESOLVED,
                 createdBy,
                 LocalDateTime.of(2026, 1, 25, 10, 0),
                 LocalDateTime.of(2026, 1, 26, 11, 0)
@@ -215,20 +216,21 @@ class ProcessFeedbackControllerTest {
         given(processFeedbackService.updateFeedback(eq(projectId), eq(userId), eq(processId), eq(feedbackId), any(ProcessFeedbackUpdateReqDto.class)))
                 .willReturn(response);
 
-        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/feedbacks/{feedbackId}", projectId, processId, feedbackId)
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/processes/{processId}/feedbacks/{feedbackId}",
+                        projectId, processId, feedbackId)
                         .with(mockUser(userId))
                         .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andDo(document("process-feedback-update",
+                .andDo(document("process-feedback-update-status",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
                                         .tag("Process-Feedback")
                                         .summary("피드백 수정")
-                                        .description("피드백 내용을 수정합니다.")
+                                        .description("피드백 내용과 상태(OPEN/RESOLVED)를 수정합니다.")
                                         .pathParameters(
                                                 ResourceDocumentation.parameterWithName("projectId").description("프로젝트 ID"),
                                                 ResourceDocumentation.parameterWithName("processId").description("프로세스 ID"),
@@ -238,7 +240,8 @@ class ProcessFeedbackControllerTest {
                                                 headerWithName(AUTH_HEADER).description("Bearer Access Token")
                                         )
                                         .requestFields(
-                                                fieldWithPath("content").type(STRING).description("수정할 피드백 내용")
+                                                fieldWithPath("content").optional().type(STRING).description("수정할 피드백 내용"),
+                                                fieldWithPath("feedback_status").optional().type(STRING).description("피드백 상태(OPEN/RESOLVED)")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),

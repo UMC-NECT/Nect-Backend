@@ -85,7 +85,7 @@ public class ProjectUserControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("ProjectUser")
+                                .tag("Project")
                                 .summary("현재 참여하고 있는 프로젝트 조회")
                                 .description("로그인한 유저가 현재 참여하고 있는 프로젝트를 조회합니다.")
                                 .requestHeaders(

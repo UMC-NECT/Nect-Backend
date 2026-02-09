@@ -92,14 +92,6 @@ public class UserController {
         return ApiResponse.ok();
     }
 
-    @GetMapping("/info")
-    public ApiResponse<ProfileDto.UserInfoResponseDto> getUserInfo(
-            @AuthenticationPrincipal UserDetailsImpl userDetails
-    ) {
-        ProfileDto.UserInfoResponseDto response = userService.getUserInfo(userDetails.getUserId());
-        return ApiResponse.ok(response);
-    }
-
     @GetMapping("/profile/analysis")
     public ApiResponse<ProfileAnalysisDto> analyzeProfile(
             @AuthenticationPrincipal UserDetailsImpl userDetails

@@ -178,7 +178,13 @@ public class MypageService {
         userRepository.save(user);
 
         if (request.careers() != null) {
+            List<UserCareer> existingCareers = userCareerRepository.findByUserUserId(userId);
+            for (UserCareer career : existingCareers) {
+                userAchievementRepository.deleteByUserCareerUserCareerId(career.getUserCareerId());
+            }
+
             userCareerRepository.deleteByUserUserId(userId);
+
             if (!request.careers().isEmpty()) {
                 List<UserCareer> newCareers = request.careers().stream()
                         .map(careerDto -> UserCareer.builder()

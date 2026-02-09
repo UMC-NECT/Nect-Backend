@@ -278,14 +278,7 @@ public class PostService {
             List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
 
             List<PostListResDto.PostSummaryDto> mapped = notices.stream()
-                    .map(p -> new PostListResDto.PostSummaryDto(
-                            p.getId(),
-                            p.getPostType(),
-                            p.getTitle(),
-                            preview(p.getContent(), 100),
-                            p.getLikeCount(),
-                            p.getCreatedAt()
-                    ))
+                    .map(this::toSummary)
                     .toList();
 
             PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
@@ -308,29 +301,11 @@ public class PostService {
         // page==0 일 때만 공지 전부 상단에 붙이기
         if (type == null && page == 0) {
             List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
-            result.addAll(notices.stream()
-                    .map(p -> new PostListResDto.PostSummaryDto(
-                            p.getId(),
-                            p.getPostType(),
-                            p.getTitle(),
-                            preview(p.getContent(), 100),
-                            p.getLikeCount(),
-                            p.getCreatedAt()
-                    ))
-                    .toList());
+            result.addAll(notices.stream().map(this::toSummary).toList());
         }
 
         // FREE 페이징 결과 붙이기
-        result.addAll(freePage.getContent().stream()
-                .map(p -> new PostListResDto.PostSummaryDto(
-                        p.getId(),
-                        p.getPostType(),
-                        p.getTitle(),
-                        preview(p.getContent(), 100),
-                        p.getLikeCount(),
-                        p.getCreatedAt()
-                ))
-                .toList());
+        result.addAll(freePage.getContent().stream().map(this::toSummary).toList());
 
         // pageInfo는 FREE 기준으로만 계산 (공지는 제외)
         PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
@@ -342,6 +317,23 @@ public class PostService {
         );
 
         return new PostListResDto(result, pageInfo);
+    }
+
+    private PostListResDto.PostSummaryDto toSummary(Post p) {
+        var u = p.getAuthor();
+        PostListResDto.AuthorDto authorDto = (u == null)
+                ? null
+                : new PostListResDto.AuthorDto(u.getUserId(), u.getName(), u.getNickname());
+
+        return new PostListResDto.PostSummaryDto(
+                p.getId(),
+                p.getPostType(),
+                p.getTitle(),
+                preview(p.getContent(), 100),
+                p.getLikeCount(),
+                authorDto,
+                p.getCreatedAt()
+        );
     }
 
     // 게시글 수정 서비스
@@ -624,5 +616,37 @@ public class PostService {
                 post.getId(),
                 meta
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PostsPreviewResDto getOverviewPostsPreview(Long projectId, Long userId) {
+
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new PostException(PostErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
+
+        boolean isMember = projectUserRepository.existsByProjectIdAndUserId(projectId, userId);
+        if (!isMember) {
+            throw new PostException(PostErrorCode.PROJECT_MEMBER_FORBIDDEN,
+                    "projectId=" + projectId + ", userId=" + userId);
+        }
+
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Pageable top2 = PageRequest.of(0, 2, sort);
+
+        List<Post> notices = postRepository.findNoticePosts(projectId, top2).getContent();
+        List<Post> frees = postRepository.findFreeOnlyPosts(projectId, top2).getContent();
+
+        //  공지 상단 고정 + (각 그룹 최신순)
+        List<PostsPreviewResDto.Item> items = new ArrayList<>(4);
+
+        items.addAll(notices.stream()
+                .map(p -> new PostsPreviewResDto.Item(p.getId(), p.getPostType(), p.getTitle(), p.getCreatedAt()))
+                .toList());
+
+        items.addAll(frees.stream()
+                .map(p -> new PostsPreviewResDto.Item(p.getId(), p.getPostType(), p.getTitle(), p.getCreatedAt()))
+                .toList());
+
+        return new PostsPreviewResDto(items);
     }
 }

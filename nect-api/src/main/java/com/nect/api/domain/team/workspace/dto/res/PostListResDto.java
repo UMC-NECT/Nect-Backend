@@ -29,8 +29,22 @@ public record PostListResDto(
             @JsonProperty("like_count")
             Long likeCount,
 
+            @JsonProperty("author")
+            AuthorDto author,
+
             @JsonProperty("created_at")
             LocalDateTime createdAt
+    ) {}
+
+    public record AuthorDto(
+            @JsonProperty("user_id")
+            Long userId,
+
+            @JsonProperty("user_name")
+            String userName,
+
+            @JsonProperty("nickname")
+            String nickname
     ) {}
 
     public record PageInfo(

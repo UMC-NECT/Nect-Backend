@@ -8,6 +8,7 @@ import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.workspace.enums.PostType;
 import com.nect.core.entity.user.enums.RoleField;
@@ -170,35 +171,76 @@ class BoardsOverviewControllerTest {
                 )
         );
 
-        PostListResDto postsPreview = new PostListResDto(
+        PostsPreviewResDto postsPreview = new PostsPreviewResDto(
                 List.of(
-                        new PostListResDto.PostSummaryDto(
+                        new PostsPreviewResDto.Item(
                                 1L,
                                 PostType.NOTICE,
                                 "공지 제목",
-                                "공지 내용 프리뷰...",
-                                10L,
                                 LocalDateTime.of(2026, 1, 31, 12, 0, 0)
                         ),
-                        new PostListResDto.PostSummaryDto(
+                        new PostsPreviewResDto.Item(
                                 2L,
                                 PostType.FREE,
                                 "자유 글 제목",
-                                "자유 글 프리뷰...",
-                                3L,
                                 LocalDateTime.of(2026, 1, 30, 9, 30, 0)
                         )
-                ),
-                new PostListResDto.PageInfo(
-                        0,      // page
-                        4,      // size
-                        12L,    // total_elements
-                        3,      // total_pages
-                        true    // has_next
                 )
         );
 
-        SharedDocumentsPreviewResDto sharedDocs = new SharedDocumentsPreviewResDto(List.of());
+        SharedDocumentsPreviewResDto sharedDocs = new SharedDocumentsPreviewResDto(
+                List.of(
+                        new SharedDocumentsPreviewResDto.DocumentDto(
+                                2001L,                    // document_id
+                                true,                     // is_pinned
+                                "API 명세서",              // title
+                                "api-spec.pdf",           // file_name
+                                FileExt.PDF,              // file_ext
+                                "https://s3.amazonaws.com/nect/docs/api-spec.pdf", // file_url
+                                1024L,                    // file_size
+                                LocalDateTime.of(2026, 1, 30, 12, 0, 0),          // created_at
+                                new SharedDocumentsPreviewResDto.UploaderDto(
+                                        1L,
+                                        "홍길동",
+                                        "길동",
+                                        "https://img.com/u1.png"
+                                )
+                        ),
+                        new SharedDocumentsPreviewResDto.DocumentDto(
+                                2002L,
+                                false,
+                                "ERD v2",
+                                "erd.png",
+                                FileExt.PNG,
+                                "https://s3.amazonaws.com/nect/docs/erd.png",
+                                2048L,
+                                LocalDateTime.of(2026, 1, 29, 18, 30, 0),
+                                new SharedDocumentsPreviewResDto.UploaderDto(
+                                        2L,
+                                        "김철수",
+                                        "철수",
+                                        "https://img.com/u2.png"
+                                )
+                        ),
+                        new SharedDocumentsPreviewResDto.DocumentDto(
+                                2003L,
+                                false,
+                                "회의록(1/28)",
+                                "meeting-notes-0128.docx",
+                                FileExt.DOCS,
+                                "https://s3.amazonaws.com/nect/docs/meeting-notes-0128.docx",
+                                4096L,
+                                LocalDateTime.of(2026, 1, 28, 21, 10, 0),
+                                new SharedDocumentsPreviewResDto.UploaderDto(
+                                        3L,
+                                        "박영희",
+                                        "영희",
+                                        null
+                                )
+                        )
+                )
+        );
+
 
         BoardsOverviewResDto response = BoardsOverviewResDto.of(
                 basicInfo,
@@ -282,6 +324,183 @@ class BoardsOverviewControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
+        BoardsBasicInfoGetResDto basicInfo = new BoardsBasicInfoGetResDto(
+                projectId,
+                "프로젝트 제목",
+                "프로젝트 설명",
+                "공지 텍스트",
+                "정기회의 텍스트",
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 2, 1),
+                10L,
+                true
+        );
+
+        MissionProgressResDto missionProgress = new MissionProgressResDto(
+                new MissionProgressResDto.TotalDto(
+                        12L,        // total_count
+                        7L,         // completed_count
+                        0.5833333333 // completion_rate
+                ),
+                List.of(
+                        new MissionProgressResDto.TeamDto(
+                                RoleFieldDto.of(RoleField.BACKEND),
+                                5L,
+                                3L,
+                                0.6
+                        ),
+                        new MissionProgressResDto.TeamDto(
+                                RoleFieldDto.of(RoleField.FRONTEND),
+                                4L,
+                                2L,
+                                0.5
+                        ),
+                        new MissionProgressResDto.TeamDto(
+                                RoleFieldDto.of(RoleField.CUSTOM, "기획-운영"),
+                                3L,
+                                2L,
+                                0.6666666667
+                        )
+                )
+        );
+
+        MemberBoardResDto members = new MemberBoardResDto(
+                List.of(
+                        new MemberBoardResDto.MemberDto(
+                                1L,
+                                "홍길동",
+                                "길동",
+                                "https://img.com/u1.png",
+                                RoleFieldDto.of(RoleField.BACKEND),
+                                ProjectMemberType.LEADER,
+                                new MemberBoardResDto.CountsDto(
+                                        1,  // planning
+                                        2,  // in_progress
+                                        3   // done
+                                ),
+                                true, // is_working
+                                3600L, // today_work_seconds
+                                LocalDateTime.of(2026, 1, 31, 10, 0, 0) // working_started_at
+                        ),
+                        new MemberBoardResDto.MemberDto(
+                                2L,
+                                "김철수",
+                                "철수",
+                                "https://img.com/u2.png",
+                                RoleFieldDto.of(RoleField.FRONTEND),
+                                ProjectMemberType.MEMBER,
+                                new MemberBoardResDto.CountsDto(
+                                        0,
+                                        1,
+                                        5
+                                ),
+                                false,
+                                1800L,
+                                null
+                        ),
+                        new MemberBoardResDto.MemberDto(
+                                3L,
+                                "박영희",
+                                "영희",
+                                null,
+                                RoleFieldDto.of(RoleField.CUSTOM, "기획-운영"),
+                                ProjectMemberType.MEMBER,
+                                new MemberBoardResDto.CountsDto(
+                                        2,
+                                        0,
+                                        1
+                                ),
+                                true,
+                                900L,
+                                LocalDateTime.of(2026, 1, 31, 9, 30, 0)
+                        )
+                )
+        );
+
+        ScheduleUpcomingResDto upcomingSchedules = new ScheduleUpcomingResDto(
+                List.of(
+                        new ScheduleUpcomingResDto.Item(
+                                101L,
+                                "주간 회의",
+                                LocalDateTime.of(2026, 2, 1, 10, 0, 0),
+                                LocalDateTime.of(2026, 2, 1, 11, 0, 0),
+                                false, // all_day
+                                false  // is_multi_day
+                        ),
+                        new ScheduleUpcomingResDto.Item(
+                                102L,
+                                "해커톤(멀티데이)",
+                                LocalDateTime.of(2026, 2, 3, 0, 0, 0),
+                                LocalDateTime.of(2026, 2, 5, 23, 59, 59),
+                                true,
+                                true
+                        ),
+                        new ScheduleUpcomingResDto.Item(
+                                103L,
+                                "중간 점검 발표",
+                                LocalDateTime.of(2026, 2, 7, 14, 0, 0),
+                                LocalDateTime.of(2026, 2, 7, 15, 0, 0),
+                                false,
+                                false
+                        )
+                )
+        );
+
+        SharedDocumentsPreviewResDto sharedDocs = new SharedDocumentsPreviewResDto(
+                List.of(
+                        new SharedDocumentsPreviewResDto.DocumentDto(
+                                2001L,
+                                true, // is_pinned
+                                "API 명세서",
+                                "api-spec.pdf",
+                                FileExt.PDF,
+                                "https://s3.amazonaws.com/nect/docs/api-spec.pdf",
+                                1024L,
+                                LocalDateTime.of(2026, 1, 30, 12, 0, 0),
+                                new SharedDocumentsPreviewResDto.UploaderDto(
+                                        1L,
+                                        "홍길동",
+                                        "길동",
+                                        "https://img.com/u1.png"
+                                )
+                        ),
+                        new SharedDocumentsPreviewResDto.DocumentDto(
+                                2002L,
+                                false,
+                                "ERD v2",
+                                "erd.png",
+                                FileExt.PNG,
+                                "https://s3.amazonaws.com/nect/docs/erd.png",
+                                2048L,
+                                LocalDateTime.of(2026, 1, 29, 18, 30, 0),
+                                new SharedDocumentsPreviewResDto.UploaderDto(
+                                        2L,
+                                        "김철수",
+                                        "철수",
+                                        "https://img.com/u2.png"
+                                )
+                        )
+                )
+        );
+
+        PostsPreviewResDto postsPreview = new PostsPreviewResDto(
+                List.of(
+                        new PostsPreviewResDto.Item(
+                                3001L,
+                                PostType.NOTICE,
+                                "공지 제목",
+                                LocalDateTime.of(2026, 1, 31, 12, 0, 0)
+                        ),
+                        new PostsPreviewResDto.Item(
+                                3002L,
+                                PostType.FREE,
+                                "자유 글 제목",
+                                LocalDateTime.of(2026, 1, 30, 9, 30, 0)
+                        )
+                )
+        );
+
+
         CalendarMonthIndicatorsResDto indicators = new CalendarMonthIndicatorsResDto(
                 2026,
                 1,
@@ -292,31 +511,15 @@ class BoardsOverviewControllerTest {
         );
 
         BoardsOverviewResDto response = BoardsOverviewResDto.of(
-                new BoardsBasicInfoGetResDto(
-                        projectId, "프로젝트 제목", "프로젝트 설명",
-                        "공지 텍스트", "정기회의 텍스트",
-                        LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 1),
-                        10L, true
-                ),
-                new MissionProgressResDto(
-                        new MissionProgressResDto.TotalDto(12L, 7L, 0.58),
-                        List.of()
-                ),
-                new MemberBoardResDto(List.of()),
-                new ScheduleUpcomingResDto(List.of()),
-                new SharedDocumentsPreviewResDto(List.of()),
-                new PostListResDto(
-                        List.of(),
-                        new PostListResDto.PageInfo(
-                                0,      // page
-                                0,      // size
-                                0L,     // total_elements
-                                0,      // total_pages
-                                false   // has_next
-                        )
-                ),
+                basicInfo,
+                missionProgress,
+                members,
+                upcomingSchedules,
+                sharedDocs,
+                postsPreview,
                 indicators
         );
+
 
         given(boardsOverviewFacade.getOverview(
                 eq(projectId), eq(userId),

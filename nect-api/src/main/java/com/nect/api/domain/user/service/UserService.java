@@ -515,17 +515,6 @@ public class UserService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public ProfileDto.UserInfoResponseDto getUserInfo(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다"));
-        return new ProfileDto.UserInfoResponseDto(
-                user.getName(),
-                user.getRole() != null ? user.getRole().getDescription() : null,
-                user.getEmail()
-        );
-    }
-
     @Transactional
     public ProfileAnalysisDto analyzeProfile(Long userId) {
         User user = userRepository.findById(userId)
