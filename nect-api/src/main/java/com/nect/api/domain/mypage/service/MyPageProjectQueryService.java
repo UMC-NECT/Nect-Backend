@@ -115,6 +115,14 @@ public class MyPageProjectQueryService {
         return new MyProjectsResponseDto.StringListResponse(projectId, slicedPurpose);
     }
 
+    public MyProjectsResponseDto.StringListResponse getFunctions(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+        String functions = project.getMainFunctions();
+        List<String> slicedPurpose = projectListConverter.convertToEntityAttribute(functions);
+        return new MyProjectsResponseDto.StringListResponse(projectId, slicedPurpose);
+    }
+
     public MyProjectsResponseDto.StringListResponse getServiceUsers(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
