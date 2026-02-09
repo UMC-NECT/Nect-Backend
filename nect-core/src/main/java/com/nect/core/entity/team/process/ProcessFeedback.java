@@ -53,6 +53,11 @@ public class ProcessFeedback extends BaseEntity {
         this.content = content;
     }
 
+    public void updateStatus(ProcessFeedbackStatus status) {
+        if (status == null) return;
+        this.status = status;
+    }
+
     void setProcess(Process process) {
         this.process = process;
     }

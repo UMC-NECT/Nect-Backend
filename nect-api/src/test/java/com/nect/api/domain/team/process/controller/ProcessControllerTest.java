@@ -597,7 +597,6 @@ class ProcessControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
-        // ===== week1 common lane =====
         ProcessCardResDto common1 = new ProcessCardResDto(
                 101L,
                 ProcessStatus.PLANNING,
@@ -610,6 +609,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND, RoleField.FRONTEND),
                 List.of("영상편집"),
                 1,
+                true,
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png"),
                         new AssigneeResDto(2L, "김철수", "철수", null)
@@ -628,6 +628,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of(),
                 1,
+                true,
                 List.of(
                         new AssigneeResDto(3L, "박영희", "영희", "https://img.com/u3.png")
                 )
@@ -645,6 +646,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of(),
                 1,
+                true,
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png")
                 )
@@ -662,6 +664,7 @@ class ProcessControllerTest {
                 List.of(RoleField.PHOTO_VIDEO),
                 List.of("영상편집"),
                 1,
+                false,
                 List.of(
                         new AssigneeResDto(4L, "이민수", "민수", null)
                 )
@@ -699,6 +702,7 @@ class ProcessControllerTest {
                 List.of(RoleField.APP_WEB, RoleField.OPERATIONS_CS),
                 List.of("운영"),
                 2,
+                false,
                 List.of(
                         new AssigneeResDto(2L, "김철수", "철수", "https://img.com/u2.png")
                 )
@@ -758,44 +762,43 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body.weeks[].start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
 
-                                                // ===== common_lane =====
                                                 fieldWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
                                                 fieldWithPath("body.weeks[].common_lane[].process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.weeks[].common_lane[].process_status").type(STRING).description("프로세스 상태"),
                                                 fieldWithPath("body.weeks[].common_lane[].title").type(STRING).description("프로세스 제목"),
                                                 fieldWithPath("body.weeks[].common_lane[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
                                                 fieldWithPath("body.weeks[].common_lane[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].common_lane[].start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.weeks[].common_lane[].dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.weeks[].common_lane[].left_day").type(NUMBER).description("남은 일수"),
+                                                fieldWithPath("body.weeks[].common_lane[].start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.weeks[].common_lane[].dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.weeks[].common_lane[].left_day").optional().type(NUMBER).description("남은 일수(null 가능)"),
                                                 fieldWithPath("body.weeks[].common_lane[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
                                                 fieldWithPath("body.weeks[].common_lane[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
-                                                fieldWithPath("body.weeks[].common_lane[].mission_number").type(NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].common_lane[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
+                                                fieldWithPath("body.weeks[].common_lane[].has_open_feedback").type(BOOLEAN).description("OPEN 피드백 존재 여부"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].user_name").type(STRING).description("담당자 이름"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
 
-                                                // ===== by_field =====
                                                 fieldWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록"),
                                                 fieldWithPath("body.weeks[].by_field[].field_id").type(STRING).description("fieldId (예: ROLE:BACKEND / CUSTOM:영상편집)"),
                                                 fieldWithPath("body.weeks[].by_field[].field_name").type(STRING).description("fieldName (예: BACKEND / 영상편집)"),
                                                 fieldWithPath("body.weeks[].by_field[].field_order").type(NUMBER).description("fieldOrder"),
                                                 fieldWithPath("body.weeks[].by_field[].processes").type(ARRAY).description("해당 그룹의 프로세스 목록"),
 
-                                                // by_field[].processes[] (ProcessCardResDto 동일)
                                                 fieldWithPath("body.weeks[].by_field[].processes[].process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].process_status").type(STRING).description("프로세스 상태"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].title").type(STRING).description("프로세스 제목"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].start_date").type(STRING).description("시작일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].dead_line").type(STRING).description("마감일(yyyy-MM-dd)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].left_day").type(NUMBER).description("남은 일수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].left_day").optional().type(NUMBER).description("남은 일수(null 가능)"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].mission_number").type(NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].has_open_feedback").type(BOOLEAN).description("OPEN 피드백 존재 여부"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
@@ -832,6 +835,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of("AI"),
                 1,
+                true,
                 List.of(a1, a2) // assignee
         );
 
@@ -847,6 +851,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND, RoleField.FRONTEND),
                 List.of("DevOps"),
                 null,
+                true,
                 List.of(a2)
         );
 
@@ -871,6 +876,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of(),
                 null,
+                false,
                 List.of(a1)
         );
 
@@ -893,6 +899,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of("Auth"),
                 1,
+                false,
                 List.of(a1, a2)
         );
 
@@ -915,6 +922,7 @@ class ProcessControllerTest {
                 List.of(RoleField.BACKEND),
                 List.of("TechDebt"),
                 1,
+                false,
                 List.of(a2)
         );
 
@@ -982,15 +990,16 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].role_fields").type(ARRAY).description("RoleField 목록"),
                                                 fieldWithPath("body.groups[].processes[].custom_fields").type(ARRAY).description("커스텀 필드명 목록"),
 
-                                                fieldWithPath("body.groups[].processes[].mission_number").optional().type(VARIES).description("위크미션 번호(미션 프로세스면 1..n, 일반 프로세스면 null)"),
-
-                                                fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.groups[].processes[].mission_number").optional().type(VARIES)
+                                                        .description("위크미션 번호(미션 프로세스면 1..n, 일반 프로세스면 null)"),
+                                                fieldWithPath("body.groups[].processes[].has_open_feedback").type(BOOLEAN)
+                                                        .description("OPEN 피드백 존재 여부"),
 
                                                 fieldWithPath("body.groups[].processes[].assignee").type(ARRAY).description("담당자 목록"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").type(STRING).description("담당자 이미지 URL")
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
                                         )
                                         .build()
                         )

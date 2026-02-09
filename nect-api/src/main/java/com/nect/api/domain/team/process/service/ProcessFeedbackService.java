@@ -30,7 +30,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
@@ -218,23 +217,58 @@ public class ProcessFeedbackService {
     public ProcessFeedbackUpdateResDto updateFeedback(Long projectId, Long userId, Long processId, Long feedbackId, ProcessFeedbackUpdateReqDto req) {
         assertWritableMember(projectId, userId);
 
-        validateContent(req.content());
+        if (req == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "request is null");
+        }
 
-        // 부모 프로세스가 살아있는지 + 프로젝트 소속인지 한 번에 검증
+        boolean hasContent = (req.content() != null);
+        boolean hasStatus  = (req.status() != null);
+
+        if (!hasContent && !hasStatus) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "content or status is required");
+        }
+
+        // 부모 프로세스 검증
         getActiveProcess(projectId, processId);
 
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
         String beforeContent = feedback.getContent();
-        feedback.updateContent(req.content());
-        String afterContent = feedback.getContent();
+        var beforeStatus = feedback.getStatus();
 
-        if (!Objects.equals(beforeContent, afterContent)) {
+        boolean changed = false;
+
+        // content 변경(있을 때만)
+        if (hasContent) {
+            validateContent(req.content());          // null/blank 방지
+            String after = req.content().trim();
+            if (!Objects.equals(beforeContent, after)) {
+                feedback.updateContent(after);
+                changed = true;
+            }
+        }
+
+        // status 변경(있을 때만)
+        if (hasStatus) {
+            if (beforeStatus != req.status()) {
+                feedback.updateStatus(req.status());
+                changed = true;
+            }
+        }
+
+        // 변경 없으면 그대로 응답
+        if (changed) {
             Map<String, Object> meta = new LinkedHashMap<>();
             meta.put("processId", processId);
             meta.put("feedbackId", feedbackId);
-            meta.put("before", Map.of("content", beforeContent));
-            meta.put("after", Map.of("content", afterContent));
+            meta.put("before", Map.of(
+                    "content", beforeContent,
+                    "status", beforeStatus == null ? null : beforeStatus.name()
+            ));
+            meta.put("after", Map.of(
+                    "content", feedback.getContent(),
+                    "status", feedback.getStatus() == null ? null : feedback.getStatus().name()
+            ));
 
             historyPublisher.publish(
                     projectId,
@@ -246,7 +280,10 @@ public class ProcessFeedbackService {
             );
         }
 
-        // createdBy 응답 채우기 (User + ProjectUser fieldIds)
+        return toFeedbackUpdateRes(projectId, feedback);
+    }
+
+    private ProcessFeedbackUpdateResDto toFeedbackUpdateRes(Long projectId, ProcessFeedback feedback) {
         User createdBy = feedback.getCreatedBy();
         Long createdByUserId = (createdBy != null) ? createdBy.getUserId() : null;
         String createdByUserName = (createdBy != null) ? createdBy.getName() : null;
