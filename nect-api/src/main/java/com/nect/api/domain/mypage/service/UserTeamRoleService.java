@@ -24,7 +24,6 @@ public class UserTeamRoleService {
     private static final int DEFAULT_REQUIRED_COUNT = 1;
 
     private final UserTeamRoleRepository userTeamRoleRepository;
-    private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
 
@@ -76,8 +75,7 @@ public class UserTeamRoleService {
             }
 
             boolean duplicate = userTeamRoleRepository
-                    .existsByProject_IdAndUser_UserIdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
-                            projectId, userId, roleField, customName);
+                    .existsByProject_IdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(projectId, roleField, customName);
 
             if(duplicate) {
                 throw new UserTeamRoleException(
@@ -87,7 +85,7 @@ public class UserTeamRoleService {
             }
         }else {
             boolean duplicate = userTeamRoleRepository
-                    .existsByProject_IdAndUser_UserIdAndRoleFieldAndDeletedAtIsNull(projectId, userId, roleField);
+                    .existsByProject_IdAndRoleFieldAndDeletedAtIsNull(projectId, roleField);
 
             if (duplicate) {
                 throw new UserTeamRoleException(
@@ -99,11 +97,6 @@ public class UserTeamRoleService {
             customName = null;
         }
 
-        // 유저 조회
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserTeamRoleException(UserTeamRoleErrorCode.USER_NOT_FOUND,
-                        "userId=" + userId
-                ));
 
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new UserTeamRoleException(UserTeamRoleErrorCode.PROJECT_NOT_FOUND, "projectId=" + projectId));
@@ -111,7 +104,6 @@ public class UserTeamRoleService {
         UserTeamRole saved = userTeamRoleRepository.save(
                 UserTeamRole.builder()
                         .project(project)
-                        .user(user)
                         .roleField(roleField)
                         .customRoleFieldName(customName)
                         .requiredCount(requiredCount)
@@ -188,8 +180,8 @@ public class UserTeamRoleService {
             String oldName = role.getCustomRoleFieldName();
             if (oldName == null || !oldName.equalsIgnoreCase(newName)) {
                 boolean duplicate = userTeamRoleRepository
-                        .existsByProject_IdAndUser_UserIdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
-                                projectId, role.getUser().getUserId(), RoleField.CUSTOM, newName
+                        .existsByProject_IdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
+                                projectId, RoleField.CUSTOM, newName
                         );
 
                 if (duplicate) {
