@@ -23,7 +23,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-jobs",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("직업(Job) 조회")
                                         .description("사용 가능한 모든 직업 목록을 조회합니다. (직장인, 학생, 구직자 등)")
                                         .responseFields(
@@ -45,7 +45,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-roles",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("역할(Role) 조회")
                                         .description("사용 가능한 모든 역할 목록을 조회합니다. (디자이너, 개발자, 기획자, 마케터, 기타)")
                                         .responseFields(
@@ -68,7 +68,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-role-fields",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("직종(Field) 조회 - Role별")
                                         .description("선택한 역할에 맞는 직종 목록을 조회합니다. (예: 개발자 선택 시 프론트엔드, 백엔드 등)")
                                         .queryParameters(
@@ -95,7 +95,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-all-fields",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("직종(Field) 전체 조회")
                                         .description("모든 역할의 직종 목록을 조회합니다. (role 파라미터 없음)")
                                         .responseFields(
@@ -117,7 +117,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-skill-categories",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("스킬 카테고리(SkillCategory) 조회")
                                         .description("사용 가능한 모든 스킬 카테고리 목록을 조회합니다. (디자인, 기술, 기획, 마케팅, 기타)")
                                         .responseFields(
@@ -140,7 +140,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-category-skills",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("스킬(Skill) 조회 - 카테고리별")
                                         .description("선택한 카테고리의 스킬 목록을 조회합니다. (예: 디자인 선택 시 Figma, Photoshop 등)")
                                         .queryParameters(
@@ -167,7 +167,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-all-skills",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("스킬(Skill) 전체 조회")
                                         .description("모든 카테고리의 스킬 목록을 조회합니다. (category 파라미터 없음)")
                                         .responseFields(
@@ -189,7 +189,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-interests",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("관심분야(InterestField) 조회")
                                         .description("사용 가능한 모든 관심분야 목록을 조회합니다. (IT·웹/모바일, 금융·핀테크 등)")
                                         .responseFields(
@@ -211,7 +211,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-goals",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("목표(Goal) 조회")
                                         .description("사용 가능한 모든 목표 목록을 조회합니다. (포트폴리오 제작, 팀 협업 능력 향상 등)")
                                         .responseFields(
@@ -233,7 +233,7 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                 .andDo(document("user-enum-get-statuses",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("enums")
+                                        .tag("Enums")
                                         .summary("사용자 상태(UserStatus) 조회")
                                         .description("사용 가능한 모든 사용자 상태 목록을 조회합니다. (재학중, 구직중, 재직중)")
                                         .responseFields(
