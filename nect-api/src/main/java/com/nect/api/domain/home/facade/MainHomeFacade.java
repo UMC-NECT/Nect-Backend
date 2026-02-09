@@ -40,22 +40,17 @@ public class MainHomeFacade {
         // 페이징 정보
         PageRequest pageRequest = PageRequest.of(0, safeCount);
 
-        // List<Project> 미리 생성
-//        List<Project> projects = new ArrayList<>();
+        // 둘 중 하나가 null일 수는 없음
+        if ((role == null && interest != null) || (role != null && interest == null)) {
+            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
+        }
 
-//        // 둘 중 하나가 null일 수는 없음
-//        if ((role == null && interest != null) || (role != null && interest == null)) {
-//            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
-//        }
-//
-//        // role이 null일 때
-//        if (role == null) {
-//
-//        }else{
-//
-//        }
-
-        List<Project> projects = homeProjectQueryService.getProjects(userId, pageRequest);
+        List<Project> projects;
+        if (role != null) {
+            projects = homeProjectQueryService.getFilteredProjects(userId, pageRequest, role, interest);
+        } else {
+            projects = homeProjectQueryService.getProjects(userId, pageRequest);
+        }
 
         return buildProjectResponse(projects);
     }

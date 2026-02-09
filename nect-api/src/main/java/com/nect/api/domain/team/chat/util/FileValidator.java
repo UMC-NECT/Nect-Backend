@@ -9,7 +9,7 @@ import java.util.List;
 
 
 public class FileValidator {
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
     private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
             "image/jpeg",
             "image/jpg",

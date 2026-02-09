@@ -2,6 +2,8 @@ package com.nect.api.domain.home.service;
 
 import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.user.enums.InterestField;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
@@ -113,6 +115,24 @@ public class HomeProjectQueryService {
                 : projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN, pageRequest);
     }
 
+    public List<Project> getFilteredProjects(Long userId, PageRequest pageRequest, Role role, InterestField interest) {
+        List<RoleField> roleFields = Arrays.stream(RoleField.getFieldsByRole(role))
+                .filter(field -> field.getRole() == role)
+                .toList();
+
+        if (roleFields.isEmpty()) {
+            return List.of();
+        }
+
+        return projectRepository.findHomeProjectsByRoleAndInterest(
+                userId,
+                RecruitmentStatus.OPEN,
+                interest,
+                roleFields,
+                pageRequest
+        );
+    }
+
     public List<Project> getProjects(Long userId) {
         return (userId == null)
                 ? projectRepository.findHomeProjectsWithoutUser(RecruitmentStatus.OPEN)
@@ -126,6 +146,5 @@ public class HomeProjectQueryService {
         return (int) ChronoUnit.DAYS.between(today, endDate);
     }
 }
-
 
 
