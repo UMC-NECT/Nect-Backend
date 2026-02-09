@@ -4,17 +4,16 @@ import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
+import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemGroupReorderReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
-import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
+import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.WeekMissionService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -421,5 +420,81 @@ class WeekMissionControllerTest {
                 ));
 
         verify(weekMissionService).getMissionDropdown(eq(projectId), eq(userId));
+    }
+
+    @Test
+    @DisplayName("위크미션 TASK 파트별 항목 순서 변경(리더형)")
+    void reorderWeekMissionTaskItems() throws Exception {
+        long projectId = 1L;
+        long processId = 1L;
+        long userId = 1L;
+
+        WeekMissionTaskItemGroupReorderReqDto request = new WeekMissionTaskItemGroupReorderReqDto(
+                RoleField.BACKEND,
+                null,
+                List.of(6L, 4L, 5L)
+        );
+
+        ProcessTaskItemReorderResDto response = new ProcessTaskItemReorderResDto(
+                processId,
+                List.of(
+                        new ProcessTaskItemResDto(6L, "API 설계 시작", false, 0, null),
+                        new ProcessTaskItemResDto(4L, "서버 환경 설정", false, 1, null),
+                        new ProcessTaskItemResDto(5L, "데이터베이스 초기화", false, 2, null)
+                )
+        );
+
+        given(weekMissionService.reorderTaskItemsByGroup(
+                eq(projectId), eq(userId), eq(processId), any(WeekMissionTaskItemGroupReorderReqDto.class)
+        )).willReturn(response);
+
+        mockMvc.perform(patch("/api/v1/projects/{projectId}/week-missions/{processId}/task-items/reorder", projectId, processId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andDo(document("week-mission-taskitem-reorder-by-group",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Process")
+                                        .summary("위크미션 TASK 파트별 항목 순서 변경(리더형)")
+                                        .description("위크미션 프로세스의 특정 파트(ROLE_FIELD) 그룹 내부에서 TaskItem 순서를 재정렬합니다. ordered_task_item_ids에는 해당 그룹의 전체 TaskItem ID를 모두 포함해야 합니다.")
+                                        .pathParameters(
+                                                parameterWithName("projectId").description("프로젝트 ID"),
+                                                parameterWithName("processId").description("위크미션 프로세스 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("ordered_task_item_ids").type(ARRAY).description("재정렬할 TaskItem ID 목록(그룹 전체 포함, 요청 순서대로 0..n-1 부여)"),
+                                                fieldWithPath("role_field").type(STRING).description("파트(RoleField) (예: BACKEND/FRONTEND/...)"),
+                                                fieldWithPath("custom_role_field_name").optional().type(STRING).description("CUSTOM인 경우 커스텀 파트명, 그 외 null")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").type(OBJECT).description("응답 상태"),
+                                                fieldWithPath("status.statusCode").type(STRING).description("상태 코드"),
+                                                fieldWithPath("status.message").type(STRING).description("메시지"),
+                                                fieldWithPath("status.description").optional().type(STRING).description("상세 설명"),
+
+                                                fieldWithPath("body").type(OBJECT).description("응답 바디"),
+                                                fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.ordered_task_items").type(ARRAY).description("요청 순서대로 정렬된 TaskItem 목록"),
+                                                fieldWithPath("body.ordered_task_items[].task_item_id").type(NUMBER).description("TaskItem ID"),
+                                                fieldWithPath("body.ordered_task_items[].content").type(STRING).description("내용"),
+                                                fieldWithPath("body.ordered_task_items[].is_done").type(BOOLEAN).description("완료 여부"),
+                                                fieldWithPath("body.ordered_task_items[].sort_order").type(NUMBER).description("정렬 순서(0..n-1)"),
+                                                fieldWithPath("body.ordered_task_items[].done_at").optional().type(STRING).description("완료일(yyyy-MM-dd, null 가능)")
+                                        )
+                                        .build()
+                        )
+                ));
+
+        verify(weekMissionService).reorderTaskItemsByGroup(
+                eq(projectId), eq(userId), eq(processId), any(WeekMissionTaskItemGroupReorderReqDto.class)
+        );
     }
 }

@@ -278,14 +278,7 @@ public class PostService {
             List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
 
             List<PostListResDto.PostSummaryDto> mapped = notices.stream()
-                    .map(p -> new PostListResDto.PostSummaryDto(
-                            p.getId(),
-                            p.getPostType(),
-                            p.getTitle(),
-                            preview(p.getContent(), 100),
-                            p.getLikeCount(),
-                            p.getCreatedAt()
-                    ))
+                    .map(this::toSummary)
                     .toList();
 
             PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
@@ -308,29 +301,11 @@ public class PostService {
         // page==0 일 때만 공지 전부 상단에 붙이기
         if (type == null && page == 0) {
             List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
-            result.addAll(notices.stream()
-                    .map(p -> new PostListResDto.PostSummaryDto(
-                            p.getId(),
-                            p.getPostType(),
-                            p.getTitle(),
-                            preview(p.getContent(), 100),
-                            p.getLikeCount(),
-                            p.getCreatedAt()
-                    ))
-                    .toList());
+            result.addAll(notices.stream().map(this::toSummary).toList());
         }
 
         // FREE 페이징 결과 붙이기
-        result.addAll(freePage.getContent().stream()
-                .map(p -> new PostListResDto.PostSummaryDto(
-                        p.getId(),
-                        p.getPostType(),
-                        p.getTitle(),
-                        preview(p.getContent(), 100),
-                        p.getLikeCount(),
-                        p.getCreatedAt()
-                ))
-                .toList());
+        result.addAll(freePage.getContent().stream().map(this::toSummary).toList());
 
         // pageInfo는 FREE 기준으로만 계산 (공지는 제외)
         PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
@@ -342,6 +317,23 @@ public class PostService {
         );
 
         return new PostListResDto(result, pageInfo);
+    }
+
+    private PostListResDto.PostSummaryDto toSummary(Post p) {
+        var u = p.getAuthor();
+        PostListResDto.AuthorDto authorDto = (u == null)
+                ? null
+                : new PostListResDto.AuthorDto(u.getUserId(), u.getName(), u.getNickname());
+
+        return new PostListResDto.PostSummaryDto(
+                p.getId(),
+                p.getPostType(),
+                p.getTitle(),
+                preview(p.getContent(), 100),
+                p.getLikeCount(),
+                authorDto,
+                p.getCreatedAt()
+        );
     }
 
     // 게시글 수정 서비스

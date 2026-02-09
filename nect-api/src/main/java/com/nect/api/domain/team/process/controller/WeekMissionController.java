@@ -1,11 +1,9 @@
 package com.nect.api.domain.team.process.controller;
 
 import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
+import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemGroupReorderReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
-import com.nect.api.domain.team.process.dto.res.ProcessTaskItemResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDetailResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionDropdownResDto;
-import com.nect.api.domain.team.process.dto.res.WeekMissionWeekResDto;
+import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.service.WeekMissionService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -85,4 +83,16 @@ public class WeekMissionController {
         );
     }
 
+    // 위크미션 TASK 파트별 항목 순서 변경(리더형)
+    @PatchMapping("/{processId}/task-items/reorder")
+    public ApiResponse<ProcessTaskItemReorderResDto> reorderWeekMissionTaskItems(
+            @PathVariable Long projectId,
+            @PathVariable Long processId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody WeekMissionTaskItemGroupReorderReqDto req
+    ) {
+        return ApiResponse.ok(
+                weekMissionService.reorderTaskItemsByGroup(projectId, userDetails.getUserId(), processId, req)
+        );
+    }
 }

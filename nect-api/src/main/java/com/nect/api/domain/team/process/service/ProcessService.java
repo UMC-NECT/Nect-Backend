@@ -22,6 +22,7 @@ import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.process.*;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.enums.AssignmentRole;
+import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
@@ -30,6 +31,7 @@ import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
+import com.nect.core.repository.team.process.ProcessFeedbackRepository;
 import com.nect.core.repository.team.process.ProcessLaneOrderRepository;
 import com.nect.core.repository.team.process.ProcessMentionRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
@@ -45,7 +47,6 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +59,7 @@ public class ProcessService {
     private final UserRepository userRepository;
     private final ProcessLaneOrderRepository processLaneOrderRepository;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
+    private final ProcessFeedbackRepository processFeedbackRepository;
 
     private final S3Service s3Service;
     private final ProcessLaneOrderService processLaneOrderService;
@@ -1418,7 +1420,7 @@ public class ProcessService {
         return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
-    private ProcessCardResDto toProcessCardResDTO(Process p) {
+    private ProcessCardResDto toProcessCardResDTO(Process p,  boolean hasOpenFeedback) {
         int whole = (p.getTaskItems() == null) ? 0 : p.getTaskItems().size();
         int done = (p.getTaskItems() == null) ? 0 : (int) p.getTaskItems().stream()
                 .filter(ProcessTaskItem::isDone)
@@ -1469,6 +1471,7 @@ public class ProcessService {
                 roleFields,
                 customFields,
                 missionNumber,
+                hasOpenFeedback,
                 assignees
         );
     }
@@ -1598,6 +1601,21 @@ public class ProcessService {
         LocalDate rangeEnd = rangeStart.plusDays((long) weeks * 7 - 1);
 
         List<Process> processes = processRepository.findAllInRangeOrdered(projectId, rangeStart, rangeEnd);
+        if (processes == null) processes = List.of();
+
+        Set<Long> openFeedbackProcessIds = new HashSet<>();
+        if (!processes.isEmpty()) {
+            List<Long> processIds = processes.stream()
+                    .map(Process::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            if (!processIds.isEmpty()) {
+                openFeedbackProcessIds.addAll(
+                        processFeedbackRepository.findOpenFeedbackProcessIds(processIds)
+                );
+            }
+        }
 
         // 프로세스를 주차별로 묶기
         // startAt이 null이면 rangeStart 주로 보내거나, common 처리 가능
@@ -1622,9 +1640,14 @@ public class ProcessService {
         List<ProcessWeekResDto> weekDtos = byWeek.entrySet().stream()
                 .map(entry -> {
                     LocalDate weekStartKey = entry.getKey();
+
                     List<ProcessCardResDto> cards = entry.getValue().stream()
-                            .map(this::toProcessCardResDTO)
+                            .map(p -> {
+                                boolean hasOpenFeedback = openFeedbackProcessIds.contains(p.getId());
+                                return toProcessCardResDTO(p, hasOpenFeedback);
+                            })
                             .toList();
+
                     return buildWeekDto(weekStartKey, cards);
                 })
                 .toList();
@@ -1723,12 +1746,25 @@ public class ProcessService {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "invalid lane_key prefix. laneKey=" + laneKey);
         }
 
+        Set<Long> openFeedbackProcessIds = Collections.emptySet();
+        if (laneProcesses != null && !laneProcesses.isEmpty()) {
+            List<Long> processIds = laneProcesses.stream()
+                    .map(Process::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            if (!processIds.isEmpty()) {
+                openFeedbackProcessIds = new HashSet<>(
+                        processFeedbackRepository.findOpenFeedbackProcessIds(processIds)
+                );
+            }
+        }
 
         List<ProcessStatusGroupResDto> groups = List.of(
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.PLANNING, laneProcesses),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.IN_PROGRESS, laneProcesses),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.DONE, laneProcesses),
-                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.BACKLOG, laneProcesses)
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.PLANNING, laneProcesses, openFeedbackProcessIds),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.IN_PROGRESS, laneProcesses, openFeedbackProcessIds),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.DONE, laneProcesses, openFeedbackProcessIds),
+                buildStatusGroupOrdered(projectId, dbLaneKey, ProcessStatus.BACKLOG, laneProcesses, openFeedbackProcessIds)
         );
 
         return new ProcessPartResDto(toApiLaneKey(dbLaneKey), groups);
@@ -1738,7 +1774,8 @@ public class ProcessService {
             Long projectId,
             String laneKey,
             ProcessStatus status,
-            List<Process> laneProcessesAll
+            List<Process> laneProcessesAll,
+            Set<Long> openFeedbackProcessIds
     ) {
         // 해당 status인 프로세스만
         List<Process> laneProcesses = laneProcessesAll.stream()
@@ -1761,7 +1798,10 @@ public class ProcessService {
         List<ProcessCardResDto> cards = new ArrayList<>();
         for (Long id : orderedIds) {
             Process p = map.get(id);
-            if (p != null) cards.add(toProcessCardResDTO(p));
+            if (p != null) {
+                boolean hasOpenFeedback = openFeedbackProcessIds.contains(p.getId());
+                cards.add(toProcessCardResDTO(p, hasOpenFeedback));
+            }
         }
 
         return new ProcessStatusGroupResDto(status, cards.size(), cards);

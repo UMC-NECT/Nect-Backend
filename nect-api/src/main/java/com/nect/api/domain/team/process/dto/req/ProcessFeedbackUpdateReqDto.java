@@ -1,8 +1,12 @@
 package com.nect.api.domain.team.process.dto.req;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 
 public record ProcessFeedbackUpdateReqDto(
         @JsonProperty("content")
-        String content
+        String content,
+
+        @JsonProperty("feedback_status")
+        ProcessFeedbackStatus status
 ) {}
