@@ -139,7 +139,7 @@ class UserTeamRoleControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("MyPage")
+                                        .tag("Mypage")
                                         .summary("마이페이지 팀 파트 생성")
                                         .description("마이페이지에서 프로젝트별 팀 파트를 생성합니다. (리더만 가능)")
                                         .pathParameters(
@@ -208,7 +208,7 @@ class UserTeamRoleControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("MyPage")
+                                        .tag("Mypage")
                                         .summary("마이페이지 팀 파트 수정")
                                         .description("마이페이지에서 프로젝트별 팀 파트를 수정합니다. (CUSTOM만 가능, 리더만 가능)")
                                         .pathParameters(
@@ -277,7 +277,7 @@ class UserTeamRoleControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("MyPage")
+                                        .tag("Mypage")
                                         .summary("마이페이지 파트 목록 조회")
                                         .description("마이페이지에서 프로젝트별 팀 파트(칩) 목록을 조회합니다. (프로젝트 ACTIVE 멤버 가능)")
                                         .pathParameters(

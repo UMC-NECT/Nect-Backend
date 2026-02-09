@@ -1,9 +1,9 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
-import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -86,6 +87,15 @@ public class MypageController {
         return ApiResponse.ok(mypageService.getProfileAnalysis(userDetails.getUserId()));
     }
 
+    // 프로젝트 분야 조회
+    @GetMapping("/projects/{projectId}/project-field")
+    public ApiResponse<MyProjectsResponseDto.ProjectFieldResponse> getProjectField(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ){
+        return ApiResponse.ok(projectQueryService.getProjectFields(projectId));
+    }
+
     // 프로젝트 분야 수정
     @PatchMapping("/projects/{projectId}/project-field")
     public ApiResponse<Void> editField(@PathVariable Long projectId, @RequestParam("field") InterestField interestField) {
@@ -95,6 +105,15 @@ public class MypageController {
 
 
     // 모집정보 추가
+
+    // 프로젝트 목표 조회
+    @GetMapping("/projects/{projectId}/purposes")
+    public ApiResponse<MyProjectsResponseDto.StringListResponse> getPurposes(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return ApiResponse.ok(projectQueryService.getPurposes(projectId));
+    }
 
     // 프로젝트 목표 작성
     @PatchMapping("/projects/{projectId}/purposes")
@@ -106,6 +125,14 @@ public class MypageController {
         return ApiResponse.ok();
     }
 
+    // 주요기능 조회
+    @GetMapping("/projects/{projectId}/functions")
+    public ApiResponse<MyProjectsResponseDto.StringListResponse> getFunctions(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        return ApiResponse.ok(projectQueryService.getPurposes(projectId));
+    }
 
     // 주요기능 작성
     @PatchMapping("/projects/{projectId}/functions")
@@ -117,6 +144,14 @@ public class MypageController {
         return ApiResponse.ok();
     }
 
+    // 서비스 사용자 조회
+    @GetMapping("/projects/{projectId}/service-users")
+    public ApiResponse<MyProjectsResponseDto.StringListResponse> getServiceUsers(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ){
+        return ApiResponse.ok(projectQueryService.getServiceUsers(projectId));
+    }
 
     // 서비스 사용자 작성
     @PatchMapping("/projects/{projectId}/service-users")
@@ -128,6 +163,23 @@ public class MypageController {
         return ApiResponse.ok();
     }
 
+    // 프로젝트 세부 기획 파일 조회
+    @GetMapping("/projects/{projectId}/plan-file")
+    public ApiResponse<MyProjectsResponseDto.ProjectPlanFilesResponse> getPlanFiles(
+            @PathVariable Long projectId
+    ) {
+        return ApiResponse.ok(projectQueryService.getPlanFiles(projectId));
+    }
+
+    // 프로젝트 세부 기획 파일 다운로드
+    @GetMapping("/projects/{projectId}/plan-file/{planFileId}/download")
+    public ApiResponse<MyProjectsResponseDto.ProjectPlanFileDownloadResponse> downloadPlanFile(
+            @PathVariable Long projectId,
+            @PathVariable Long planFileId
+    ) {
+        String url = projectQueryService.getPlanFileDownloadUrl(projectId, planFileId);
+        return ApiResponse.ok(new MyProjectsResponseDto.ProjectPlanFileDownloadResponse(url));
+    }
 
     // 프로젝트 세부 기획 파일 추가
     @PostMapping(value = "/projects/{projectId}/plan-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -238,27 +290,5 @@ public class MypageController {
     ){
         return ApiResponse.ok(recruitmentService.getRecruitmentsByProject(projectId));
     }
-
-    // 프로젝트 목표 추가
-
-    // 프로젝트 목표 수정
-
-    // 프로젝트 목표 삭제
-
-    // 주요기능 추가
-
-    // 주요기능 수정
-
-    // 주요기능 삭제
-
-    // 서비스 사용자 추가
-
-    // 서비스 사용자 수정
-
-    // 서비스 사용자 삭제
-
-    // 프로젝트 세부 기획 파일 추가
-
-    // 프로젝트 세부 기획 파일 삭제
 
 }
