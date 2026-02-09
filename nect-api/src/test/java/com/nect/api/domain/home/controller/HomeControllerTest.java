@@ -96,7 +96,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-projects-recruiting",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("모집 중인 프로젝트 조회")
                                 .description("홈 화면에서 모집 중인 프로젝트 목록을 조회합니다.")
                                 .requestHeaders(
@@ -131,7 +131,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-projects-recommended",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("홈화면 프로젝트 추천")
                                 .description("홈 화면에서 추천 프로젝트 목록을 조회합니다.")
                                 .requestHeaders(
@@ -165,7 +165,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-statistics",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("홈화면 통계 조회")
                                 .description("홈 화면에 표시되는 통계 정보를 조회합니다.")
                                 .requestHeaders(
@@ -204,7 +204,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-members-matchable",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("홈화면 매칭 가능한 넥터 조회")
                                 .description("홈 화면에서 매칭 가능한 넥터 목록을 조회합니다.")
                                 .requestHeaders(
@@ -239,7 +239,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-members-recommended",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("홈화면 팀원 추천")
                                 .description("홈 화면에서 추천 팀원 목록을 조회합니다.")
                                 .requestHeaders(
@@ -267,7 +267,7 @@ class HomeControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("home-header-profile",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("홈")
+                                .tag("Home")
                                 .summary("홈화면 헤더 프로필")
                                 .description("홈 화면 헤더에 표시할 프로필 정보를 조회합니다.")
                                 .requestHeaders(

@@ -32,4 +32,20 @@ public interface PostRepository extends JpaRepository<Post, Long> {
           and p.postType <> com.nect.core.entity.team.workspace.enums.PostType.NOTICE
     """)
     Page<Post> findFreePosts(@Param("projectId") Long projectId, Pageable pageable);
+
+    @Query("""
+        select p from Post p
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.postType = com.nect.core.entity.team.workspace.enums.PostType.NOTICE
+    """)
+    Page<Post> findNoticePosts(@Param("projectId") Long projectId, Pageable pageable);
+
+    @Query("""
+        select p from Post p
+        where p.project.id = :projectId
+          and p.deletedAt is null
+          and p.postType = com.nect.core.entity.team.workspace.enums.PostType.FREE
+    """)
+    Page<Post> findFreeOnlyPosts(@Param("projectId") Long projectId, Pageable pageable);
 }

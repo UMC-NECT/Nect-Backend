@@ -96,7 +96,7 @@ class NotificationControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("notifications-list",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("알림")
+                                .tag("Notifications")
                                 .summary("알림 목록 조회")
                                 .description("""
                                         사용자의 알림 목록을 커서 기반 페이징 방식으로 조회합니다.

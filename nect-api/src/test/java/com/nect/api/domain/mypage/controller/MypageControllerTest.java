@@ -10,8 +10,9 @@ import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.core.entity.user.enums.InterestField;
-import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
-import com.nect.api.domain.mypage.service.MypageService;
+import com.nect.api.domain.matching.dto.RecruitmentReqDto;
+import com.nect.api.domain.matching.dto.RecruitmentResDto;
+import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
@@ -21,9 +22,8 @@ import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.restdocs.payload.JsonFieldType;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.ArrayList;
@@ -45,12 +45,14 @@ import static org.springframework.restdocs.operation.preprocess.Preprocessors.pr
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.patch;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.partWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.requestParts;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class MypageControllerTest extends NectDocumentApiTester {
@@ -66,6 +68,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private MyPageProjectQueryService projectQueryService;
+
+    @MockitoBean
+    private RecruitmentService recruitmentService;
 
     @Test
     void getProfile() throws Exception {
@@ -967,6 +972,183 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("body.field").description("분야"),
                                         fieldWithPath("body.memberType").description("멤버 타입 (변경된 타입)"),
                                         fieldWithPath("body.memberStatus").description("멤버 상태")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void createRecruitment() throws Exception {
+        Long projectId = 1L;
+
+        RecruitmentResDto.EnrollRecruitmentResDto resDto = RecruitmentResDto.EnrollRecruitmentResDto.builder()
+                .recruitmentId(10L)
+                .roleField(RoleField.BACKEND)
+                .customField(null)
+                .capacity(3)
+                .requirements(List.of("Spring Boot 프레임워크를 사용한 경험이 있어야 합니다.", "Java언어를 능숙하게 다룰 수 있어야 합니다."))
+                .build();
+
+        given(recruitmentService.enrollRecruitment(anyLong(), eq(projectId), any(RecruitmentReqDto.EnrollRecruitmentReqDto.class)))
+                .willReturn(resDto);
+
+        String requestJson = """
+            {
+              "roleField": "BACKEND",
+              "capacity": 3,
+              "requirements": ["Spring Boot 프레임워크를 사용한 경험이 있어야 합니다.", "Java언어를 능숙하게 다룰 수 있어야 합니다."]
+            }
+            """;
+
+        mockMvc.perform(post("/api/v1/mypage/{projectId}/recruitments", projectId)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-post-recruitment",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("모집정보 생성")
+                                .description("프로젝트에 대한 모집정보를 추가합니다. 작성자는 프로젝트 리더여야 합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .requestFields(
+                                        fieldWithPath("roleField").description("모집 분야 식별자 (RoleField enum)"),
+                                        fieldWithPath("customField").type(JsonFieldType.STRING)
+                                                .description("커스텀 필드명 (roleField가 CUSTOM일 때 필수)").optional(),
+                                        fieldWithPath("capacity").description("모집 인원 수"),
+                                        fieldWithPath("requirements").type(JsonFieldType.ARRAY)
+                                                .description("요구사항 목록").optional()
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body.recruitmentId").description("생성된 모집 ID"),
+                                        fieldWithPath("body.roleField").description("모집 분야"),
+                                        fieldWithPath("body.customField").description("커스텀 필드명").optional(),
+                                        fieldWithPath("body.capacity").description("모집 인원 수"),
+                                        fieldWithPath("body.requirements").description("요구사항 목록")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void updateRecruitment() throws Exception {
+        Long projectId = 1L;
+        Long recruitmentId = 10L;
+
+        RecruitmentResDto.EnrollRecruitmentResDto resDto = RecruitmentResDto.EnrollRecruitmentResDto.builder()
+                .recruitmentId(recruitmentId)
+                .roleField(RoleField.BACKEND)
+                .customField(null)
+                .capacity(2)
+                .requirements(List.of("Django 프레임워크를 사용한 경험이 있어야 합니다.", "python언어를 능숙하게 다룰 줄 알아야 합니다."))
+                .build();
+
+        given(recruitmentService.updateRecruitment(anyLong(), eq(projectId), eq(recruitmentId), any(RecruitmentReqDto.EnrollRecruitmentReqDto.class)))
+                .willReturn(resDto);
+
+        String requestJson = """
+            {
+              "roleField": "BACKEND",
+              "capacity": 2,
+              "requirements": ["Django 프레임워크를 사용한 경험이 있어야 합니다.", "python언어를 능숙하게 다룰 줄 알아야 합니다."]
+            }
+            """;
+
+        mockMvc.perform(put("/api/v1/mypage/{projectId}/recruitments/{recruitmentId}", projectId, recruitmentId)
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-put-recruitment",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("모집정보 수정")
+                                .description("기존 모집정보를 수정합니다. 작성자는 프로젝트 리더여야 합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .requestFields(
+                                        fieldWithPath("roleField").description("모집 분야 식별자 (RoleField enum)"),
+                                        fieldWithPath("customField").type(JsonFieldType.STRING)
+                                                .description("커스텀 필드명 (roleField가 CUSTOM일 때 필수)").optional(),
+                                        fieldWithPath("capacity").description("모집 인원 수"),
+                                        fieldWithPath("requirements").type(JsonFieldType.ARRAY)
+                                                .description("요구사항 목록").optional()
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body.recruitmentId").description("모집 ID"),
+                                        fieldWithPath("body.roleField").description("모집 분야"),
+                                        fieldWithPath("body.customField").description("커스텀 필드명").optional(),
+                                        fieldWithPath("body.capacity").description("모집 인원 수"),
+                                        fieldWithPath("body.requirements").description("요구사항 목록")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void getRecruitmentsByProject() throws Exception {
+        Long projectId = 1L;
+
+        List<RecruitmentResDto.EnrollRecruitmentResDto> resList = List.of(
+                RecruitmentResDto.EnrollRecruitmentResDto.builder()
+                        .recruitmentId(10L)
+                        .roleField(RoleField.BACKEND)
+                        .customField(null)
+                        .capacity(3)
+                        .requirements(List.of("Django 프레임워크를 사용한 경험이 있어야 합니다.", "python언어를 능숙하게 다룰 줄 알아야 합니다."))
+                        .build(),
+                RecruitmentResDto.EnrollRecruitmentResDto.builder()
+                        .recruitmentId(11L)
+                        .roleField(RoleField.FRONTEND)
+                        .customField(null)
+                        .capacity(1)
+                        .requirements(List.of("디자인 경험이 있으신 분을 선호합니다.", "모두 환영해요."))
+                        .build()
+        );
+
+        given(recruitmentService.getRecruitmentsByProject(projectId)).willReturn(resList);
+
+        mockMvc.perform(get("/api/v1/mypage/{projectId}/recruitments", projectId)
+                        .header("Authorization", "Bearer AccessToken"))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-get-recruitments",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("프로젝트 모집정보 조회")
+                                .description("프로젝트에 등록된 모든 모집정보를 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body[].recruitmentId").description("모집 ID"),
+                                        fieldWithPath("body[].roleField").description("모집 분야"),
+                                        fieldWithPath("body[].customField").description("커스텀 필드").optional(),
+                                        fieldWithPath("body[].capacity").description("모집 인원 수"),
+                                        fieldWithPath("body[].requirements").description("요구사항 목록")
                                 )
                                 .build()
                         )

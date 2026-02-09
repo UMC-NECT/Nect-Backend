@@ -44,4 +44,24 @@ public interface ProcessTaskItemRepository extends JpaRepository<ProcessTaskItem
             @Param("roleField") RoleField roleField,
             @Param("customName") String customName
     );
+
+    // 요청 ids가 모두 해당 그룹인지 검증용 조회
+    @Query("""
+        select ti
+        from ProcessTaskItem ti
+        where ti.process.id = :processId
+          and ti.deletedAt is null
+          and ti.roleField = :roleField
+          and (
+                (:customName is null and ti.customRoleFieldName is null)
+             or (:customName is not null and ti.customRoleFieldName = :customName)
+          )
+          and ti.id in :ids
+    """)
+    List<ProcessTaskItem> findWeekMissionGroupItemsByIds(
+            @Param("processId") Long processId,
+            @Param("roleField") RoleField roleField,
+            @Param("customName") String customName,
+            @Param("ids") List<Long> ids
+    );
 }

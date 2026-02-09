@@ -302,9 +302,7 @@ class ProcessTaskItemControllerTest {
         long userId = 1L;
 
         ProcessTaskItemReorderReqDto request = new ProcessTaskItemReorderReqDto(
-                List.of(100L, 101L, 102L),
-                RoleField.BACKEND,
-                null
+                List.of(100L, 101L, 102L)
         );
 
         ProcessTaskItemResDto i0 = new ProcessTaskItemResDto(100L, "A", false, 0, null);

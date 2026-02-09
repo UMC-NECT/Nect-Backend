@@ -1,6 +1,9 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
+import com.nect.api.domain.matching.dto.RecruitmentReqDto;
+import com.nect.api.domain.matching.dto.RecruitmentResDto;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
@@ -25,6 +28,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/mypage")
@@ -35,6 +41,7 @@ public class MypageController {
     private final MyPageProjectQueryService projectQueryService;
     private final MyPageProjectCommandService projectCommandService;
     private final ProjectUserService projectUserService;
+    private final RecruitmentService recruitmentService;
 
     /**
      * 프로필 조회
@@ -252,5 +259,36 @@ public class MypageController {
         );
     }
 
+    // TODO: 해주세요
+    // 프로젝트 분야 수정
+
+    // 모집정보 추가
+    @PostMapping("/{projectId}/recruitments")
+    public ApiResponse<RecruitmentResDto.EnrollRecruitmentResDto> createRecruitment(
+            @AuthenticationPrincipal UserDetailsImpl user,
+            @PathVariable @Positive Long projectId,
+            @RequestBody @Valid RecruitmentReqDto.EnrollRecruitmentReqDto reqDto
+    ){
+        return ApiResponse.ok(recruitmentService.enrollRecruitment(user.getUserId(), projectId, reqDto));
+    }
+
+    // 모집정보 수정
+    @PutMapping("/{projectId}/recruitments/{recruitmentId}")
+    public ApiResponse<RecruitmentResDto.EnrollRecruitmentResDto> updateRecruitment(
+            @AuthenticationPrincipal UserDetailsImpl user,
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long recruitmentId,
+            @RequestBody @Valid RecruitmentReqDto.EnrollRecruitmentReqDto reqDto
+    ) {
+        return ApiResponse.ok(recruitmentService.updateRecruitment(user.getUserId(), projectId, recruitmentId, reqDto));
+    }
+
+    // 프로젝트의 모집정보 전체 조회
+    @GetMapping("/{projectId}/recruitments")
+    public ApiResponse<List<RecruitmentResDto.EnrollRecruitmentResDto>> getRecruitmentsByProject(
+            @PathVariable @Positive Long projectId
+    ){
+        return ApiResponse.ok(recruitmentService.getRecruitmentsByProject(projectId));
+    }
 
 }

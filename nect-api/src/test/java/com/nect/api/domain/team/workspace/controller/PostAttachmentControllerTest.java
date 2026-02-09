@@ -130,7 +130,7 @@ class PostAttachmentControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("PostAttachment")
+                                        .tag("Post")
                                         .summary("게시글 파일 업로드 + 첨부")
                                         .description("게시글에 파일을 업로드하고 즉시 첨부합니다.")
                                         .pathParameters(
@@ -205,7 +205,7 @@ class PostAttachmentControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("PostAttachment")
+                                        .tag("Post")
                                         .summary("게시글 링크 생성 + 첨부")
                                         .description("게시글에 링크(SharedDocument)를 생성하고 즉시 첨부합니다.")
                                         .pathParameters(
@@ -264,7 +264,7 @@ class PostAttachmentControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("PostAttachment")
+                                        .tag("Post")
                                         .summary("게시글 첨부 해제")
                                         .description("게시글에 첨부된 문서(파일/링크)를 해제합니다.")
                                         .pathParameters(

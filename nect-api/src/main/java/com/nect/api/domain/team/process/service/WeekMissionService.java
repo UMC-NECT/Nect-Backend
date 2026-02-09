@@ -4,6 +4,7 @@ import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
 import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.WeekMissionStatusUpdateReqDto;
+import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemGroupReorderReqDto;
 import com.nect.api.domain.team.process.dto.req.WeekMissionTaskItemUpdateReqDto;
 import com.nect.api.domain.team.process.dto.res.*;
 import com.nect.api.domain.team.process.enums.AttachmentType;
@@ -578,5 +579,118 @@ public class WeekMissionService {
     private LocalDate resolveWeekStart(LocalDate requested, LocalDate fallbackBaseDate) {
         LocalDate base = (requested != null) ? requested : fallbackBaseDate;
         return toMonday(base);
+    }
+
+
+    @Transactional
+    public ProcessTaskItemReorderResDto reorderTaskItemsByGroup(
+            Long projectId, Long userId, Long processId, WeekMissionTaskItemGroupReorderReqDto req
+    ) {
+        assertActiveLeader(projectId, userId);
+
+        if (req == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "request is null");
+        }
+
+        List<Long> orderedIds = validateOrderedIds(req.orderedTaskItemIds());
+
+        RoleField roleField = req.roleField();
+        if (roleField == null) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "role_field is required");
+        }
+        String customName = normalizeCustom(roleField, req.customRoleFieldName()); // CUSTOM이면 trim + 필수검사, 아니면 null
+
+        // 위크미션 존재 검증 (프로젝트 + 프로세스)
+        Process process = processRepository.findWeekMissionDetail(projectId, processId)
+                .orElseThrow(() -> new ProcessException(ProcessErrorCode.PROCESS_NOT_FOUND));
+
+        // (꼬임 방지) 해당 그룹 현재 sort_order 정규화
+        normalizeGroupOrders(processId, roleField, customName);
+
+        // 그룹 전체 항목 조회 (정렬된 상태)
+        List<ProcessTaskItem> groupAll = processTaskItemRepository
+                .findWeekMissionGroupItemsOrdered(processId, roleField, customName);
+
+        List<Long> beforeIds = groupAll.stream().map(ProcessTaskItem::getId).toList();
+
+        // 변경 없으면 그대로 반환
+        if (beforeIds.equals(orderedIds)) {
+            List<ProcessTaskItemResDto> resItems = groupAll.stream()
+                    .map(t -> new ProcessTaskItemResDto(t.getId(), t.getContent(), t.isDone(), t.getSortOrder(), t.getDoneAt()))
+                    .toList();
+            return new ProcessTaskItemReorderResDto(processId, resItems);
+        }
+
+        // 그룹 전체 포함 정책
+        if (groupAll.size() != orderedIds.size()) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "ordered_task_item_ids must include all task items of the group"
+            );
+        }
+
+        // 요청 ids가 모두 해당 그룹에 속하는지 검증
+        List<ProcessTaskItem> targets = processTaskItemRepository
+                .findWeekMissionGroupItemsByIds(processId, roleField, customName, orderedIds);
+
+        if (targets.size() != orderedIds.size()) {
+            throw new ProcessException(
+                    ProcessErrorCode.INVALID_REQUEST,
+                    "ordered_task_item_ids contains invalid taskItemId(s) for the group"
+            );
+        }
+
+        Map<Long, ProcessTaskItem> map = targets.stream()
+                .collect(Collectors.toMap(ProcessTaskItem::getId, t -> t));
+
+        // reorder 반영 (0..n-1)
+        int i = 0;
+        for (Long id : orderedIds) {
+            map.get(id).updateSortOrder(i++);
+        }
+
+        // 히스토리 + 알림
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ProcessException(ProcessErrorCode.USER_NOT_FOUND, "userId=" + userId));
+        Project project = process.getProject();
+
+        notifyWorkspaceWeekMissionUpdated(project, actor, process);
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processId", processId);
+        meta.put("processType", "WEEK_MISSION");
+        meta.put("missionNumber", process.getMissionNumber());
+        meta.put("title", process.getTitle());
+        meta.put("groupMode", true);
+        meta.put("roleField", roleField.name());
+        meta.put("customRoleFieldName", customName);
+        meta.put("beforeOrderedTaskItemIds", beforeIds);
+        meta.put("afterOrderedTaskItemIds", orderedIds);
+
+        publishWeekMissionHistory(projectId, userId, processId, HistoryAction.TASK_ITEM_REORDERED, meta);
+
+        // 응답(요청 순서대로)
+        List<ProcessTaskItemResDto> resItems = orderedIds.stream()
+                .map(id -> {
+                    ProcessTaskItem t = map.get(id);
+                    return new ProcessTaskItemResDto(t.getId(), t.getContent(), t.isDone(), t.getSortOrder(), t.getDoneAt());
+                })
+                .toList();
+
+        return new ProcessTaskItemReorderResDto(processId, resItems);
+    }
+
+    private List<Long> validateOrderedIds(List<Long> raw) {
+        if (raw == null || raw.isEmpty()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids is empty");
+        }
+        List<Long> ids = raw.stream().filter(Objects::nonNull).toList();
+        if (ids.isEmpty()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids is empty");
+        }
+        if (new HashSet<>(ids).size() != ids.size()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "ordered_task_item_ids contains duplicates");
+        }
+        return ids;
     }
 }

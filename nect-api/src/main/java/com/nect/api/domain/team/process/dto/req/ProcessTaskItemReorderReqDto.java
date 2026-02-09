@@ -7,12 +7,5 @@ import java.util.List;
 
 public record ProcessTaskItemReorderReqDto(
         @JsonProperty("ordered_task_item_ids")
-        List<Long> orderedTaskItemIds,
-
-        @JsonProperty("role_field")
-        RoleField roleField,
-
-        @JsonProperty("custom_role_field_name")
-        String customRoleFieldName
-
+        List<Long> orderedTaskItemIds
 ) {}

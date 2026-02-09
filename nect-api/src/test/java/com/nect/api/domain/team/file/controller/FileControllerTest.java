@@ -2,7 +2,6 @@ package com.nect.api.domain.team.file.controller;
 
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.file.dto.res.FileDownloadUrlResDto;
 import com.nect.api.domain.team.file.dto.res.FileUploadResDto;
 import com.nect.api.domain.team.file.service.FileService;
@@ -23,7 +22,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -47,7 +45,6 @@ import static org.springframework.restdocs.request.RequestDocumentation.requestP
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
 @SpringBootTest
@@ -141,7 +138,7 @@ class FileControllerTest {
                                 partWithName("file").description("업로드할 파일(MultipartFile)")
                         ),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("File")
+                                .tag("Project")
                                 .summary("프로젝트 파일 업로드")
                                 .description("프로젝트 파일을 업로드합니다. 업로드 성공 시 file_id/file_url 등을 반환합니다.")
                                 .pathParameters(
@@ -200,7 +197,7 @@ class FileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("File")
+                                .tag("Project")
                                 .summary("프로젝트 파일 다운로드(리다이렉트)")
                                 .description("파일 다운로드 URL을 조회한 뒤 302(FOUND)로 Location 헤더에 담아 리다이렉트합니다.")
                                 .pathParameters(

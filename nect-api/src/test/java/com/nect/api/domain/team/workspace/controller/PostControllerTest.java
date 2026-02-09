@@ -39,7 +39,6 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
@@ -271,6 +270,11 @@ class PostControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
+        PostListResDto.AuthorDto author1 =
+                new PostListResDto.AuthorDto(1L, "홍길동", "길동");
+        PostListResDto.AuthorDto author2 =
+                new PostListResDto.AuthorDto(2L, "김철수", "철수");
+
         PostListResDto response = new PostListResDto(
                 List.of(
                         new PostListResDto.PostSummaryDto(
@@ -279,6 +283,7 @@ class PostControllerTest {
                                 "공지 제목",
                                 "공지 내용...",
                                 7L,
+                                author1,
                                 LocalDateTime.of(2026, 1, 31, 10, 0)
                         ),
                         new PostListResDto.PostSummaryDto(
@@ -287,6 +292,7 @@ class PostControllerTest {
                                 "자유글",
                                 "자유 내용...",
                                 1L,
+                                author2,
                                 LocalDateTime.of(2026, 1, 31, 11, 0)
                         )
                 ),
@@ -334,6 +340,12 @@ class PostControllerTest {
                                                 fieldWithPath("body.posts[].title").type(STRING).description("제목"),
                                                 fieldWithPath("body.posts[].content_preview").type(STRING).description("내용 프리뷰(일부)"),
                                                 fieldWithPath("body.posts[].like_count").type(NUMBER).description("좋아요 수"),
+
+                                                fieldWithPath("body.posts[].author").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.posts[].author.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.posts[].author.user_name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.posts[].author.nickname").type(STRING).description("작성자 닉네임"),
+
                                                 fieldWithPath("body.posts[].created_at").type(STRING).description("작성 시각(ISO-8601)"),
 
                                                 fieldWithPath("body.page_info").type(OBJECT).description("페이지 정보"),
@@ -349,6 +361,7 @@ class PostControllerTest {
 
         verify(postFacade).getPostList(eq(projectId), eq(userId), any(), eq(0), eq(10));
     }
+
 
     @Test
     @DisplayName("게시글 수정")
@@ -420,25 +433,18 @@ class PostControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
-        PostsPreviewResDto response = new PostsPreviewResDto(
+        PostsPreviewResDto postsPreview = new PostsPreviewResDto(
                 List.of(
-                        new PostsPreviewResDto.Item(
-                                100L,
-                                PostType.NOTICE,
-                                "공지 제목",
-                                LocalDateTime.of(2026, 1, 31, 10, 0)
-                        ),
-                        new PostsPreviewResDto.Item(
-                                101L,
-                                PostType.FREE,
-                                "자유글",
-                                LocalDateTime.of(2026, 1, 31, 11, 0)
-                        )
+                        new PostsPreviewResDto.Item(1001L, PostType.NOTICE, "공지 1", LocalDateTime.of(2026, 1, 31, 10, 0)),
+                        new PostsPreviewResDto.Item(1002L, PostType.NOTICE, "공지 2", LocalDateTime.of(2026, 1, 30, 9, 0)),
+                        new PostsPreviewResDto.Item(2001L, PostType.FREE, "자유 1", LocalDateTime.of(2026, 1, 31, 11, 0)),
+                        new PostsPreviewResDto.Item(2002L, PostType.FREE, "자유 2", LocalDateTime.of(2026, 1, 29, 18, 0))
                 )
         );
 
-        given(postFacade.getPostsPreview(eq(projectId), eq(userId), any(), eq(4)))
-                .willReturn(response);
+
+        given(postFacade.getPostsPreview(eq(projectId), eq(userId)))
+                .willReturn(postsPreview);
 
         mockMvc.perform(get("/api/v1/projects/{projectId}/boards/posts/preview", projectId)
                         .with(mockUser(userId))
@@ -482,7 +488,7 @@ class PostControllerTest {
                         )
                 ));
 
-        verify(postFacade).getPostsPreview(eq(projectId), eq(userId), any(), eq(4));
+        verify(postFacade).getPostsPreview(eq(projectId), eq(userId));
     }
 
 }

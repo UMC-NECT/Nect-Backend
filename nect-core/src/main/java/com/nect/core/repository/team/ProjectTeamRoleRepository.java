@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole, Long> {
     List<ProjectTeamRole> findByProjectId(Long projectId);
@@ -43,4 +44,19 @@ public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole
             RoleField roleField,
             String customRoleFieldName
     );
+
+    boolean existsByProject_IdAndDeletedAtIsNullAndRoleField(Long projectId, RoleField roleField);
+
+    boolean existsByProject_IdAndDeletedAtIsNullAndRoleFieldAndCustomRoleFieldName(
+            Long projectId,
+            RoleField roleField,
+            String customRoleFieldName
+    );
+
+
+    Optional<ProjectTeamRole> findByIdAndDeletedAtIsNull(Long id);
+
+    Optional<ProjectTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
+
+
 }

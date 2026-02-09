@@ -40,6 +40,9 @@ public record ProcessCardResDto(
         @JsonProperty("mission_number")
         Integer missionNumber,
 
+        @JsonProperty("has_open_feedback")
+        boolean hasOpenFeedback,
+
         @JsonProperty("assignee")
         List<AssigneeResDto> assignee
 ) {}
