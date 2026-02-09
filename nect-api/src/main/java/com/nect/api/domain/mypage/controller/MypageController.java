@@ -131,7 +131,7 @@ public class MypageController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetailsImpl userDetails
     ) {
-        return ApiResponse.ok(projectQueryService.getPurposes(projectId));
+        return ApiResponse.ok(projectQueryService.getFunctions(projectId));
     }
 
     // 주요기능 작성

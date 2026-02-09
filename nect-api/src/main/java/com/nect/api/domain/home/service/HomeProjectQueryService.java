@@ -1,7 +1,15 @@
 package com.nect.api.domain.home.service;
 
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
+import com.nect.api.domain.team.project.exception.ProjectException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectTeamRole;
+import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -9,6 +17,8 @@ import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.matching.RecruitmentRepository;
 import com.nect.core.repository.team.ProjectRepository;
+import com.nect.core.repository.team.ProjectTeamRoleRepository;
+import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +44,9 @@ public class HomeProjectQueryService {
     private final ProjectUserRepository projectUserRepository;
     private final RecruitmentRepository recruitmentRepository;
     private final UserRepository userRepository;
+    private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
+    private final ProjectTeamRoleRepository projectTeamRoleRepository;
+    private final S3Service s3Service;
 
     public record HomeProjectBatch(
             Map<Long, User> authorByProjectId,
@@ -139,12 +152,84 @@ public class HomeProjectQueryService {
                 : projectRepository.findHomeProjects(userId, RecruitmentStatus.OPEN);
     }
 
+    public MyProjectsResponseDto.ProjectInfo getProject(Long projectId) {
+        if (projectId == null) {
+            throw new ProjectException(ProjectErrorCode.INVALID_REQUEST, "projectId is required");
+        }
+
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+
+        List<ProjectTeamRole> teamRoles = projectTeamRoleRepository.findByProjectId(projectId);
+        List<MyProjectsResponseDto.TeamRoleInfo> roleInfos = teamRoles.stream()
+                .map(role -> MyProjectsResponseDto.TeamRoleInfo.builder()
+                        .roleField(role.getRoleField())
+                        .requiredCount(role.getRequiredCount())
+                        .build())
+                .toList();
+
+        MyProjectsResponseDto.LeaderInfo leaderInfo = projectUserRepositoryComplete
+                .findByProjectIdAndMemberType(projectId, ProjectMemberType.LEADER)
+                .map(ProjectUser::getUserId)
+                .flatMap(userRepository::findById)
+                .map(leader -> MyProjectsResponseDto.LeaderInfo.builder()
+                        .userId(leader.getUserId())
+                        .name(leader.getName())
+                        .profileImageUrl(s3Service.getPresignedGetUrl(leader.getProfileImageName()))
+                        .build())
+                .orElse(null);
+
+        List<ProjectUser> activeMembers = projectUserRepositoryComplete
+                .findByProjectIdAndMemberStatus(projectId, ProjectMemberStatus.ACTIVE);
+        List<MyProjectsResponseDto.TeamMemberProjectInfo> teamMemberProjects =
+                getTeamMemberProjectsByProject(activeMembers, projectId);
+
+        return MyProjectsResponseDto.ProjectInfo.builder()
+                .projectId(projectId)
+                .projectTitle(project.getTitle())
+                .description(project.getDescription())
+                .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
+                .plannedStartedOn(project.getPlannedStartedOn())
+                .plannedEndedOn(project.getPlannedEndedOn())
+                .teamRoles(roleInfos)
+                .leader(leaderInfo)
+                .teamMemberProjects(teamMemberProjects)
+                .build();
+    }
+
     public Integer getDDay(Project project) {
         LocalDateTime endedAt = project.getEndedAt();
         LocalDate today = LocalDate.now();
         LocalDate endDate = endedAt.toLocalDate();
         return (int) ChronoUnit.DAYS.between(today, endDate);
     }
+
+    private List<MyProjectsResponseDto.TeamMemberProjectInfo> getTeamMemberProjectsByProject(List<ProjectUser> activeMembers, Long projectId) {
+
+        List<Long> teamMemberIds = activeMembers.stream()
+                .map(ProjectUser::getUserId)
+                .distinct()
+                .toList();
+
+        if (teamMemberIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<ProjectUser> teamMemberProjects = projectUserRepositoryComplete
+                .findByUserIdInAndMemberStatus(teamMemberIds, ProjectMemberStatus.ACTIVE);
+
+        return teamMemberProjects.stream()
+                .map(ProjectUser::getProject)
+                .filter(project -> !project.getId().equals(projectId))
+                .distinct()
+                .map(project -> MyProjectsResponseDto.TeamMemberProjectInfo.builder()
+                        .projectId(project.getId())
+                        .title(project.getTitle())
+                        .description(project.getDescription())
+                        .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
+                        .createdAt(project.getCreatedAt())
+                        .endedAt(project.getEndedAt())
+                        .build())
+                .toList();
+    }
 }
-
-

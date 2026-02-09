@@ -1,9 +1,6 @@
 package com.nect.api.domain.home.controller;
 
-import com.nect.api.domain.home.dto.HomeHeaderResponse;
-import com.nect.api.domain.home.dto.HomeMembersResponse;
-import com.nect.api.domain.home.dto.HomeProjectResponse;
-import com.nect.api.domain.home.dto.HomeStatisticResponse;
+import com.nect.api.domain.home.dto.*;
 import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.service.MypageService;
@@ -34,6 +31,15 @@ public class HomeController {
         Long userId = resolveUserId(userDetails);
         HomeProjectResponse projects = mainHomeFacade.getRecruitingProjects(userId, count, role, interest);
         return ApiResponse.ok(projects);
+    }
+
+    // 모집 중인 프로젝트 상세 조회
+    @GetMapping("/projects/{projectId}")
+    public ApiResponse<HomeProjectDetailResponse> recruitingProjectDetails(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long projectId
+    ) {
+        return ApiResponse.ok(mainHomeFacade.getRecruitingProjectsDetails(projectId));
     }
 
     // 홈화면 프로젝트 추천
