@@ -5,6 +5,7 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.AttachmentType;
 import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.api.global.jwt.JwtUtil;
@@ -597,6 +598,37 @@ class ProcessControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
+        AttachmentSummaryDto summary1 = new AttachmentSummaryDto(
+                3L, // total
+                2L, // file
+                1L, // link
+                List.of(FileExt.PDF, FileExt.PNG)
+        );
+
+        List<AttachmentMetaDto> metas1 = List.of(
+                new AttachmentMetaDto(
+                        AttachmentType.FILE,
+                        9001L,
+                        LocalDateTime.of(2026, 1, 20, 10, 0),
+                        FileExt.PDF
+                ),
+                new AttachmentMetaDto(
+                        AttachmentType.LINK,
+                        9002L,
+                        LocalDateTime.of(2026, 1, 20, 11, 0),
+                        null
+                ),
+                new AttachmentMetaDto(
+                        AttachmentType.FILE,
+                        9003L,
+                        LocalDateTime.of(2026, 1, 20, 12, 0),
+                        FileExt.PNG
+                )
+        );
+
+        AttachmentSummaryDto summaryEmpty = AttachmentSummaryDto.empty();
+        List<AttachmentMetaDto> metasEmpty = List.of();
+
         ProcessCardResDto common1 = new ProcessCardResDto(
                 101L,
                 ProcessStatus.PLANNING,
@@ -613,7 +645,9 @@ class ProcessControllerTest {
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png"),
                         new AssigneeResDto(2L, "김철수", "철수", null)
-                )
+                ),
+                summary1,
+                metas1
         );
 
         ProcessCardResDto common2 = new ProcessCardResDto(
@@ -631,7 +665,9 @@ class ProcessControllerTest {
                 true,
                 List.of(
                         new AssigneeResDto(3L, "박영희", "영희", "https://img.com/u3.png")
-                )
+                ),
+                summaryEmpty,
+                metasEmpty
         );
 
         ProcessCardResDto backend1 = new ProcessCardResDto(
@@ -649,6 +685,15 @@ class ProcessControllerTest {
                 true,
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png")
+                ),
+                new AttachmentSummaryDto(1L, 0L, 1L, List.of()),
+                List.of(
+                        new AttachmentMetaDto(
+                                AttachmentType.LINK,
+                                9101L,
+                                LocalDateTime.of(2026, 1, 21, 9, 0),
+                                null
+                        )
                 )
         );
 
@@ -667,7 +712,9 @@ class ProcessControllerTest {
                 false,
                 List.of(
                         new AssigneeResDto(4L, "이민수", "민수", null)
-                )
+                ),
+                summaryEmpty,
+                metasEmpty
         );
 
         FieldGroupResDto fgBackend = new FieldGroupResDto(
@@ -705,6 +752,11 @@ class ProcessControllerTest {
                 false,
                 List.of(
                         new AssigneeResDto(2L, "김철수", "철수", "https://img.com/u2.png")
+                ),
+                new AttachmentSummaryDto(2L, 2L, 0L, List.of(FileExt.JPG, FileExt.SVG)),
+                List.of(
+                        new AttachmentMetaDto(AttachmentType.FILE, 9201L, LocalDateTime.of(2026, 1, 27, 13, 0), FileExt.JPG),
+                        new AttachmentMetaDto(AttachmentType.FILE, 9202L, LocalDateTime.of(2026, 1, 27, 13, 10), FileExt.SVG)
                 )
         );
 
@@ -717,7 +769,7 @@ class ProcessControllerTest {
 
         ProcessWeekResDto w2 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 26),
-                List.of(),              // common lane empty
+                List.of(),
                 List.of(fgPlanner)
         );
 
@@ -781,6 +833,17 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
                                                 fieldWithPath("body.weeks[].common_lane[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
 
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary").type(OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.total_count").type(NUMBER).description("총 첨부 수(file+link)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.file_count").type(NUMBER).description("파일 첨부 수"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.link_count").type(NUMBER).description("링크 첨부 수"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.file_exts").type(ARRAY).description("첨부된 파일 확장자 목록(중복 제거)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta").type(ARRAY).description("첨부 메타 목록(파일/링크 각각 documentId 기준)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].type").type(STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].document_id").type(NUMBER).description("SharedDocument ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].attached_at").type(STRING).description("첨부 시각(ISO LocalDateTime)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].file_ext").optional().type(STRING).description("파일 확장자(FILE만, LINK는 null)"),
+
                                                 fieldWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록"),
                                                 fieldWithPath("body.weeks[].by_field[].field_id").type(STRING).description("fieldId (예: ROLE:BACKEND / CUSTOM:영상편집)"),
                                                 fieldWithPath("body.weeks[].by_field[].field_name").type(STRING).description("fieldName (예: BACKEND / 영상편집)"),
@@ -803,7 +866,18 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
                                                 fieldWithPath("body.weeks[].by_field[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
+
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary").type(OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.total_count").type(NUMBER).description("총 첨부 수(file+link)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.file_count").type(NUMBER).description("파일 첨부 수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.link_count").type(NUMBER).description("링크 첨부 수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.file_exts").type(ARRAY).description("첨부된 파일 확장자 목록(중복 제거)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta").type(ARRAY).description("첨부 메타 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].type").type(STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].document_id").type(NUMBER).description("SharedDocument ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].attached_at").type(STRING).description("첨부 시각(ISO LocalDateTime)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].file_ext").optional().type(STRING).description("파일 확장자(FILE만, LINK는 null)")
                                         )
                                         .build()
                         )
@@ -822,7 +896,12 @@ class ProcessControllerTest {
         AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png");
         AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png");
 
-        // IN_PROGRESS 카드 2개
+        AttachmentSummaryDto s1 = new AttachmentSummaryDto(2L, 1L, 1L, List.of(FileExt.PDF));
+        List<AttachmentMetaDto> m1 = List.of(
+                new AttachmentMetaDto(AttachmentType.FILE, 7001L, LocalDateTime.of(2026, 2, 4, 10, 0), FileExt.PDF),
+                new AttachmentMetaDto(AttachmentType.LINK, 7002L, LocalDateTime.of(2026, 2, 4, 10, 30), null)
+        );
+
         ProcessCardResDto p10 = new ProcessCardResDto(
                 10L,
                 ProcessStatus.IN_PROGRESS,
@@ -836,7 +915,9 @@ class ProcessControllerTest {
                 List.of("AI"),
                 1,
                 true,
-                List.of(a1, a2) // assignee
+                List.of(a1, a2),
+                s1,
+                m1
         );
 
         ProcessCardResDto p12 = new ProcessCardResDto(
@@ -852,10 +933,10 @@ class ProcessControllerTest {
                 List.of("DevOps"),
                 null,
                 true,
-                List.of(a2)
+                List.of(a2),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
-
-
 
         ProcessStatusGroupResDto inProgressGroup = new ProcessStatusGroupResDto(
                 ProcessStatus.IN_PROGRESS,
@@ -877,7 +958,9 @@ class ProcessControllerTest {
                 List.of(),
                 null,
                 false,
-                List.of(a1)
+                List.of(a1),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
 
         ProcessStatusGroupResDto planningGroup = new ProcessStatusGroupResDto(
@@ -900,7 +983,9 @@ class ProcessControllerTest {
                 List.of("Auth"),
                 1,
                 false,
-                List.of(a1, a2)
+                List.of(a1, a2),
+                new AttachmentSummaryDto(1L, 1L, 0L, List.of(FileExt.SVG)),
+                List.of(new AttachmentMetaDto(AttachmentType.FILE, 7301L, LocalDateTime.of(2026, 1, 24, 18, 0), FileExt.SVG))
         );
 
         ProcessStatusGroupResDto doneGroup = new ProcessStatusGroupResDto(
@@ -923,7 +1008,9 @@ class ProcessControllerTest {
                 List.of("TechDebt"),
                 1,
                 false,
-                List.of(a2)
+                List.of(a2),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
 
         ProcessStatusGroupResDto backlogGroup = new ProcessStatusGroupResDto(
@@ -999,7 +1086,18 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
+
+                                                fieldWithPath("body.groups[].processes[].attachment_summary").type(OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.total_count").type(NUMBER).description("총 첨부 수(file+link)"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.file_count").type(NUMBER).description("파일 첨부 수"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.link_count").type(NUMBER).description("링크 첨부 수"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.file_extensions").type(ARRAY).description("첨부된 파일 확장자 목록(중복 제거)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta").type(ARRAY).description("첨부 메타 목록"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].type").type(STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].document_id").type(NUMBER).description("SharedDocument ID"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].attached_at").type(STRING).description("첨부 시각(ISO LocalDateTime)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].file_ext").optional().type(STRING).description("파일 확장자(FILE만, LINK는 null)")
                                         )
                                         .build()
                         )
