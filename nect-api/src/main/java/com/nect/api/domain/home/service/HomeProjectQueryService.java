@@ -21,6 +21,7 @@ import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,7 @@ public class HomeProjectQueryService {
     private final UserRepository userRepository;
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
+    private final UserTeamRoleRepository userTeamRoleRepository;
     private final S3Service s3Service;
 
     public record HomeProjectBatch(
@@ -84,10 +86,10 @@ public class HomeProjectQueryService {
                         r -> r.getActiveCount().intValue()
                 ));
 
-        Map<Long, Integer> maxMemberCountByProjectId = recruitmentRepository.sumCapacityByProjectIds(projectIds).stream()
+        Map<Long, Integer> maxMemberCountByProjectId = userTeamRoleRepository.sumRequirementByProjectIds(projectIds).stream()
                 .collect(Collectors.toMap(
-                        RecruitmentRepository.ProjectCapacityRow::getProjectId,
-                        r -> r.getCapacitySum() == null ? 0 : r.getCapacitySum()
+                        UserTeamRoleRepository.ProjectRequirementRow::getProjectId,
+                        utr -> utr.getRequirementSum() == null ? 0 : utr.getRequirementSum()
                 ));
 
         Map<Long, Map<String, Integer>> partCountsByProjectId = new HashMap<>();
@@ -198,9 +200,8 @@ public class HomeProjectQueryService {
     }
 
     public Integer getDDay(Project project) {
-        LocalDateTime endedAt = project.getEndedAt();
         LocalDate today = LocalDate.now();
-        LocalDate endDate = endedAt.toLocalDate();
+        LocalDate endDate = project.getPlannedEndedOn();
         return (int) ChronoUnit.DAYS.between(today, endDate);
     }
 
@@ -228,7 +229,7 @@ public class HomeProjectQueryService {
                         .description(project.getDescription())
                         .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
                         .createdAt(project.getCreatedAt())
-                        .endedAt(project.getEndedAt())
+                        .endedAt(LocalDateTime.from(project.getPlannedEndedOn()))
                         .build())
                 .toList();
     }
