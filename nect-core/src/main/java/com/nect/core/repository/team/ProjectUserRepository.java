@@ -249,20 +249,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
 """)
     long countDistinctUsers();
 
-    @Query("""
-        SELECT u
-        FROM User u
-        JOIN ProjectUser pu ON u.userId = pu.userId
-        WHERE pu.project.id = :projectId
-          AND pu.userId = :userId
-          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
-    """)
-    Optional<User> findActiveUserByProjectIdAndUserId(
-            @Param("projectId") Long projectId,
-            @Param("userId") Long userId
-    );
-
-    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -284,6 +270,24 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     """)
     Long countByUserIds(@Param("project") Project project, @Param("userIds") List<Long> userIds);
 
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN ProjectUser pu ON u.userId = pu.userId
+        WHERE pu.project.id = :projectId
+          AND pu.userId = :userId
+          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+    """)
+    Optional<User> findActiveUserByProjectIdAndUserId(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId
+    );
+
+    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
+
+    boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
+
+
     interface UserFieldIdsRow {
         Long getUserId();
         Long getFieldId();
@@ -298,7 +302,6 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         Long getProjectId();
         Long getActiveCount();
     }
-
 
     interface UserRoleFieldsRow {
         Long getUserId();
@@ -322,21 +325,4 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getNickname();
         String getProfileImageUrl();
     }
-
-    @Query("""
-        SELECT u
-        FROM User u
-        JOIN ProjectUser pu ON u.userId = pu.userId
-        WHERE pu.project.id = :projectId
-          AND pu.userId = :userId
-          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
-    """)
-    Optional<User> findActiveUserByProjectIdAndUserId(
-            @Param("projectId") Long projectId,
-            @Param("userId") Long userId
-    );
-
-    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
-
-    boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
 }
