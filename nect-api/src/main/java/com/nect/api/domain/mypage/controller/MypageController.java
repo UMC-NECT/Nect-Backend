@@ -24,6 +24,7 @@ import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -79,6 +80,16 @@ public class MypageController {
         MyProjectsResponseDto response = projectQueryService.getMyProjects(userDetails.getUserId());
 
         return ApiResponse.ok(response);
+    }
+
+    @PatchMapping("/projects/{projectId}")
+    public ApiResponse<Void> changeProjectStatus(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long projectId,
+            @RequestParam("status")RecruitmentStatus status
+            ) {
+        projectCommandService.editProjectRecruitmentStatus(projectId, status);
+        return ApiResponse.ok();
     }
 
 

@@ -44,6 +44,7 @@ public class Project extends BaseEntity {
     // 모집 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "recruitment_status", nullable = false)
+    @Setter
     private RecruitmentStatus recruitmentStatus;
 
     @Column(name = "ended_at")

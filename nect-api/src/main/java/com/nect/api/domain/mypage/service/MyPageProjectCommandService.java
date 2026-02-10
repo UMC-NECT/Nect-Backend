@@ -12,6 +12,7 @@ import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.ProjectPlanFile;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.repository.matching.RecruitmentRepository;
 import com.nect.core.repository.team.ProjectInterestFieldRepository;
@@ -208,6 +209,20 @@ public class MyPageProjectCommandService {
         }
 
         planFileRepository.delete(planFile);
+    }
+
+    // 프로젝트 모집 상태 변경
+    public void editProjectRecruitmentStatus(Long projectId, RecruitmentStatus recruitmentStatus) {
+
+        Project project = findProject(projectId);
+
+        if (recruitmentStatus == null) {
+            throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
+        }
+
+        project.setRecruitmentStatus(recruitmentStatus);
+        projectRepository.save(project);
+
     }
 
 

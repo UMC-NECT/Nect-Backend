@@ -20,6 +20,7 @@ import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.core.entity.user.enums.Role;
@@ -129,6 +130,45 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("프로필 분석 키워드 태그 (예: #프로그래밍전문가, #백엔드개발자)").optional()
                                         )
                                         .build()
+                        )
+                ));
+    }
+
+    @Test
+    void changeProjectStatus() throws Exception {
+        Long projectId = 1L;
+
+        doNothing().when(projectCommandService)
+                .editProjectRecruitmentStatus(projectId, RecruitmentStatus.OPEN);
+
+        mockMvc.perform(patch("/api/v1/mypage/projects/{projectId}", projectId)
+                        .header("Authorization", "Bearer AccessToken")
+                        .queryParam("status", "OPEN")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-change-project-status",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("프로젝트 상태 변경")
+                                .description("프로젝트 모집 상태를 변경합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .queryParameters(
+                                        parameterWithName("status").description("모집 상태 (UPCOMING, OPEN, CLOSED)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
                         )
                 ));
     }
@@ -906,7 +946,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 조회  ")
                                 .description("프로젝트의 팀 구성원(직무/인원) 목록을 조회합니다.")
                                 .pathParameters(
@@ -956,7 +996,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 ")
                                 .description("프로젝트 팀 구성을 편집(인원 수 설정)합니다. 기존에 해당 직무가 있으면 인원수를 수정하고, 없으면 새로 생성합니다.")
                                 .pathParameters(
@@ -1027,7 +1067,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행 중인 프로젝트 조회")
                                 .description("사용자가 현재 참여 중(ACTIVE)인 프로젝트 목록을 조회합니다, 모집등록 전 프로젝트 조회입니다.")
                                 .requestHeaders(
