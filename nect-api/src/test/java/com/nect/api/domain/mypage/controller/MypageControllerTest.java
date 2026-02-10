@@ -912,7 +912,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 조회  ")
                                 .description("프로젝트의 팀 구성원(직무/인원) 목록을 조회합니다.")
                                 .pathParameters(
@@ -959,7 +959,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 ")
                                 .description("프로젝트 팀 구성을 편집(인원 수 설정)합니다. 기존에 해당 직무가 있으면 인원수를 수정하고, 없으면 새로 생성합니다.")
                                 .pathParameters(
@@ -1039,7 +1039,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행 중인 프로젝트 조회")
                                 .description("사용자가 현재 참여 중(ACTIVE)인 프로젝트 목록을 조회합니다, 모집등록 전 프로젝트 조회입니다.")
                                 .requestHeaders(

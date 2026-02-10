@@ -55,6 +55,9 @@ public class ProjectUser extends BaseEntity {
     @Column(name = "member_status", nullable = false)
     private ProjectMemberStatus memberStatus;
 
+    @Column(name = "sort_order", nullable = true)
+    private Integer sortOrder;
+
     @Builder
     private ProjectUser(Project project, Long userId, RoleField roleField, String customRoleFieldName, ProjectMemberType memberType, ProjectMemberStatus memberStatus) {
         if (roleField == null) {

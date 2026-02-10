@@ -83,7 +83,7 @@ public class RecruitmentControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("Recruitment")
+                                .tag("Matching")
                                 .summary("지원 가능한 분야 조회")
                                 .description("해당 프로젝트의 지원 가능한 분야를 조회합니다.")
                                 .requestHeaders(
@@ -119,7 +119,7 @@ public class RecruitmentControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("Recruitment")
+                                .tag("Matching")
                                 .summary("내가 리더인 모집중 프로젝트 조회")
                                 .description("로그인한 사용자가 리더인 모집중 프로젝트 목록을 반환합니다.")
                                 .requestHeaders(
