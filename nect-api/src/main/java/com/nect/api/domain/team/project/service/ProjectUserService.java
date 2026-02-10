@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.project.service;
 
+import com.nect.api.domain.mypage.dto.ReorderProjectMembersRequest;
 import com.nect.api.domain.team.project.converter.ProjectUserConverter;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
@@ -9,6 +10,7 @@ import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.enums.code.ProjectUserErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.domain.team.project.exception.ProjectUserException;
+import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
@@ -20,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -27,6 +30,7 @@ import java.util.List;
 public class ProjectUserService {
 
     private final ProjectUserRepository projectUserRepository;
+    private final ProjectService projectService;
 
     public ProjectUser addProjectUser(Long userId, Project project, RoleField field){
         ProjectUser projectUser = ProjectUser.builder()
@@ -121,5 +125,31 @@ public class ProjectUserService {
 
         projectUser.changeType(memberType);
         return ProjectUserConverter.toProjectUserResDto(projectUser);
+    }
+
+    @Transactional
+    public void reorderProjectUsers(Long projectId, ReorderProjectMembersRequest reqDto) {
+        Project project = projectService.getProject(projectId);
+
+        for (var update : reqDto.updates()) {
+            List<Long> userIds = update.orderedUserIds();
+
+            if (userIds.size() != new HashSet<>(userIds).size()) {
+                throw new ProjectUserException(ProjectUserErrorCode.DUPLICATED_USERS);
+            }
+
+            Long count = projectUserRepository.countByUserIds(project, userIds);
+            if (userIds.size() != count) {
+                throw new UserNotFoundException();
+            }
+
+            int order = 1000;
+            for (Long userId : userIds) {
+                projectUserRepository.updateSortOrder(
+                        project, userId, order
+                );
+                order += 1000;
+            }
+        }
     }
 }

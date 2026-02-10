@@ -221,7 +221,7 @@ public class MyPageProjectQueryService {
 
 
     private Map<Long, MyProjectsResponseDto.LeaderInfo> getLeadersMapByProjects(List<Long> projectIds) {
-        // 모든 프로젝트의 리더 조회
+
         List<ProjectUser> leaderProjectUsers = projectUserRepositoryComplete
                 .findByProjectIdInAndMemberType(projectIds, ProjectMemberType.LEADER);
 
@@ -259,18 +259,16 @@ public class MyPageProjectQueryService {
             List<Long> projectIds, Long currentUserId) {
 
 
-        List<ProjectUser> myLeaderProjects = projectUserRepositoryComplete
-                .findByUserIdAndMemberTypeAndMemberStatus(
+        List<ProjectUser> myAllProjects = projectUserRepositoryComplete
+                .findByUserIdAndMemberStatus(
                         currentUserId,
-                        ProjectMemberType.LEADER,
                         ProjectMemberStatus.ACTIVE);
 
-        if (myLeaderProjects.isEmpty()) {
+        if (myAllProjects.isEmpty()) {
             return Map.of();
         }
 
-
-        List<MyProjectsResponseDto.TeamMemberProjectInfo> leaderProjectInfos = myLeaderProjects.stream()
+        List<MyProjectsResponseDto.TeamMemberProjectInfo> allProjectInfos = myAllProjects.stream()
                 .map(pu -> {
                     Project project = pu.getProject();
                     return MyProjectsResponseDto.TeamMemberProjectInfo.builder()
@@ -288,7 +286,7 @@ public class MyPageProjectQueryService {
         return projectIds.stream()
                 .collect(Collectors.toMap(
                         projectId -> projectId,
-                        projectId -> leaderProjectInfos.stream()
+                        projectId -> allProjectInfos.stream()
                                 .filter(info -> !info.getProjectId().equals(projectId))
                                 .collect(Collectors.toList())
                 ));

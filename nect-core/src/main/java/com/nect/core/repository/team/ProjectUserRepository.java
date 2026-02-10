@@ -7,6 +7,7 @@ import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -156,6 +157,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         JOIN User u ON u.userId = pu.userId
         WHERE pu.project.id = :projectId
           AND pu.memberStatus = 'ACTIVE'
+        ORDER BY pu.sortOrder ASC NULLS LAST
     """)
     List<MemberBoardRow> findActiveMemberBoardRows(@Param("projectId") Long projectId);
 
@@ -231,6 +233,61 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     """)
     Optional<ProjectLeaderProfileRow> findActiveLeaderProfile(@Param("projectId") Long projectId);
 
+    Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
+
+    @Query("""
+    SELECT COUNT(pu.userId)
+    FROM ProjectUser pu
+    GROUP BY pu.userId
+    HAVING COUNT(pu) >= 2
+""")
+    List<Long> countRejoinedUsers();
+
+    @Query("""
+    SELECT COUNT(DISTINCT pu.userId)
+    FROM ProjectUser pu
+""")
+    long countDistinctUsers();
+
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update ProjectUser pu
+        set pu.sortOrder = :sortOrder
+        where pu.project = :project
+            and pu.userId= :userId
+    """)
+    void updateSortOrder(
+            @Param("project") Project project,
+            @Param("userId") Long userId,
+            @Param("sortOrder") int sortOrder);
+
+    @Query("""
+        select count(pu)
+        from ProjectUser pu
+        where pu.project = :project
+            and pu.userId in :userIds
+    """)
+    Long countByUserIds(@Param("project") Project project, @Param("userIds") List<Long> userIds);
+
+    @Query("""
+        SELECT u
+        FROM User u
+        JOIN ProjectUser pu ON u.userId = pu.userId
+        WHERE pu.project.id = :projectId
+          AND pu.userId = :userId
+          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
+    """)
+    Optional<User> findActiveUserByProjectIdAndUserId(
+            @Param("projectId") Long projectId,
+            @Param("userId") Long userId
+    );
+
+    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
+
+    boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
+
+
     interface UserFieldIdsRow {
         Long getUserId();
         Long getFieldId();
@@ -263,43 +320,9 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         ProjectMemberType getMemberType();
     }
 
-    Optional<ProjectUser> findByProjectIdAndMemberType(Long projectId, ProjectMemberType memberType);
-
-    @Query("""
-    SELECT COUNT(pu.userId)
-    FROM ProjectUser pu
-    GROUP BY pu.userId
-    HAVING COUNT(pu) >= 2
-""")
-    List<Long> countRejoinedUsers();
-
-    @Query("""
-    SELECT COUNT(DISTINCT pu.userId)
-    FROM ProjectUser pu
-""")
-    long countDistinctUsers();
-
-
     interface ProjectLeaderProfileRow {
         Long getUserId();
         String getNickname();
         String getProfileImageUrl();
     }
-
-    @Query("""
-        SELECT u
-        FROM User u
-        JOIN ProjectUser pu ON u.userId = pu.userId
-        WHERE pu.project.id = :projectId
-          AND pu.userId = :userId
-          AND pu.memberStatus = com.nect.core.entity.team.enums.ProjectMemberStatus.ACTIVE
-    """)
-    Optional<User> findActiveUserByProjectIdAndUserId(
-            @Param("projectId") Long projectId,
-            @Param("userId") Long userId
-    );
-
-    Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
-
-    boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
 }
