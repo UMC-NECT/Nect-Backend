@@ -1,5 +1,6 @@
 package com.nect.core.entity.team;
 
+import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.RoleField;
@@ -21,8 +22,7 @@ import lombok.NoArgsConstructor;
                 )
         }
 )
-
-public class ProjectUser {
+public class ProjectUser extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

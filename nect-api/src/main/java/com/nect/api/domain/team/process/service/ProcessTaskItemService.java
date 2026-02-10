@@ -2,7 +2,6 @@ package com.nect.api.domain.team.process.service;
 
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessTaskItemReorderReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessTaskItemUpsertReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessTaskItemReorderResDto;
@@ -15,8 +14,6 @@ import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessTaskItem;
 import com.nect.core.entity.team.process.enums.ProcessType;
@@ -39,7 +36,6 @@ public class ProcessTaskItemService {
     private final ProcessRepository processRepository;
     private final ProcessTaskItemRepository taskItemRepository;
     private final ProjectUserRepository projectUserRepository;
-    private final ProjectHistoryPublisher historyPublisher;
 
     private final UserRepository userRepository;
     private final NotificationFacade notificationFacade;
@@ -74,23 +70,6 @@ public class ProcessTaskItemService {
     private void normalizeSortOrder(Long processId) {
         List<ProcessTaskItem> items =
                 taskItemRepository.findAllByProcessIdAndDeletedAtIsNullOrderBySortOrderAsc(processId);
-
-        items = items.stream()
-                .sorted(Comparator.comparing(t -> t.getSortOrder() == null ? Integer.MAX_VALUE : t.getSortOrder()))
-                .toList();
-
-        int i = 0;
-        for (ProcessTaskItem it : items) {
-            it.updateSortOrder(i++);
-        }
-    }
-
-    // 파트별 정규화
-    private void normalizeSortOrderByGroup(Long processId, RoleField roleField, String customName) {
-        List<ProcessTaskItem> items = taskItemRepository
-                .findAllByProcessIdAndDeletedAtIsNullAndRoleFieldAndCustomRoleFieldNameOrderBySortOrderAsc(
-                        processId, roleField, customName
-                );
 
         items = items.stream()
                 .sorted(Comparator.comparing(t -> t.getSortOrder() == null ? Integer.MAX_VALUE : t.getSortOrder()))
@@ -163,22 +142,6 @@ public class ProcessTaskItemService {
         // 최종 정규화
         normalizeSortOrder(processId);
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("taskItemId", saved.getId());
-        meta.put("content", saved.getContent());
-        meta.put("isDone", saved.isDone());
-        meta.put("sortOrder", saved.getSortOrder());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.TASK_ITEM_CREATED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
-
         return new ProcessTaskItemResDto(
                 saved.getId(),
                 saved.getContent(),
@@ -193,7 +156,15 @@ public class ProcessTaskItemService {
     public ProcessTaskItemResDto update(Long projectId, Long userId, Long processId, Long taskItemId, ProcessTaskItemUpsertReqDto req) {
         assertWritableMember(projectId, userId);
 
-        getActiveProcess(projectId, processId);
+        Process process = getActiveProcess(projectId, processId);
+
+        if (process.getProcessType() == ProcessType.WEEK_MISSION) {
+            throw new ProcessException(
+                    ProcessErrorCode.WEEK_MISSION_FORBIDDEN,
+                    "위크 미션 TASK는 processes 경로에서 수정할 수 없습니다. projectId=" + projectId + ", processId=" + processId
+            );
+        }
+
 
         ProcessTaskItem item = getTaskItem(processId, taskItemId);
 
@@ -202,7 +173,6 @@ public class ProcessTaskItemService {
         boolean beforeDone = item.isDone();
         Integer beforeOrder = item.getSortOrder();
 
-        boolean changed = false;
 
         if (req == null) {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "request is null");
@@ -215,7 +185,6 @@ public class ProcessTaskItemService {
             String afterContent = req.content().trim();
             if (!Objects.equals(beforeContent, afterContent)) {
                 item.updateContent(afterContent);
-                changed = true;
             }
         }
 
@@ -223,7 +192,6 @@ public class ProcessTaskItemService {
             boolean afterDone = Boolean.TRUE.equals(req.isDone());
             if (afterDone != beforeDone) {
                 item.updateDone(afterDone);
-                changed = true;
             }
         }
 
@@ -251,35 +219,9 @@ public class ProcessTaskItemService {
                 for (int i = 0; i < items.size(); i++) {
                     items.get(i).updateSortOrder(i);
                 }
-                changed = true;
             }
         }
 
-
-        if (changed) {
-            Map<String, Object> meta = new LinkedHashMap<>();
-            meta.put("processId", processId);
-            meta.put("taskItemId", item.getId());
-            meta.put("before", Map.of(
-                    "content", beforeContent,
-                    "isDone", beforeDone,
-                    "sortOrder", beforeOrder
-            ));
-            meta.put("after", Map.of(
-                    "content", item.getContent(),
-                    "isDone", item.isDone(),
-                    "sortOrder", item.getSortOrder()
-            ));
-
-            historyPublisher.publish(
-                    projectId,
-                    userId,
-                    HistoryAction.TASK_ITEM_UPDATED,
-                    HistoryTargetType.PROCESS,
-                    processId,
-                    meta
-            );
-        }
 
         return new ProcessTaskItemResDto(
                 item.getId(),
@@ -301,30 +243,10 @@ public class ProcessTaskItemService {
 
         ProcessTaskItem item = getTaskItem(processId, taskItemId);
 
-        // Before 스냅샷
-        String beforeContent = item.getContent();
-        boolean beforeDone = item.isDone();
-        Integer beforeOrder = item.getSortOrder();
-
         item.softDelete();
 
         normalizeSortOrder(processId);
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("taskItemId", taskItemId);
-        meta.put("content", beforeContent);
-        meta.put("isDone", beforeDone);
-        meta.put("sortOrder", beforeOrder);
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.TASK_ITEM_DELETED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
 
     }
 
@@ -434,25 +356,6 @@ public class ProcessTaskItemService {
             ProcessTaskItem item = map.get(id);
             item.updateSortOrder(i++);
         }
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("processType", process.getProcessType() == null ? null : process.getProcessType().name());
-        meta.put("missionNumber", process.getMissionNumber());
-        meta.put("title", process.getTitle());
-
-        meta.put("groupMode", false);
-        meta.put("beforeOrderedTaskItemIds", beforeIds);
-        meta.put("afterOrderedTaskItemIds", orderedIds);
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.TASK_ITEM_REORDERED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
 
         notifyWorkspaceWeekMissionUpdated(process, userId);
 

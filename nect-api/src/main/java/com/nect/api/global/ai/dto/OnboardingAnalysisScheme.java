@@ -66,6 +66,8 @@ public class OnboardingAnalysisScheme {
     public static class GrowthGuide {
         public Integer order;
         public String tip;
+        public String title;
+        public String content;
     }
 
     @Getter

@@ -197,7 +197,7 @@ class MyPageControllerRestDocsTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("마이페이지 프로젝트 목록 조회 API")
                                 .description("현재 사용자가 참여 중인 모든 프로젝트 목록을 조회합니다. " +
                                         "각 프로젝트의 기본 정보, 팀 구성, 리더 정보, 팀원들의 다른 프로젝트 정보를 포함합니다.")
@@ -266,7 +266,7 @@ class MyPageControllerRestDocsTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 목표 작성")
                                 .description("프로젝트의 목표 목록을 작성 또는 교체합니다.")
                                 .requestHeaders(
@@ -311,7 +311,7 @@ class MyPageControllerRestDocsTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 주요 기능 작성")
                                 .description("프로젝트의 주요 기능 목록을 작성 또는 교체합니다.")
                                 .requestHeaders(
@@ -356,7 +356,7 @@ class MyPageControllerRestDocsTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("마이페이지")
+                                .tag("Mypage")
                                 .summary("프로젝트 서비스 사용자 작성")
                                 .description("프로젝트의 서비스 사용자 목록을 작성 또는 교체합니다.")
                                 .requestHeaders(

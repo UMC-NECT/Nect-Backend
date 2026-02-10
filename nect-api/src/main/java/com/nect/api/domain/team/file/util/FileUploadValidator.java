@@ -12,10 +12,10 @@ import java.util.Set;
 public final class FileUploadValidator {
     private static final long MB = 1024L * 1024L;
 
-    private static final long MAX_5MB = 5L * MB;
+    private static final long MAX_10MB = 10L * MB;
     private static final long MAX_20MB = 20L * MB;
 
-    private static final Set<FileExt> LIMIT_5MB = EnumSet.of(FileExt.JPG, FileExt.PNG, FileExt.SVG);
+    private static final Set<FileExt> LIMIT_10MB = EnumSet.of(FileExt.JPG, FileExt.PNG, FileExt.SVG);
     private static final Set<FileExt> LIMIT_20MB = EnumSet.of(FileExt.PDF, FileExt.DOCS, FileExt.PPTX, FileExt.FIG, FileExt.ZIP);
 
     private FileUploadValidator() {
@@ -33,8 +33,8 @@ public final class FileUploadValidator {
     public static void validateSizeOrThrow(FileExt ext, long fileSize) {
         long max;
 
-        if (LIMIT_5MB.contains(ext)) {
-            max = MAX_5MB;
+        if (LIMIT_10MB.contains(ext)) {
+            max = MAX_10MB;
         } else if (LIMIT_20MB.contains(ext)) {
             max = MAX_20MB;
         } else {

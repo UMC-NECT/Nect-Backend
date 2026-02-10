@@ -2,21 +2,16 @@ package com.nect.api.domain.team.workspace.service;
 
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
-import com.nect.api.domain.team.process.dto.res.AttachmentDto;
 import com.nect.api.domain.team.workspace.dto.req.PostCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.PostUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.*;
 import com.nect.api.domain.team.workspace.enums.PostErrorCode;
-import com.nect.api.domain.team.workspace.enums.PostSort;
 import com.nect.api.domain.team.workspace.exception.PostException;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.workspace.Post;
 import com.nect.core.entity.team.workspace.PostLike;
 import com.nect.core.entity.team.workspace.PostMention;
@@ -25,6 +20,7 @@ import com.nect.core.entity.team.workspace.enums.PostType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
+import com.nect.core.repository.team.process.ProcessSharedDocumentRepository;
 import com.nect.core.repository.team.workspace.PostLikeRepository;
 import com.nect.core.repository.team.workspace.PostMentionRepository;
 import com.nect.core.repository.team.workspace.PostRepository;
@@ -38,6 +34,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -51,8 +48,8 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final PostMentionRepository postMentionRepository;
     private final PostSharedDocumentRepository postSharedDocumentRepository;
+    private final ProcessSharedDocumentRepository processSharedDocumentRepository;
 
-    private final ProjectHistoryPublisher historyPublisher;
     private final NotificationFacade notificationFacade;
 
     private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
@@ -167,19 +164,6 @@ public class PostService {
         // 멘션된 사람들에게 알림
         List<User> mentionReceivers = validateAndLoadMentionReceivers(projectId, userId, mentionIds);
         notifyBoardMention(project, author, saved.getId(), mentionReceivers, post.getTitle());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_CREATED,
-                HistoryTargetType.POST,
-                saved.getId(),
-                Map.of(
-                        "postType", saved.getPostType().name(),
-                        "title", saved.getTitle(),
-                        "mentionUserIds", mentionIds
-                )
-        );
 
         return new PostCreateResDto(saved.getId());
     }
@@ -443,30 +427,6 @@ public class PostService {
             throw new PostException(PostErrorCode.INVALID_REQUEST, "no changes");
         }
 
-        // 실제 변경이 있을 때만 publish
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("changed", changed);
-        meta.put("before", Map.of(
-                "postType", beforeType,
-                "title", beforeTitle,
-                "content", beforeContent
-        ));
-        meta.put("after", Map.of(
-                "postType", afterType,
-                "title", afterTitle,
-                "content", afterContent,
-                "mentionUserIds", (afterMentionIds != null ? afterMentionIds : beforeMentionIds)
-        ));
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_UPDATED,
-                HistoryTargetType.POST,
-                post.getId(),
-                meta
-        );
-
         return new PostUpdateResDto(post.getId(), post.getUpdatedAt());
     }
 
@@ -585,6 +545,28 @@ public class PostService {
                 .orElseThrow(() -> new PostException(PostErrorCode.POST_NOT_FOUND,
                         "projectId=" + projectId + ", postId=" + postId));
 
+        // 삭제 전 첨부 목록 조회
+        List<PostSharedDocument> attached = postSharedDocumentRepository.findAllActiveByPostIdWithDocument(postId);
+
+        // soft delete
+        post.softDelete();
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (PostSharedDocument psd : attached) {
+            // 연결부터 끊기
+            psd.softDelete();
+
+            SharedDocument doc = psd.getDocument();
+            if (doc == null || doc.getDeletedAt() != null) continue;
+
+            // 공유문서함에서도 삭제
+            doc.softDelete();
+
+            // 프로세스 첨부도 끊기
+            processSharedDocumentRepository.softDeleteAllAttachments(projectId, doc.getId());
+        }
+
         // 작성자만 삭제 가능
         Long authorId = post.getAuthor().getUserId();
         if (!authorId.equals(userId)) {
@@ -592,30 +574,8 @@ public class PostService {
                     "postId=" + postId + ", userId=" + userId);
         }
 
-        // before 스냅샷
-        final PostType beforeType = post.getPostType();
-        final String beforeTitle = post.getTitle();
-
-        // soft delete
-        post.softDelete();
-
         // 멘션도 soft delete 처리
          postMentionRepository.findAllByPostId(post.getId()).forEach(PostMention::softDelete);
-
-        // HISTORY 발행
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("postType", beforeType);
-        meta.put("title", beforeTitle);
-        meta.put("deletedAt", post.getDeletedAt());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_DELETED,
-                HistoryTargetType.POST,
-                post.getId(),
-                meta
-        );
     }
 
     @Transactional(readOnly = true)

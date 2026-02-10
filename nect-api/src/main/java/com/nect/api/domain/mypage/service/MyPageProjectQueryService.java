@@ -1,13 +1,25 @@
 package com.nect.api.domain.mypage.service;
 
+import com.nect.api.domain.mypage.converter.ProjectListConverter;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
+import com.nect.api.domain.team.project.exception.ProjectException;
+import com.nect.api.global.code.CommonResponseCode;
+import com.nect.api.global.exception.CustomException;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectInterest;
+import com.nect.core.entity.team.ProjectPlanFile;
 import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
 
+import com.nect.core.repository.team.ProjectInterestFieldRepository;
+import com.nect.core.repository.team.ProjectPlanFileRepository;
+import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.user.UserRepository;
@@ -28,6 +40,12 @@ public class MyPageProjectQueryService {
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
     private final UserRepository userRepository;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
+    private final ProjectInterestFieldRepository projectInterestFieldRepository;
+    private final ProjectPlanFileRepository projectPlanFileRepository;
+    private final ProjectRepository projectRepository;
+    private final ProjectPlanFileRepository planFileRepository;
+    private final ProjectListConverter projectListConverter;
+    private final S3Service s3Service;
 
 
     public MyProjectsResponseDto getMyProjects(Long userId) {
@@ -84,6 +102,73 @@ public class MyPageProjectQueryService {
                 .build();
     }
 
+    public MyProjectsResponseDto.ProjectFieldResponse getProjectFields(Long projectId) {
+        List<ProjectInterest> projectInterests = projectInterestFieldRepository.findByProjectId(projectId);
+        return MyProjectsResponseDto.ProjectFieldResponse.ofProject(projectId, projectInterests);
+    }
+
+    public MyProjectsResponseDto.StringListResponse getPurposes(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+        String purpose = project.getPurposes();
+        List<String> slicedPurpose = projectListConverter.convertToEntityAttribute(purpose);
+        return new MyProjectsResponseDto.StringListResponse(projectId, slicedPurpose);
+    }
+
+    public MyProjectsResponseDto.StringListResponse getFunctions(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+        String functions = project.getMainFunctions();
+        List<String> slicedPurpose = projectListConverter.convertToEntityAttribute(functions);
+        return new MyProjectsResponseDto.StringListResponse(projectId, slicedPurpose);
+    }
+
+    public MyProjectsResponseDto.StringListResponse getServiceUsers(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+        String serviceUsers = project.getServiceUsers();
+        List<String> slicedUsers = projectListConverter.convertToEntityAttribute(serviceUsers);
+        return new MyProjectsResponseDto.StringListResponse(projectId, slicedUsers);
+    }
+
+    public MyProjectsResponseDto.ProjectPlanFilesResponse getPlanFiles(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
+
+        List<ProjectPlanFile> files = projectPlanFileRepository.findByProjectId(projectId);
+        List<MyProjectsResponseDto.ProjectPlanFileInfo> infos = files.stream()
+                .map(file -> new MyProjectsResponseDto.ProjectPlanFileInfo(
+                        file.getId(),
+                        file.getName(),
+                        file.getFileName(),
+                        file.getPlanFileType(),
+                        file.getFileExt()
+                ))
+                .toList();
+
+        return new MyProjectsResponseDto.ProjectPlanFilesResponse(project.getId(), infos);
+    }
+
+    @Transactional
+    public String getPlanFileDownloadUrl(Long projectId, Long planFileId) {
+        if (projectId == null || planFileId == null) {
+            throw new CustomException(CommonResponseCode.MISSING_REQUEST_PARAMETER_ERROR);
+        }
+
+        ProjectPlanFile planFile = planFileRepository.findByIdAndProjectId(planFileId, projectId)
+                .orElseThrow(() -> new CustomException(CommonResponseCode.NOT_FOUND_ERROR));
+
+        if (planFile.getPlanFileType() != PlanFileType.FILE) {
+            throw new CustomException(CommonResponseCode.BAD_REQUEST_ERROR);
+        }
+
+        String fileKey = planFile.getFileName();
+        if (fileKey == null || fileKey.isBlank()) {
+            throw new CustomException(CommonResponseCode.NOT_FOUND_ERROR);
+        }
+
+        return s3Service.getPresignedGetUrl(fileKey);
+    }
 
     private Map<Long, List<ProjectTeamRole>> getTeamRolesMapByProjects(List<Long> projectIds) {
         List<ProjectTeamRole> allTeamRoles = projectTeamRoleRepository
@@ -132,58 +217,42 @@ public class MyPageProjectQueryService {
     private Map<Long, List<MyProjectsResponseDto.TeamMemberProjectInfo>> getTeamMemberProjectsMapByProjects(
             List<Long> projectIds, Long currentUserId) {
 
-        List<ProjectUser> allTeamMembers = projectUserRepositoryComplete
-                .findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE)
-                .stream()
-                .filter(pu -> !pu.getUserId().equals(currentUserId))
-                .collect(Collectors.toList());
 
-        if (allTeamMembers.isEmpty()) {
+        List<ProjectUser> myLeaderProjects = projectUserRepositoryComplete
+                .findByUserIdAndMemberTypeAndMemberStatus(
+                        currentUserId,
+                        ProjectMemberType.LEADER,
+                        ProjectMemberStatus.ACTIVE);
+
+        if (myLeaderProjects.isEmpty()) {
             return Map.of();
         }
 
-        Map<Long, List<Long>> projectTeamMembersMap = allTeamMembers.stream()
-                .collect(Collectors.groupingBy(
-                        pu -> pu.getProject().getId(),
-                        Collectors.mapping(ProjectUser::getUserId, Collectors.toList())
-                ));
 
-        List<Long> allTeamMemberUserIds = allTeamMembers.stream()
-                .map(ProjectUser::getUserId)
-                .distinct()
+        List<MyProjectsResponseDto.TeamMemberProjectInfo> leaderProjectInfos = myLeaderProjects.stream()
+                .map(pu -> {
+                    Project project = pu.getProject();
+                    return MyProjectsResponseDto.TeamMemberProjectInfo.builder()
+                            .projectId(project.getId())
+                            .title(project.getTitle())
+                            .description(project.getDescription())
+                            .imageName(project.getImageName())
+                            .createdAt(project.getCreatedAt())
+                            .endedAt(project.getEndedAt())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
-        List<ProjectUser> teamMemberProjects = projectUserRepositoryComplete
-                .findByUserIdInAndMemberStatus(
-                        allTeamMemberUserIds,
-                        ProjectMemberStatus.ACTIVE);
 
-        Map<Long, List<Project>> userProjectsMap = teamMemberProjects.stream()
-                .filter(pu -> !projectIds.contains(pu.getProject().getId()))
-                .collect(Collectors.groupingBy(
-                        ProjectUser::getUserId,
-                        Collectors.mapping(ProjectUser::getProject, Collectors.toList())
-                ));
-
-        return projectTeamMembersMap.entrySet().stream()
+        return projectIds.stream()
                 .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            List<Long> teamMemberIds = entry.getValue();
-
-                            return teamMemberIds.stream()
-                                    .flatMap(userId -> userProjectsMap.getOrDefault(userId, List.of()).stream())
-                                    .distinct()
-                                    .map(project -> MyProjectsResponseDto.TeamMemberProjectInfo.builder()
-                                            .projectId(project.getId())
-                                            .title(project.getTitle())
-                                            .description(project.getDescription())
-                                            .imageName(project.getImageName())
-                                            .createdAt(project.getCreatedAt())
-                                            .endedAt(project.getEndedAt())
-                                            .build())
-                                    .collect(Collectors.toList());
-                        }
+                        projectId -> projectId,
+                        projectId -> leaderProjectInfos.stream()
+                                .filter(info -> !info.getProjectId().equals(projectId))
+                                .collect(Collectors.toList())
                 ));
     }
+
+
+
 }

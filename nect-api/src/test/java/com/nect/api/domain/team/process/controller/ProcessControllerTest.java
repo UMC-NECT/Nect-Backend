@@ -5,6 +5,7 @@ import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nect.api.domain.team.process.dto.req.*;
 import com.nect.api.domain.team.process.dto.res.*;
+import com.nect.api.domain.team.process.enums.AttachmentType;
 import com.nect.api.domain.team.process.enums.LaneType;
 import com.nect.api.domain.team.process.service.ProcessService;
 import com.nect.api.global.jwt.JwtUtil;
@@ -23,6 +24,7 @@ import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDoc
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -290,10 +292,9 @@ class ProcessControllerTest {
 
                 feedbacks,
 
-                // attachments (FILE + LINK 통합)
                 List.of(
                         new AttachmentDto(
-                                com.nect.api.domain.team.process.enums.AttachmentType.FILE,
+                                AttachmentType.FILE,
                                 1001L,
                                 LocalDateTime.of(2026, 1, 23, 12, 0),
                                 null, null,
@@ -303,7 +304,7 @@ class ProcessControllerTest {
                                 1024L
                         ),
                         new AttachmentDto(
-                                com.nect.api.domain.team.process.enums.AttachmentType.LINK,
+                                AttachmentType.LINK,
                                 2001L,
                                 LocalDateTime.of(2026, 1, 22, 9, 0),
                                 "Backend Repo",
@@ -312,10 +313,27 @@ class ProcessControllerTest {
                         )
                 ),
 
+                new ProcessDetailResDto.WriterDto(
+                        1L,
+                        "작성자",
+                        "패트",
+                        RoleField.BACKEND,
+                        null
+                ),
+
+                new ProcessDetailResDto.LastEditedByDto(
+                        2L,
+                        "수정자",
+                        "수정자닉",
+                        RoleField.FRONTEND,
+                        null
+                ),
+
                 LocalDateTime.of(2026, 1, 19, 0, 0, 0),
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0),
                 null
         );
+
 
         given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId), nullable(String.class)))
                 .willReturn(response);
@@ -403,6 +421,20 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body.feedbacks[].created_at").type(STRING).description("피드백 생성일시"),
 
+                                                fieldWithPath("body.writer").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.writer.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
+                                                fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할(RoleField)"),
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)"),
+
+                                                fieldWithPath("body.last_edited_by").type(OBJECT).description("마지막 수정자 정보"),
+                                                fieldWithPath("body.last_edited_by.user_id").type(NUMBER).description("수정자 유저 ID"),
+                                                fieldWithPath("body.last_edited_by.user_name").type(STRING).description("수정자 이름"),
+                                                fieldWithPath("body.last_edited_by.nickname").type(STRING).description("수정자 닉네임"),
+                                                fieldWithPath("body.last_edited_by.role_field").optional().type(STRING).description("수정자 역할(RoleField, null 가능)"),
+                                                fieldWithPath("body.last_edited_by.custom_role_field_name").optional().type(STRING).description("수정자 커스텀 역할명(null 가능)"),
+
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시"),
                                                 fieldWithPath("body.updated_at").type(STRING).description("수정일시"),
                                                 fieldWithPath("body.deleted_at").optional().type(STRING).description("삭제일시(null 가능)")
@@ -463,6 +495,14 @@ class ProcessControllerTest {
                         "작성자이름",
                         "작성자닉네임",
                         RoleField.BACKEND,
+                        null
+                ),
+
+                new ProcessBasicUpdateResDto.LastEditedByDto(
+                        2L,
+                        "수정자이름",
+                        "수정자닉네임",
+                        RoleField.FRONTEND,
                         null
                 )
         );
@@ -540,7 +580,14 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
                                                 fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할(RoleField)"),
-                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)")
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)"),
+
+                                                fieldWithPath("body.last_edited_by").type(OBJECT).description("마지막 수정자 정보"),
+                                                fieldWithPath("body.last_edited_by.user_id").type(NUMBER).description("마지막 수정자 유저 ID"),
+                                                fieldWithPath("body.last_edited_by.user_name").type(STRING).description("마지막 수정자 이름"),
+                                                fieldWithPath("body.last_edited_by.nickname").type(STRING).description("마지막 수정자 닉네임"),
+                                                fieldWithPath("body.last_edited_by.role_field").type(STRING).description("마지막 수정자 역할(RoleField)"),
+                                                fieldWithPath("body.last_edited_by.custom_role_field_name").optional().type(STRING).description("마지막 수정자 커스텀 역할명(null 가능)")
                                         )
                                         .build()
                         )
@@ -597,6 +644,37 @@ class ProcessControllerTest {
         long projectId = 1L;
         long userId = 1L;
 
+        AttachmentSummaryDto summary1 = new AttachmentSummaryDto(
+                3L, // total
+                2L, // file
+                1L, // link
+                List.of(FileExt.PDF, FileExt.PNG)
+        );
+
+        List<AttachmentMetaDto> metas1 = List.of(
+                new AttachmentMetaDto(
+                        AttachmentType.FILE,
+                        9001L,
+                        LocalDateTime.of(2026, 1, 20, 10, 0),
+                        FileExt.PDF
+                ),
+                new AttachmentMetaDto(
+                        AttachmentType.LINK,
+                        9002L,
+                        LocalDateTime.of(2026, 1, 20, 11, 0),
+                        null
+                ),
+                new AttachmentMetaDto(
+                        AttachmentType.FILE,
+                        9003L,
+                        LocalDateTime.of(2026, 1, 20, 12, 0),
+                        FileExt.PNG
+                )
+        );
+
+        AttachmentSummaryDto summaryEmpty = AttachmentSummaryDto.empty();
+        List<AttachmentMetaDto> metasEmpty = List.of();
+
         ProcessCardResDto common1 = new ProcessCardResDto(
                 101L,
                 ProcessStatus.PLANNING,
@@ -613,7 +691,9 @@ class ProcessControllerTest {
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png"),
                         new AssigneeResDto(2L, "김철수", "철수", null)
-                )
+                ),
+                summary1,
+                metas1
         );
 
         ProcessCardResDto common2 = new ProcessCardResDto(
@@ -631,7 +711,9 @@ class ProcessControllerTest {
                 true,
                 List.of(
                         new AssigneeResDto(3L, "박영희", "영희", "https://img.com/u3.png")
-                )
+                ),
+                summaryEmpty,
+                metasEmpty
         );
 
         ProcessCardResDto backend1 = new ProcessCardResDto(
@@ -649,6 +731,15 @@ class ProcessControllerTest {
                 true,
                 List.of(
                         new AssigneeResDto(1L, "홍길동", "길동", "https://img.com/u1.png")
+                ),
+                new AttachmentSummaryDto(1L, 0L, 1L, List.of()),
+                List.of(
+                        new AttachmentMetaDto(
+                                AttachmentType.LINK,
+                                9101L,
+                                LocalDateTime.of(2026, 1, 21, 9, 0),
+                                null
+                        )
                 )
         );
 
@@ -667,7 +758,9 @@ class ProcessControllerTest {
                 false,
                 List.of(
                         new AssigneeResDto(4L, "이민수", "민수", null)
-                )
+                ),
+                summaryEmpty,
+                metasEmpty
         );
 
         FieldGroupResDto fgBackend = new FieldGroupResDto(
@@ -705,6 +798,11 @@ class ProcessControllerTest {
                 false,
                 List.of(
                         new AssigneeResDto(2L, "김철수", "철수", "https://img.com/u2.png")
+                ),
+                new AttachmentSummaryDto(2L, 2L, 0L, List.of(FileExt.JPG, FileExt.SVG)),
+                List.of(
+                        new AttachmentMetaDto(AttachmentType.FILE, 9201L, LocalDateTime.of(2026, 1, 27, 13, 0), FileExt.JPG),
+                        new AttachmentMetaDto(AttachmentType.FILE, 9202L, LocalDateTime.of(2026, 1, 27, 13, 10), FileExt.SVG)
                 )
         );
 
@@ -717,7 +815,7 @@ class ProcessControllerTest {
 
         ProcessWeekResDto w2 = new ProcessWeekResDto(
                 LocalDate.of(2026, 1, 26),
-                List.of(),              // common lane empty
+                List.of(),
                 List.of(fgPlanner)
         );
 
@@ -762,48 +860,74 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body.weeks[].start_date").type(STRING).description("주 시작일(yyyy-MM-dd)"),
 
-                                                fieldWithPath("body.weeks[].common_lane").type(ARRAY).description("공통 레인 프로세스 카드 목록"),
-                                                fieldWithPath("body.weeks[].common_lane[].process_id").type(NUMBER).description("프로세스 ID"),
-                                                fieldWithPath("body.weeks[].common_lane[].process_status").type(STRING).description("프로세스 상태"),
-                                                fieldWithPath("body.weeks[].common_lane[].title").type(STRING).description("프로세스 제목"),
-                                                fieldWithPath("body.weeks[].common_lane[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].common_lane[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].common_lane[].start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("body.weeks[].common_lane[].dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("body.weeks[].common_lane[].left_day").optional().type(NUMBER).description("남은 일수(null 가능)"),
-                                                fieldWithPath("body.weeks[].common_lane[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
-                                                fieldWithPath("body.weeks[].common_lane[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
-                                                fieldWithPath("body.weeks[].common_lane[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
-                                                fieldWithPath("body.weeks[].common_lane[].has_open_feedback").type(BOOLEAN).description("OPEN 피드백 존재 여부"),
-                                                fieldWithPath("body.weeks[].common_lane[].assignee").type(ARRAY).description("담당자 목록"),
-                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
-                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_name").type(STRING).description("담당자 이름"),
-                                                fieldWithPath("body.weeks[].common_lane[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
+                                                fieldWithPath("body.weeks[].common_lane").type(JsonFieldType.ARRAY).description("공통 레인 프로세스 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].process_id").type(JsonFieldType.NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].process_status").type(JsonFieldType.STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.weeks[].common_lane[].title").type(JsonFieldType.STRING).description("제목"),
+                                                fieldWithPath("body.weeks[].common_lane[].complete_check_list").type(JsonFieldType.NUMBER).description("완료 체크리스트 수"),
+                                                fieldWithPath("body.weeks[].common_lane[].whole_check_list").type(JsonFieldType.NUMBER).description("전체 체크리스트 수"),
+                                                fieldWithPath("body.weeks[].common_lane[].start_date").type(JsonFieldType.STRING).description("시작일(YYYY-MM-DD)"),
+                                                fieldWithPath("body.weeks[].common_lane[].dead_line").type(JsonFieldType.STRING).description("마감일(YYYY-MM-DD)"),
+                                                fieldWithPath("body.weeks[].common_lane[].left_day").type(JsonFieldType.NUMBER).description("마감까지 남은 일수"),
+                                                fieldWithPath("body.weeks[].common_lane[].role_fields").type(JsonFieldType.ARRAY).description("역할 필드(enum)"),
+                                                fieldWithPath("body.weeks[].common_lane[].custom_fields").type(JsonFieldType.ARRAY).description("커스텀 필드"),
+                                                fieldWithPath("body.weeks[].common_lane[].mission_number").type(JsonFieldType.NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].common_lane[].has_open_feedback").type(JsonFieldType.BOOLEAN).description("열린 피드백 존재 여부"),
 
-                                                fieldWithPath("body.weeks[].by_field").type(ARRAY).description("분야별(Field) 그룹 목록"),
-                                                fieldWithPath("body.weeks[].by_field[].field_id").type(STRING).description("fieldId (예: ROLE:BACKEND / CUSTOM:영상편집)"),
-                                                fieldWithPath("body.weeks[].by_field[].field_name").type(STRING).description("fieldName (예: BACKEND / 영상편집)"),
-                                                fieldWithPath("body.weeks[].by_field[].field_order").type(NUMBER).description("fieldOrder"),
-                                                fieldWithPath("body.weeks[].by_field[].processes").type(ARRAY).description("해당 그룹의 프로세스 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee").type(JsonFieldType.ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_id").type(JsonFieldType.NUMBER).description("유저 ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_name").type(JsonFieldType.STRING).description("유저 이름"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+                                                fieldWithPath("body.weeks[].common_lane[].assignee[].user_image").type(JsonFieldType.STRING).optional().description("프로필 이미지 URL(없으면 null)"),
 
-                                                fieldWithPath("body.weeks[].by_field[].processes[].process_id").type(NUMBER).description("프로세스 ID"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].process_status").type(STRING).description("프로세스 상태"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].title").type(STRING).description("프로세스 제목"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].complete_check_list").type(NUMBER).description("완료 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].whole_check_list").type(NUMBER).description("전체 체크리스트 개수"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].left_day").optional().type(NUMBER).description("남은 일수(null 가능)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].role_fields").type(ARRAY).description("역할 분야(RoleField enum) 목록"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].custom_fields").type(ARRAY).description("커스텀 분야명 목록"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].has_open_feedback").type(BOOLEAN).description("OPEN 피드백 존재 여부"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee").type(ARRAY).description("담당자 목록"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary").type(JsonFieldType.OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.total_count").type(JsonFieldType.NUMBER).description("첨부 총 개수"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.file_count").type(JsonFieldType.NUMBER).description("파일 첨부 개수"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.link_count").type(JsonFieldType.NUMBER).description("링크 첨부 개수"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachment_summary.file_extensions").type(JsonFieldType.ARRAY).optional().description("첨부 파일 확장자 목록(enum, 예: PDF, PNG). 파일이 없으면 빈 배열"),
+
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta").type(JsonFieldType.ARRAY).description("첨부 메타 목록"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].type").type(JsonFieldType.STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].document_id").type(JsonFieldType.NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].attached_at").type(JsonFieldType.STRING).description("첨부 시각(ISO-8601)"),
+                                                fieldWithPath("body.weeks[].common_lane[].attachments_meta[].file_ext").type(JsonFieldType.STRING).optional().description("파일 확장자(enum). 링크면 null"),
+
+                                                fieldWithPath("body.weeks[].by_field").type(JsonFieldType.ARRAY).description("필드별 레인 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].field_id").type(JsonFieldType.STRING).description("필드 ID (예: ROLE:BACKEND, CUSTOM:영상편집)"),
+                                                fieldWithPath("body.weeks[].by_field[].field_name").type(JsonFieldType.STRING).description("필드명"),
+                                                fieldWithPath("body.weeks[].by_field[].field_order").type(JsonFieldType.NUMBER).description("필드 순서"),
+                                                fieldWithPath("body.weeks[].by_field[].processes").type(JsonFieldType.ARRAY).description("해당 필드의 프로세스 목록"),
+
+                                                fieldWithPath("body.weeks[].by_field[].processes[].process_id").type(JsonFieldType.NUMBER).description("프로세스 ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].process_status").type(JsonFieldType.STRING).description("프로세스 상태"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].title").type(JsonFieldType.STRING).description("제목"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].complete_check_list").type(JsonFieldType.NUMBER).description("완료 체크리스트 수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].whole_check_list").type(JsonFieldType.NUMBER).description("전체 체크리스트 수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].start_date").type(JsonFieldType.STRING).description("시작일(YYYY-MM-DD)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].dead_line").type(JsonFieldType.STRING).description("마감일(YYYY-MM-DD)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].left_day").type(JsonFieldType.NUMBER).description("마감까지 남은 일수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].role_fields").type(JsonFieldType.ARRAY).description("역할 필드(enum)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].custom_fields").type(JsonFieldType.ARRAY).description("커스텀 필드"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].mission_number").type(JsonFieldType.NUMBER).description("미션 번호"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].has_open_feedback").type(JsonFieldType.BOOLEAN).description("열린 피드백 존재 여부"),
+
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee").type(JsonFieldType.ARRAY).description("담당자 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_id").type(JsonFieldType.NUMBER).description("유저 ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_name").type(JsonFieldType.STRING).description("유저 이름"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].nickname").type(JsonFieldType.STRING).description("닉네임"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].assignee[].user_image").type(JsonFieldType.STRING).optional().description("프로필 이미지 URL(없으면 null)"),
+
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary").type(JsonFieldType.OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.total_count").type(JsonFieldType.NUMBER).description("첨부 총 개수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.file_count").type(JsonFieldType.NUMBER).description("파일 첨부 개수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.link_count").type(JsonFieldType.NUMBER).description("링크 첨부 개수"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachment_summary.file_extensions").type(JsonFieldType.ARRAY).optional().description("첨부 파일 확장자 목록(enum). 파일이 없으면 빈 배열"),
+
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta").type(JsonFieldType.ARRAY).description("첨부 메타 목록"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].type").type(JsonFieldType.STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].document_id").type(JsonFieldType.NUMBER).description("문서 ID"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].attached_at").type(JsonFieldType.STRING).description("첨부 시각(ISO-8601)"),
+                                                fieldWithPath("body.weeks[].by_field[].processes[].attachments_meta[].file_ext").type(JsonFieldType.STRING).optional().description("파일 확장자(enum). 링크면 null")
                                         )
                                         .build()
                         )
@@ -822,7 +946,12 @@ class ProcessControllerTest {
         AssigneeResDto a1 = new AssigneeResDto(1L, "유저1", "유저1닉", "https://img.com/1.png");
         AssigneeResDto a2 = new AssigneeResDto(2L, "유저2", "유저2닉", "https://img.com/2.png");
 
-        // IN_PROGRESS 카드 2개
+        AttachmentSummaryDto s1 = new AttachmentSummaryDto(2L, 1L, 1L, List.of(FileExt.PDF));
+        List<AttachmentMetaDto> m1 = List.of(
+                new AttachmentMetaDto(AttachmentType.FILE, 7001L, LocalDateTime.of(2026, 2, 4, 10, 0), FileExt.PDF),
+                new AttachmentMetaDto(AttachmentType.LINK, 7002L, LocalDateTime.of(2026, 2, 4, 10, 30), null)
+        );
+
         ProcessCardResDto p10 = new ProcessCardResDto(
                 10L,
                 ProcessStatus.IN_PROGRESS,
@@ -836,7 +965,9 @@ class ProcessControllerTest {
                 List.of("AI"),
                 1,
                 true,
-                List.of(a1, a2) // assignee
+                List.of(a1, a2),
+                s1,
+                m1
         );
 
         ProcessCardResDto p12 = new ProcessCardResDto(
@@ -852,10 +983,10 @@ class ProcessControllerTest {
                 List.of("DevOps"),
                 null,
                 true,
-                List.of(a2)
+                List.of(a2),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
-
-
 
         ProcessStatusGroupResDto inProgressGroup = new ProcessStatusGroupResDto(
                 ProcessStatus.IN_PROGRESS,
@@ -877,7 +1008,9 @@ class ProcessControllerTest {
                 List.of(),
                 null,
                 false,
-                List.of(a1)
+                List.of(a1),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
 
         ProcessStatusGroupResDto planningGroup = new ProcessStatusGroupResDto(
@@ -900,7 +1033,9 @@ class ProcessControllerTest {
                 List.of("Auth"),
                 1,
                 false,
-                List.of(a1, a2)
+                List.of(a1, a2),
+                new AttachmentSummaryDto(1L, 1L, 0L, List.of(FileExt.SVG)),
+                List.of(new AttachmentMetaDto(AttachmentType.FILE, 7301L, LocalDateTime.of(2026, 1, 24, 18, 0), FileExt.SVG))
         );
 
         ProcessStatusGroupResDto doneGroup = new ProcessStatusGroupResDto(
@@ -923,7 +1058,9 @@ class ProcessControllerTest {
                 List.of("TechDebt"),
                 1,
                 false,
-                List.of(a2)
+                List.of(a2),
+                AttachmentSummaryDto.empty(),
+                List.of()
         );
 
         ProcessStatusGroupResDto backlogGroup = new ProcessStatusGroupResDto(
@@ -999,7 +1136,18 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_id").type(NUMBER).description("담당자 유저 ID"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].user_name").type(STRING).description("담당자 이름"),
                                                 fieldWithPath("body.groups[].processes[].assignee[].nickname").type(STRING).description("담당자 닉네임"),
-                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL")
+                                                fieldWithPath("body.groups[].processes[].assignee[].user_image").optional().type(STRING).description("담당자 이미지 URL"),
+
+                                                fieldWithPath("body.groups[].processes[].attachment_summary").type(OBJECT).description("첨부 요약"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.total_count").type(NUMBER).description("총 첨부 수(file+link)"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.file_count").type(NUMBER).description("파일 첨부 수"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.link_count").type(NUMBER).description("링크 첨부 수"),
+                                                fieldWithPath("body.groups[].processes[].attachment_summary.file_extensions").type(ARRAY).description("첨부된 파일 확장자 목록(중복 제거)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta").type(ARRAY).description("첨부 메타 목록"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].type").type(STRING).description("첨부 타입(FILE/LINK)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].document_id").type(NUMBER).description("SharedDocument ID"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].attached_at").type(STRING).description("첨부 시각(ISO LocalDateTime)"),
+                                                fieldWithPath("body.groups[].processes[].attachments_meta[].file_ext").optional().type(STRING).description("파일 확장자(FILE만, LINK는 null)")
                                         )
                                         .build()
                         )

@@ -23,7 +23,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 	boolean existsByNickname(String nickname);
 
-	List<User> findByUserIdNot(Long userId, Pageable pageable);
+	@Query("""
+		SELECT u FROM User u
+		WHERE u.userId != :userId
+			AND u.isPublicMatching = true
+	""")
+	List<User> findByUserIdNot(@Param("userId") Long userId, Pageable pageable);
 
 	List<User> findByUserIdIn(List<Long> userIds);
 

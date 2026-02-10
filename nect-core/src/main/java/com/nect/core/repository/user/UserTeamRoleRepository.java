@@ -3,22 +3,48 @@ package com.nect.core.repository.user;
 import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long> {
 
-    boolean existsByProject_IdAndUser_UserIdAndRoleFieldAndDeletedAtIsNull(
-            Long projectId, Long userId, RoleField roleField
+    boolean existsByProject_IdAndRoleFieldAndDeletedAtIsNull(
+            Long projectId, RoleField roleField
     );
 
-    boolean existsByProject_IdAndUser_UserIdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
-            Long projectId, Long userId, RoleField roleField, String customRoleFieldName
+    boolean existsByProject_IdAndRoleFieldAndCustomRoleFieldNameIgnoreCaseAndDeletedAtIsNull(
+            Long projectId, RoleField roleField, String customRoleFieldName
     );
 
     Optional<UserTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
 
-    List<UserTeamRole> findAllByProject_IdAndUser_UserIdAndDeletedAtIsNullOrderByIdAsc(Long projectId, Long userId);
+    List<UserTeamRole> findAllByProject_IdAndDeletedAtIsNullOrderByIdAsc(Long projectId);
+
+    List<UserTeamRole> findByProjectIdIn(List<Long> projectIds);
+    Optional<UserTeamRole> findFirstByProjectIdAndRoleFieldAndCustomRoleFieldName(
+            Long projectId,
+            RoleField roleField,
+            String customRoleFieldName
+    );
+
+    List<UserTeamRole> findAllByProjectId(Long projectId);
+
+    @Query("""
+            SELECT utr.project.id as projectId, sum(utr.requiredCount) as requirementSum
+            FROM UserTeamRole utr
+            WHERE utr.project.id  in :projectIds
+            GROUP BY utr.project.id
+    """)
+    List<ProjectRequirementRow> sumRequirementByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    interface ProjectRequirementRow{
+        Long getProjectId();
+        Integer getRequirementSum();
+    }
+
+
 
 }

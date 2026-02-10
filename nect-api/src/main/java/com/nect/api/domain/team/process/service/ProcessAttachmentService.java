@@ -2,7 +2,6 @@ package com.nect.api.domain.team.process.service;
 
 import com.nect.api.domain.team.file.enums.FileErrorCode;
 import com.nect.api.domain.team.file.exception.FileException;
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.process.dto.req.ProcessFileAttachReqDto;
 import com.nect.api.domain.team.process.dto.req.ProcessLinkCreateReqDto;
 import com.nect.api.domain.team.process.dto.res.ProcessFileAttachResDto;
@@ -12,8 +11,6 @@ import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.enums.DocumentType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessSharedDocument;
 import com.nect.core.entity.team.process.enums.ProcessType;
@@ -27,8 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -38,9 +33,6 @@ public class ProcessAttachmentService {
     private final ProcessRepository processRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
     private final ProcessSharedDocumentRepository processSharedDocumentRepository;
-
-
-    private final ProjectHistoryPublisher historyPublisher;
 
     // 헬퍼 메서드
     private Process getActiveProcess(Long projectId, Long processId) {
@@ -130,19 +122,6 @@ public class ProcessAttachmentService {
         processSharedDocumentRepository.save(psd);
 
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("fileId", doc.getId());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_ATTACHED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
-
         return new ProcessFileAttachResDto(doc.getId());
     }
 
@@ -160,19 +139,6 @@ public class ProcessAttachmentService {
                 ));
 
         psd.softDelete();
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("fileId", fileId);
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_DETACHED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
 
     }
 
@@ -197,21 +163,6 @@ public class ProcessAttachmentService {
 
 
         psd.softDelete();
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("documentId", linkId);
-        meta.put("type", "LINK");
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_DETACHED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
-
     }
 
     // 프로세스 링크 추가
@@ -240,22 +191,6 @@ public class ProcessAttachmentService {
                 .build();
 
         processSharedDocumentRepository.save(psd);
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("processId", processId);
-        meta.put("documentId", saved.getId());
-        meta.put("type", "LINK");
-        meta.put("url", saved.getLinkUrl());
-        meta.put("title", saved.getTitle());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_ATTACHED,
-                HistoryTargetType.PROCESS,
-                processId,
-                meta
-        );
 
         return new ProcessFileAttachResDto(saved.getId());
     }

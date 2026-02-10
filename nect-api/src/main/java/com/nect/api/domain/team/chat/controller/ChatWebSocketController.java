@@ -28,7 +28,7 @@ public class ChatWebSocketController {
     ) {
         Long currentUserId = Long.valueOf(principal.getName());
         log.info(" WebSocket 메시지 수신 - roomId: {}, user_id: {}, content: {}",
-                room_id, request.getUserId(), request.getContent());
+                room_id, currentUserId, request.getContent());
 
         try {
             chatService.sendMessage(room_id, currentUserId, request.getContent());

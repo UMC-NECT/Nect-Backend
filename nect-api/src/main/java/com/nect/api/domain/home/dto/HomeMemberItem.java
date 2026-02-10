@@ -18,6 +18,7 @@ public class HomeMemberItem {
     private String name;
     private String part;
     private String introduction;
+    private String coreCompetencies;
     private String status;
     private Boolean isScrapped;
     private List<String> roles;
@@ -28,6 +29,7 @@ public class HomeMemberItem {
             String name,
             String part,
             String introduction,
+            String coreCompetencies,
             String status,
             Boolean isScrapped,
             List<String> roles
@@ -38,6 +40,7 @@ public class HomeMemberItem {
                 .name(name)
                 .part(part)
                 .introduction(introduction)
+                .coreCompetencies(coreCompetencies)
                 .status(status)
                 .isScrapped(isScrapped)
                 .roles(roles)

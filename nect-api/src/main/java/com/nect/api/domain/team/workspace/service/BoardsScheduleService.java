@@ -1,7 +1,6 @@
 package com.nect.api.domain.team.workspace.service;
 
 
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.workspace.dto.req.ScheduleCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.ScheduleUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.CalendarMonthIndicatorsResDto;
@@ -12,8 +11,6 @@ import com.nect.api.domain.team.workspace.exception.ScheduleException;
 import com.nect.api.global.code.DateConstants;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectSchedule;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectScheduleRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
@@ -36,8 +33,6 @@ public class BoardsScheduleService {
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
     private final ProjectScheduleRepository scheduleRepository;
-
-    private final ProjectHistoryPublisher historyPublisher;
 
     // 캘린더 월간 인디케이터 조회 서비스
     @Transactional(readOnly = true)
@@ -163,22 +158,6 @@ public class BoardsScheduleService {
 
         ProjectSchedule saved = scheduleRepository.save(schedule);
 
-        // 커밋 이후 저장
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.SCHEDULE_CREATED,
-                HistoryTargetType.SCHEDULE,
-                saved.getId(),
-                Map.of(
-                        "title", saved.getTitle(),
-                        "description", saved.getDescription(),
-                        "start_at", saved.getStartAt(),
-                        "end_at", saved.getEndAt(),
-                        "all_day", saved.isAllDay()
-                )
-        );
-
         return new ScheduleCreateResDto(saved.getId());
     }
 
@@ -241,15 +220,6 @@ public class BoardsScheduleService {
             throw new ScheduleException(ScheduleErrorCode.INVALID_REQUEST, "no changes");
         }
 
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.SCHEDULE_UPDATED,
-                HistoryTargetType.SCHEDULE,
-                schedule.getId(),
-                Map.of("changed", changed)
-        );
-
     }
 
     // 일정 삭제
@@ -262,27 +232,8 @@ public class BoardsScheduleService {
                 .orElseThrow(() -> new ScheduleException(ScheduleErrorCode.SCHEDULE_NOT_FOUND,
                         "projectId=" + projectId + ", scheduleId=" + scheduleId));
 
-        // before snapshot
-        final String beforeTitle = schedule.getTitle();
-        final LocalDateTime beforeStart = schedule.getStartAt();
-        final LocalDateTime beforeEnd = schedule.getEndAt();
 
         schedule.softDelete();
-
-        // HISTORY
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.SCHEDULE_DELETED,
-                HistoryTargetType.SCHEDULE,
-                schedule.getId(),
-                Map.of(
-                        "title", beforeTitle,
-                        "start_at", beforeStart,
-                        "end_at", beforeEnd,
-                        "deleted_at", LocalDateTime.now(KST)
-                )
-        );
 
     }
 

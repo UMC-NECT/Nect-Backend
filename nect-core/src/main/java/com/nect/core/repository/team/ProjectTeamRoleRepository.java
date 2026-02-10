@@ -59,4 +59,16 @@ public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole
     Optional<ProjectTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
 
 
+    @Query("""
+        select ptr
+        from ProjectTeamRole ptr
+        where ptr.project.id = :projectId
+          and ptr.deletedAt is null
+        order by
+          case when ptr.roleField = com.nect.core.entity.user.enums.RoleField.CUSTOM then 1 else 0 end asc,
+          ptr.createdAt asc,
+          ptr.id asc
+    """)
+    List<ProjectTeamRole> findActiveOrderedForMissionProgress(@Param("projectId") Long projectId);
+
 }

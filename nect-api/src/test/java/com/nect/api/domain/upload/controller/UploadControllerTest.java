@@ -45,7 +45,7 @@ class UploadControllerTest extends NectDocumentApiTester {
                 .andDo(document("file-upload-image",
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("files")
+                                        .tag("Files")
                                         .summary("이미지 업로드")
                                         .description("프로필 이미지를 업로드합니다. 업로드된 파일명과 Presigned URL을 반환합니다.\n\n" +
                                                 "**지원 포맷:** JPG, PNG, GIF, BMP, WebP 등\n\n" +

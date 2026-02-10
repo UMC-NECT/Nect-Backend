@@ -1,5 +1,6 @@
 package com.nect.core.entity.team;
 
+import com.nect.core.entity.BaseEntity;
 import com.nect.core.entity.user.enums.InterestField;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,7 @@ import lombok.*;
         name = "team_interest_field",
         uniqueConstraints = @UniqueConstraint(columnNames = {"project_id", "interest_field"})
 )
-public class ProjectInterest {
+public class ProjectInterest extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

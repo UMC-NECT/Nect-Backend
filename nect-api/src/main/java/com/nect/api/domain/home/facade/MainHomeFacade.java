@@ -5,6 +5,8 @@ import com.nect.api.domain.home.exception.HomeInvalidParametersException;
 import com.nect.api.domain.home.service.HomeMemberQueryService;
 import com.nect.api.domain.home.service.HomeProjectQueryService;
 import com.nect.api.domain.home.service.HomeStatisticsQueryService;
+import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
@@ -31,6 +33,7 @@ public class MainHomeFacade {
     private final HomeMemberQueryService homeMemberQueryService;
     private final HomeStatisticsQueryService statisticsQueryService;
     private final S3Service s3Service;
+    private final MyPageProjectQueryService myPageProjectQueryService;
 
     // 모집 중인 프로젝트
     public HomeProjectResponse getRecruitingProjects(Long userId, int count, Role role, InterestField interest){
@@ -40,24 +43,38 @@ public class MainHomeFacade {
         // 페이징 정보
         PageRequest pageRequest = PageRequest.of(0, safeCount);
 
-        // List<Project> 미리 생성
-//        List<Project> projects = new ArrayList<>();
+        // 둘 중 하나가 null일 수는 없음
+        if ((role == null && interest != null) || (role != null && interest == null)) {
+            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
+        }
 
-//        // 둘 중 하나가 null일 수는 없음
-//        if ((role == null && interest != null) || (role != null && interest == null)) {
-//            throw new HomeInvalidParametersException("role과 interest 중 하나만 null일 수 없습니다.");
-//        }
-//
-//        // role이 null일 때
-//        if (role == null) {
-//
-//        }else{
-//
-//        }
-
-        List<Project> projects = homeProjectQueryService.getProjects(userId, pageRequest);
+        List<Project> projects;
+        if (role != null) {
+            projects = homeProjectQueryService.getFilteredProjects(userId, pageRequest, role, interest);
+        } else {
+            projects = homeProjectQueryService.getProjects(userId, pageRequest);
+        }
 
         return buildProjectResponse(projects);
+    }
+
+    // 모집 중인 프로젝트
+    public HomeProjectDetailResponse getRecruitingProjectsDetails(Long projectId) {
+
+        MyProjectsResponseDto.ProjectInfo defaultInfo = homeProjectQueryService.getProject(projectId);
+        MyProjectsResponseDto.ProjectFieldResponse fields = myPageProjectQueryService.getProjectFields(projectId);
+        MyProjectsResponseDto.StringListResponse purposes = myPageProjectQueryService.getPurposes(projectId);
+        MyProjectsResponseDto.StringListResponse functions = myPageProjectQueryService.getFunctions(projectId);
+        MyProjectsResponseDto.StringListResponse serviceUsers = myPageProjectQueryService.getServiceUsers(projectId);
+        MyProjectsResponseDto.ProjectPlanFilesResponse planFiles = myPageProjectQueryService.getPlanFiles(projectId);
+        return HomeProjectDetailResponse.builder()
+                .defaultInfo(defaultInfo)
+                .fields(fields)
+                .purposes(purposes)
+                .functions(functions)
+                .serviceUsers(serviceUsers)
+                .planFiles(planFiles)
+                .build();
     }
 
     // 홈화면 추천 프로젝트들
@@ -168,7 +185,8 @@ public class MainHomeFacade {
                             s3Service.getPresignedGetUrl(user.getProfileImageName()),
                             user.getName(),
                             user.getRole() != null ?  user.getRole().name() : null,
-                            null,
+                            user.getBio(),
+                            user.getCoreCompetencies(),
                             user.getUserStatus() != null ? user.getUserStatus().name() : null,
                             false,
                             parts
