@@ -10,6 +10,7 @@ import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -93,27 +94,28 @@ public class HomeProjectQueryService {
                 ));
 
         Map<Long, Map<String, Integer>> partCountsByProjectId = new HashMap<>();
-        for (Recruitment recruitment : recruitmentRepository.findAllByProject_IdIn(projectIds)) {
-            Integer capacity = recruitment.getCapacity();
 
-            if (capacity == null || capacity <= 0) {
+        for (UserTeamRole userTeamRole : userTeamRoleRepository.findByProjectIdIn(projectIds)) {
+
+            Integer requirement = userTeamRole.getRequiredCount();
+
+            if (requirement == null || requirement <= 0) {
                 continue;
             }
 
-            RoleField field = recruitment.getField();
+            RoleField field = userTeamRole.getRoleField();
             String roleKey;
             if (field == RoleField.CUSTOM) {
-                String customField = recruitment.getCustomField();
-                roleKey = (customField == null || customField.isBlank())
-                        ? RoleField.CUSTOM.name()
-                        : customField;
-            } else {
-                roleKey = field.name();
+                String customField = userTeamRole.getCustomRoleFieldName();
+                roleKey = (customField == null || customField.isBlank()) ? RoleField.CUSTOM.name() : customField;
+            }else{
+                roleKey = field.getLabelEn();
             }
 
             partCountsByProjectId
-                    .computeIfAbsent(recruitment.getProject().getId(), k -> new HashMap<>())
-                    .merge(roleKey, capacity, Integer::sum);
+                    .computeIfAbsent(userTeamRole.getProject().getId(), k -> new HashMap<>())
+                    .merge(roleKey, requirement, Integer::sum);
+
         }
 
         return new HomeProjectBatch(
@@ -229,7 +231,7 @@ public class HomeProjectQueryService {
                         .description(project.getDescription())
                         .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
                         .createdAt(project.getCreatedAt())
-                        .endedAt(LocalDateTime.from(project.getPlannedEndedOn()))
+                        .endedAt(project.getPlannedEndedOn().atStartOfDay())
                         .build())
                 .toList();
     }

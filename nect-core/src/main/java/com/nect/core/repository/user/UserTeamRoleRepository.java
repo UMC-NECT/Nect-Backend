@@ -45,4 +45,6 @@ public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long
         Integer getRequirementSum();
     }
 
+
+
 }
