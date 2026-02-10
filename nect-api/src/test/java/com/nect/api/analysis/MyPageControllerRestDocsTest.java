@@ -13,6 +13,7 @@ import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -124,6 +125,7 @@ class MyPageControllerRestDocsTest {
                 .imageName("project_image_001.jpg")
                 .plannedStartedOn(LocalDate.of(2026, 3, 1))
                 .plannedEndedOn(LocalDate.of(2026, 8, 31))
+                .recruitmentStatus(RecruitmentStatus.OPEN)
                 .teamRoles(mockProjectMemberStatistics())
                 .leader(leader)
                 .teamMemberProjects(List.of(teamMemberProject1, teamMemberProject2))
@@ -136,6 +138,7 @@ class MyPageControllerRestDocsTest {
                 .imageName("project_image_003.jpg")
                 .plannedStartedOn(LocalDate.of(2026, 2, 15))
                 .plannedEndedOn(LocalDate.of(2026, 7, 15))
+                .recruitmentStatus(RecruitmentStatus.CLOSED)
                 .teamRoles(mockProjectMemberStatistics())
                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                         .userId(200L)
@@ -200,6 +203,7 @@ class MyPageControllerRestDocsTest {
                                         fieldWithPath("body.projects[].image_name").description("프로젝트 이미지 파일명"),
                                         fieldWithPath("body.projects[].planned_started_on").description("예상 시작일 (YYYY-MM-DD)"),
                                         fieldWithPath("body.projects[].planned_ended_on").description("예상 종료일 (YYYY-MM-DD)"),
+                                        fieldWithPath("body.projects[].recruitment_status").description("프로젝트 모집 상태"),
 
                                         // team_roles 객체
                                         fieldWithPath("body.projects[].team_roles").description("프로젝트 멤버 통계"),

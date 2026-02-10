@@ -1036,6 +1036,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 .imageName("project-image.jpg")
                                 .plannedStartedOn(LocalDate.of(2024, 1, 1))
                                 .plannedEndedOn(LocalDate.of(2024, 6, 30))
+                                .recruitmentStatus(RecruitmentStatus.OPEN)
                                 .teamRoles(mockProjectMemberStatistics())
                                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                                         .userId(1L)
@@ -1085,6 +1086,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("body.projects[].image_name").description("프로젝트 대표 이미지 파일명").optional(),
                                         fieldWithPath("body.projects[].planned_started_on").description("프로젝트 시작 예정일").optional(),
                                         fieldWithPath("body.projects[].planned_ended_on").description("프로젝트 종료 예정일").optional(),
+                                        fieldWithPath("body.projects[].recruitment_status").description("프로젝트 모집 상태").optional(),
 
                                         fieldWithPath("body.projects[].team_roles").description("프로젝트 멤버 통계"),
                                         fieldWithPath("body.projects[].team_roles.roles").description("Role 기준 통계 목록"),

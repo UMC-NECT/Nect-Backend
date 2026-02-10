@@ -21,6 +21,7 @@ import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -513,6 +514,7 @@ class HomeControllerTest {
                 .plannedStartedOn(LocalDate.of(2025, 9, 1))
                 .plannedEndedOn(LocalDate.of(2026, 2, 1))
                 .imageName("project-10.png")
+                .recruitmentStatus(RecruitmentStatus.OPEN)
                 .teamRoles(mockProjectMemberStatistics())
                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                         .userId(1L)
@@ -728,6 +730,7 @@ class HomeControllerTest {
                 fieldWithPath("body.defaultInfo.planned_started_on").type(JsonFieldType.STRING).optional().description("프로젝트 시작 예정일"),
                 fieldWithPath("body.defaultInfo.planned_ended_on").type(JsonFieldType.STRING).optional().description("프로젝트 종료 예정일"),
                 fieldWithPath("body.defaultInfo.image_name").type(JsonFieldType.STRING).optional().description("프로젝트 이미지 파일명"),
+                fieldWithPath("body.defaultInfo.recruitment_status").type(JsonFieldType.STRING).optional().description("프로젝트 모집 상태"),
                 fieldWithPath("body.defaultInfo.team_roles").description("프로젝트 멤버 통계"),
                 fieldWithPath("body.defaultInfo.team_roles.roles").description("Role 기준 통계 목록"),
                 fieldWithPath("body.defaultInfo.team_roles.roles[].role").description("Role"),
