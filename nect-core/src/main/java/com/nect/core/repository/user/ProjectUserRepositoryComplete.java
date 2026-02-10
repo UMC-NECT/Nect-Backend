@@ -75,4 +75,11 @@ public interface ProjectUserRepositoryComplete extends JpaRepository<ProjectUser
     List<ProjectUser> findByProjectIdInAndMemberType(
             @Param("projectIds") List<Long> projectIds,
             @Param("memberType") ProjectMemberType memberType);
+
+
+    List<ProjectUser> findByUserIdAndMemberTypeAndMemberStatus(
+            Long userId,
+            ProjectMemberType memberType,
+            ProjectMemberStatus memberStatus
+    );
 }

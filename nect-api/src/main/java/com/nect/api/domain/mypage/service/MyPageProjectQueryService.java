@@ -217,58 +217,42 @@ public class MyPageProjectQueryService {
     private Map<Long, List<MyProjectsResponseDto.TeamMemberProjectInfo>> getTeamMemberProjectsMapByProjects(
             List<Long> projectIds, Long currentUserId) {
 
-        List<ProjectUser> allTeamMembers = projectUserRepositoryComplete
-                .findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE)
-                .stream()
-                .filter(pu -> !pu.getUserId().equals(currentUserId))
-                .collect(Collectors.toList());
 
-        if (allTeamMembers.isEmpty()) {
+        List<ProjectUser> myLeaderProjects = projectUserRepositoryComplete
+                .findByUserIdAndMemberTypeAndMemberStatus(
+                        currentUserId,
+                        ProjectMemberType.LEADER,
+                        ProjectMemberStatus.ACTIVE);
+
+        if (myLeaderProjects.isEmpty()) {
             return Map.of();
         }
 
-        Map<Long, List<Long>> projectTeamMembersMap = allTeamMembers.stream()
-                .collect(Collectors.groupingBy(
-                        pu -> pu.getProject().getId(),
-                        Collectors.mapping(ProjectUser::getUserId, Collectors.toList())
-                ));
 
-        List<Long> allTeamMemberUserIds = allTeamMembers.stream()
-                .map(ProjectUser::getUserId)
-                .distinct()
+        List<MyProjectsResponseDto.TeamMemberProjectInfo> leaderProjectInfos = myLeaderProjects.stream()
+                .map(pu -> {
+                    Project project = pu.getProject();
+                    return MyProjectsResponseDto.TeamMemberProjectInfo.builder()
+                            .projectId(project.getId())
+                            .title(project.getTitle())
+                            .description(project.getDescription())
+                            .imageName(project.getImageName())
+                            .createdAt(project.getCreatedAt())
+                            .endedAt(project.getEndedAt())
+                            .build();
+                })
                 .collect(Collectors.toList());
 
-        List<ProjectUser> teamMemberProjects = projectUserRepositoryComplete
-                .findByUserIdInAndMemberStatus(
-                        allTeamMemberUserIds,
-                        ProjectMemberStatus.ACTIVE);
 
-        Map<Long, List<Project>> userProjectsMap = teamMemberProjects.stream()
-                .filter(pu -> !projectIds.contains(pu.getProject().getId()))
-                .collect(Collectors.groupingBy(
-                        ProjectUser::getUserId,
-                        Collectors.mapping(ProjectUser::getProject, Collectors.toList())
-                ));
-
-        return projectTeamMembersMap.entrySet().stream()
+        return projectIds.stream()
                 .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> {
-                            List<Long> teamMemberIds = entry.getValue();
-
-                            return teamMemberIds.stream()
-                                    .flatMap(userId -> userProjectsMap.getOrDefault(userId, List.of()).stream())
-                                    .distinct()
-                                    .map(project -> MyProjectsResponseDto.TeamMemberProjectInfo.builder()
-                                            .projectId(project.getId())
-                                            .title(project.getTitle())
-                                            .description(project.getDescription())
-                                            .imageName(project.getImageName())
-                                            .createdAt(project.getCreatedAt())
-                                            .endedAt(project.getEndedAt())
-                                            .build())
-                                    .collect(Collectors.toList());
-                        }
+                        projectId -> projectId,
+                        projectId -> leaderProjectInfos.stream()
+                                .filter(info -> !info.getProjectId().equals(projectId))
+                                .collect(Collectors.toList())
                 ));
     }
+
+
+
 }
