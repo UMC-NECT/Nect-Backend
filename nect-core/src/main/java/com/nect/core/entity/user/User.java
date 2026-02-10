@@ -110,4 +110,9 @@ public class User extends BaseEntity {
     public void updateAutoLoginEnabled(Boolean enabled) {
         this.isAutoLoginEnabled = enabled;
     }
+
+    public String getName(){
+        return nickname;
+    }
+
 }

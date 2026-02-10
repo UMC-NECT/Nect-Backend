@@ -5,7 +5,6 @@ import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
-import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;

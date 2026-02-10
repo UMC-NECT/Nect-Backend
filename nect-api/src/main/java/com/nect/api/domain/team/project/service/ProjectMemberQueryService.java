@@ -90,7 +90,7 @@ public class ProjectMemberQueryService {
                     var r = ctx.row();
                     return new ProjectUsersResDto.UserDto(
                             r.getUserId(),
-                            r.getName(),
+                            r.getNickname(),
                             r.getNickname(),
                             ctx.profileUrl(),
                             r.getBio(),
@@ -116,7 +116,7 @@ public class ProjectMemberQueryService {
                     var r = ctx.row();
                     return new HomeProjectMembersResponse.UserInfo(
                             r.getUserId(),
-                            r.getName(),
+                            r.getNickname(),
                             r.getNickname(),
                             ctx.profileUrl(),
                             r.getBio(),
