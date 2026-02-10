@@ -9,6 +9,6 @@ public record ProjectHistoryListResDto(
         Long nextCursor,
 
         @JsonProperty("items")
-        List<ProjectHistoryResDto> items
+        List<ProjectHistoryItemResDto> items
 ) {
 }

@@ -10,6 +10,7 @@ import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -21,6 +22,7 @@ import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,7 @@ public class HomeProjectQueryService {
     private final UserRepository userRepository;
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
     private final ProjectTeamRoleRepository projectTeamRoleRepository;
+    private final UserTeamRoleRepository userTeamRoleRepository;
     private final S3Service s3Service;
 
     public record HomeProjectBatch(
@@ -84,34 +87,35 @@ public class HomeProjectQueryService {
                         r -> r.getActiveCount().intValue()
                 ));
 
-        Map<Long, Integer> maxMemberCountByProjectId = recruitmentRepository.sumCapacityByProjectIds(projectIds).stream()
+        Map<Long, Integer> maxMemberCountByProjectId = userTeamRoleRepository.sumRequirementByProjectIds(projectIds).stream()
                 .collect(Collectors.toMap(
-                        RecruitmentRepository.ProjectCapacityRow::getProjectId,
-                        r -> r.getCapacitySum() == null ? 0 : r.getCapacitySum()
+                        UserTeamRoleRepository.ProjectRequirementRow::getProjectId,
+                        utr -> utr.getRequirementSum() == null ? 0 : utr.getRequirementSum()
                 ));
 
         Map<Long, Map<String, Integer>> partCountsByProjectId = new HashMap<>();
-        for (Recruitment recruitment : recruitmentRepository.findAllByProject_IdIn(projectIds)) {
-            Integer capacity = recruitment.getCapacity();
 
-            if (capacity == null || capacity <= 0) {
+        for (UserTeamRole userTeamRole : userTeamRoleRepository.findByProjectIdIn(projectIds)) {
+
+            Integer requirement = userTeamRole.getRequiredCount();
+
+            if (requirement == null || requirement <= 0) {
                 continue;
             }
 
-            RoleField field = recruitment.getField();
+            RoleField field = userTeamRole.getRoleField();
             String roleKey;
             if (field == RoleField.CUSTOM) {
-                String customField = recruitment.getCustomField();
-                roleKey = (customField == null || customField.isBlank())
-                        ? RoleField.CUSTOM.name()
-                        : customField;
-            } else {
-                roleKey = field.name();
+                String customField = userTeamRole.getCustomRoleFieldName();
+                roleKey = (customField == null || customField.isBlank()) ? RoleField.CUSTOM.name() : customField;
+            }else{
+                roleKey = field.getLabelEn();
             }
 
             partCountsByProjectId
-                    .computeIfAbsent(recruitment.getProject().getId(), k -> new HashMap<>())
-                    .merge(roleKey, capacity, Integer::sum);
+                    .computeIfAbsent(userTeamRole.getProject().getId(), k -> new HashMap<>())
+                    .merge(roleKey, requirement, Integer::sum);
+
         }
 
         return new HomeProjectBatch(
@@ -198,9 +202,8 @@ public class HomeProjectQueryService {
     }
 
     public Integer getDDay(Project project) {
-        LocalDateTime endedAt = project.getEndedAt();
         LocalDate today = LocalDate.now();
-        LocalDate endDate = endedAt.toLocalDate();
+        LocalDate endDate = project.getPlannedEndedOn();
         return (int) ChronoUnit.DAYS.between(today, endDate);
     }
 
@@ -228,7 +231,7 @@ public class HomeProjectQueryService {
                         .description(project.getDescription())
                         .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
                         .createdAt(project.getCreatedAt())
-                        .endedAt(project.getEndedAt())
+                        .endedAt(project.getPlannedEndedOn().atStartOfDay())
                         .build())
                 .toList();
     }

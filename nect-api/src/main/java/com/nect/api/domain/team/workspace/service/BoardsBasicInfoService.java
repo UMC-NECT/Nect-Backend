@@ -2,7 +2,6 @@ package com.nect.api.domain.team.workspace.service;
 
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.workspace.dto.req.BoardsBasicInfoUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.BoardsBasicInfoGetResDto;
 import com.nect.api.domain.team.workspace.enums.BoardsErrorCode;
@@ -12,8 +11,6 @@ import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
@@ -38,7 +35,6 @@ public class BoardsBasicInfoService {
     private final ProjectRepository projectRepository;
     private final ProjectUserRepository projectUserRepository;
 
-    private final ProjectHistoryPublisher historyPublisher;
     private final NotificationFacade notificationFacade;
 
     @Transactional(readOnly = true)
@@ -160,15 +156,6 @@ public class BoardsBasicInfoService {
         }
 
         notifyTeamBoardUpdate(project, userId, changedMeta);
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.PROJECT_BOARD_BASIC_INFO_UPDATED,
-                HistoryTargetType.PROJECT,
-                projectId,
-                Map.of("changed", changedMeta)
-        );
 
     }
 

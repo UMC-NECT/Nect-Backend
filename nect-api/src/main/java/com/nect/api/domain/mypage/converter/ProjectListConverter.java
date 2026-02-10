@@ -33,6 +33,7 @@ public class ProjectListConverter implements AttributeConverter<List<String>, St
                 .map(String::trim)
                 .peek(value -> {
                     if (value.contains(SEPARATOR)) {
+                        System.out.println("hello");
                         throw new CustomException(CommonResponseCode.BAD_REQUEST_ERROR, "부적절한 단어가 포함되어있습니다. 내용에 \u001F 를 포함할 수 없습니다.");
                     }
                 })

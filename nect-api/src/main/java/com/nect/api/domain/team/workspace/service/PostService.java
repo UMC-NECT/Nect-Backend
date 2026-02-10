@@ -2,21 +2,16 @@ package com.nect.api.domain.team.workspace.service;
 
 import com.nect.api.domain.notifications.command.NotificationCommand;
 import com.nect.api.domain.notifications.facade.NotificationFacade;
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
-import com.nect.api.domain.team.process.dto.res.AttachmentDto;
 import com.nect.api.domain.team.workspace.dto.req.PostCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.PostUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.*;
 import com.nect.api.domain.team.workspace.enums.PostErrorCode;
-import com.nect.api.domain.team.workspace.enums.PostSort;
 import com.nect.api.domain.team.workspace.exception.PostException;
 import com.nect.core.entity.notifications.enums.NotificationClassification;
 import com.nect.core.entity.notifications.enums.NotificationScope;
 import com.nect.core.entity.notifications.enums.NotificationType;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.workspace.Post;
 import com.nect.core.entity.team.workspace.PostLike;
 import com.nect.core.entity.team.workspace.PostMention;
@@ -55,7 +50,6 @@ public class PostService {
     private final PostSharedDocumentRepository postSharedDocumentRepository;
     private final ProcessSharedDocumentRepository processSharedDocumentRepository;
 
-    private final ProjectHistoryPublisher historyPublisher;
     private final NotificationFacade notificationFacade;
 
     private List<User> validateAndLoadMentionReceivers(Long projectId, Long actorId, List<Long> mentionIds) {
@@ -170,19 +164,6 @@ public class PostService {
         // 멘션된 사람들에게 알림
         List<User> mentionReceivers = validateAndLoadMentionReceivers(projectId, userId, mentionIds);
         notifyBoardMention(project, author, saved.getId(), mentionReceivers, post.getTitle());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_CREATED,
-                HistoryTargetType.POST,
-                saved.getId(),
-                Map.of(
-                        "postType", saved.getPostType().name(),
-                        "title", saved.getTitle(),
-                        "mentionUserIds", mentionIds
-                )
-        );
 
         return new PostCreateResDto(saved.getId());
     }
@@ -446,30 +427,6 @@ public class PostService {
             throw new PostException(PostErrorCode.INVALID_REQUEST, "no changes");
         }
 
-        // 실제 변경이 있을 때만 publish
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("changed", changed);
-        meta.put("before", Map.of(
-                "postType", beforeType,
-                "title", beforeTitle,
-                "content", beforeContent
-        ));
-        meta.put("after", Map.of(
-                "postType", afterType,
-                "title", afterTitle,
-                "content", afterContent,
-                "mentionUserIds", (afterMentionIds != null ? afterMentionIds : beforeMentionIds)
-        ));
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_UPDATED,
-                HistoryTargetType.POST,
-                post.getId(),
-                meta
-        );
-
         return new PostUpdateResDto(post.getId(), post.getUpdatedAt());
     }
 
@@ -617,27 +574,8 @@ public class PostService {
                     "postId=" + postId + ", userId=" + userId);
         }
 
-        // before 스냅샷
-        final PostType beforeType = post.getPostType();
-        final String beforeTitle = post.getTitle();
-
         // 멘션도 soft delete 처리
          postMentionRepository.findAllByPostId(post.getId()).forEach(PostMention::softDelete);
-
-        // HISTORY 발행
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("postType", beforeType);
-        meta.put("title", beforeTitle);
-        meta.put("deletedAt", post.getDeletedAt());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.POST_DELETED,
-                HistoryTargetType.POST,
-                post.getId(),
-                meta
-        );
     }
 
     @Transactional(readOnly = true)

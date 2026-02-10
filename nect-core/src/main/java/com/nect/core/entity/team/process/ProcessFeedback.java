@@ -42,11 +42,11 @@ public class ProcessFeedback extends BaseEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private ProcessFeedback(Process process, String content, User createdBy) {
+    private ProcessFeedback(Process process, String content, User createdBy, ProcessFeedbackStatus status) {
         this.process = process;
         this.content = content;
         this.createdBy = createdBy;
-        this.status = ProcessFeedbackStatus.OPEN;
+        this.status = (status != null) ? status : ProcessFeedbackStatus.OPEN;
     }
 
     public void updateContent(String content) {

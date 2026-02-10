@@ -104,7 +104,7 @@ public class MyPageProjectQueryService {
 
     public MyProjectsResponseDto.ProjectFieldResponse getProjectFields(Long projectId) {
         List<ProjectInterest> projectInterests = projectInterestFieldRepository.findByProjectId(projectId);
-        return MyProjectsResponseDto.ProjectFieldResponse.ofProject(projectInterests);
+        return MyProjectsResponseDto.ProjectFieldResponse.ofProject(projectId, projectInterests);
     }
 
     public MyProjectsResponseDto.StringListResponse getPurposes(Long projectId) {

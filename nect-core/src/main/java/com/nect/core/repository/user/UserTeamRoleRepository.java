@@ -1,9 +1,10 @@
 package com.nect.core.repository.user;
 
-import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +31,20 @@ public interface UserTeamRoleRepository extends JpaRepository<UserTeamRole, Long
     );
 
     List<UserTeamRole> findAllByProjectId(Long projectId);
+
+    @Query("""
+            SELECT utr.project.id as projectId, sum(utr.requiredCount) as requirementSum
+            FROM UserTeamRole utr
+            WHERE utr.project.id  in :projectIds
+            GROUP BY utr.project.id
+    """)
+    List<ProjectRequirementRow> sumRequirementByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+    interface ProjectRequirementRow{
+        Long getProjectId();
+        Integer getRequirementSum();
+    }
+
+
+
 }

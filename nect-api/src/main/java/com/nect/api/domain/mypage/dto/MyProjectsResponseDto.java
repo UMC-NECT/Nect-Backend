@@ -78,9 +78,7 @@ public class MyProjectsResponseDto {
         Long projectId;
         private List<InterestInfo> fields;
 
-        public static ProjectFieldResponse ofProject(List<ProjectInterest> interests) {
-
-            Long projectId = interests.getFirst().getProject().getId();
+        public static ProjectFieldResponse ofProject(Long projectId, List<ProjectInterest> interests) {
 
             List<InterestInfo> fields = interests.stream()
                     .map(interest -> new InterestInfo(interest.getInterestField().getDescription(), interest.getSelected()))

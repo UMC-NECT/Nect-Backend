@@ -23,7 +23,6 @@ import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.process.*;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.enums.AssignmentRole;
-import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
 import com.nect.core.entity.team.process.enums.ProcessType;
 import com.nect.core.entity.user.User;
@@ -62,6 +61,8 @@ public class ProcessService {
 
     private final S3Service s3Service;
     private final ProcessLaneOrderService processLaneOrderService;
+    private final NotificationFacade notificationFacade;
+    private final ProjectHistoryPublisher historyPublisher;
 
     private static final String TEAM_LANE_KEY = "TEAM";
 
@@ -103,9 +104,6 @@ public class ProcessService {
             }
         }
     }
-
-    private final NotificationFacade notificationFacade;
-    private final ProjectHistoryPublisher historyPublisher;
 
     // 헬퍼 메서드
     private void assertActiveProjectMember(Long projectId, Long userId) {
@@ -405,6 +403,7 @@ public class ProcessService {
         Process process = Process.builder()
                 .project(project)
                 .createdBy(writer)
+                .updatedBy(writer)
                 .title(req.processTitle())
                 .content(req.processContent())
                 .build();
@@ -565,27 +564,10 @@ public class ProcessService {
         /*
          * HISTORY: Process 생성 완료 후 이벤트 발행
          * - 저장은 HistoryEventHandler가 AFTER_COMMIT 시점에 수행(트랜잭션 성공 시에만 기록)
-         * - metaJson에는 생성 시점 핵심 스냅샷(title/status/period)만 담는다.
+         * - metaJson에는 생성 시점 핵심 스냅샷만 담는다.
          * */
         Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("title", saved.getTitle());
-        meta.put("status", saved.getStatus());
-        meta.put("startAt", saved.getStartAt());
-        meta.put("endAt", saved.getEndAt());
-        meta.put("roleFields", roleFields);
-        meta.put("customFieldName", roleFields.contains(RoleField.CUSTOM) ? customName : null);
-        meta.put("assigneeIds", assigneeIds);
-        meta.put("mentionUserIds", mentionIds);
-        meta.put("fileIds", fileIds);
-        List<Map<String, String>> linkMetas = links.stream()
-                .filter(Objects::nonNull)
-                .map(l -> Map.of(
-                        "title", l.title() == null ? "" : l.title().trim(),
-                        "url", l.url() == null ? "" : l.url().trim()
-                ))
-                .toList();
-
-        meta.put("links", linkMetas);
+        meta.put("processTitle", saved.getTitle());
 
         historyPublisher.publish(
                 projectId,
@@ -818,6 +800,23 @@ public class ProcessService {
                 })
                 .toList();
 
+        User writer = process.getCreatedBy();
+        User lastEditor = (process.getUpdatedBy() != null) ? process.getUpdatedBy() : writer;
+
+        ProjectUser writerMember = projectUserRepository
+                .findByUserIdAndProject(writer.getUserId(), process.getProject())
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "writer must be active project member. projectId=" + projectId + ", userId=" + writer.getUserId()
+                ));
+
+        ProjectUser editorMember = null;
+        try {
+            editorMember = projectUserRepository
+                    .findByUserIdAndProject(lastEditor.getUserId(), process.getProject())
+                    .orElse(null);
+        } catch (Exception ignored) {}
+
         return new ProcessDetailResDto(
                 process.getId(),
                 process.getTitle(),
@@ -833,6 +832,20 @@ public class ProcessService {
                 taskItems,
                 feedbacks,
                 attachments,
+                new ProcessDetailResDto.WriterDto(
+                        writer.getUserId(),
+                        writer.getName(),
+                        writer.getNickname(),
+                        writerMember.getRoleField(),
+                        writerMember.getCustomRoleFieldName()
+                ),
+                new ProcessDetailResDto.LastEditedByDto(
+                        lastEditor.getUserId(),
+                        lastEditor.getName(),
+                        lastEditor.getNickname(),
+                        (editorMember == null) ? null : editorMember.getRoleField(),
+                        (editorMember == null) ? null : editorMember.getCustomRoleFieldName()
+                ),
                 process.getCreatedAt(),
                 process.getUpdatedAt(),
                 process.getDeletedAt()
@@ -907,6 +920,9 @@ public class ProcessService {
                         ProcessErrorCode.PROCESS_NOT_FOUND,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
+
+        User actor = userRepository.findById(userId)
+                .orElseThrow(() -> new ProcessException(ProcessErrorCode.INVALID_REQUEST, "userId=" + userId));
 
 
         // before 스냅샷
@@ -1062,9 +1078,6 @@ public class ProcessService {
                     .toList();
 
             if (!addedMentionIds.isEmpty()) {
-                User actor = userRepository.findById(userId)
-                        .orElseThrow(() -> new ProcessException(ProcessErrorCode.INVALID_REQUEST, "userId=" + userId));
-
                 List<User> receivers = validateAndLoadMentionReceivers(projectId, userId, addedMentionIds);
 
                 notifyWorkspaceMention(
@@ -1259,23 +1272,8 @@ public class ProcessService {
          * */
         if (!changed.isEmpty()) {
             Map<String, Object> meta = new LinkedHashMap<>();
-            meta.put("changed", changed);
-            meta.put("before", Map.of(
-                    "title", beforeTitle,
-                    "content", beforeContent,
-                    "status", beforeStatus,
-                    "startAt", beforeStart,
-                    "endAt", beforeEnd,
-                    "mentionUserIds", beforeMentionIds
-            ));
-            meta.put("after", Map.of(
-                    "title", afterTitle,
-                    "content", afterContent,
-                    "status", afterStatus,
-                    "startAt", afterStart,
-                    "endAt", afterEnd,
-                    "mentionUserIds", (afterMentionIds != null ? afterMentionIds : beforeMentionIds)
-            ));
+            meta.put("processTitle", process.getTitle());
+            meta.put("changedKeys", changed.keySet());
 
             historyPublisher.publish(
                     projectId,
@@ -1287,6 +1285,10 @@ public class ProcessService {
             );
         }
 
+        if (changed.isEmpty()) {
+            throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "no changes");
+        }
+
         User writer = process.getCreatedBy();
 
         ProjectUser writerMember = projectUserRepository
@@ -1294,6 +1296,14 @@ public class ProcessService {
                 .orElseThrow(() -> new ProcessException(
                         ProcessErrorCode.INVALID_REQUEST,
                         "writer must be active project member. projectId=" + projectId + ", userId=" + writer.getUserId()
+                ));
+
+        // 마지막 수정자
+        ProjectUser editorMember = projectUserRepository
+                .findByUserIdAndProject(actor.getUserId(), process.getProject())
+                .orElseThrow(() -> new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "editor must be active project member. projectId=" + projectId + ", userId=" + actor.getUserId()
                 ));
 
         return new ProcessBasicUpdateResDto(
@@ -1315,6 +1325,13 @@ public class ProcessService {
                         writer.getNickname(),
                         writerMember.getRoleField(),
                         writerMember.getCustomRoleFieldName()
+                ),
+                new ProcessBasicUpdateResDto.LastEditedByDto(
+                        actor.getUserId(),
+                        actor.getName(),
+                        actor.getNickname(),
+                        editorMember.getRoleField(),
+                        editorMember.getCustomRoleFieldName()
                 )
         );
 
@@ -1396,20 +1413,6 @@ public class ProcessService {
         process.softDeleteCascade();
 
         processMentionRepository.softDeleteAllByProcessId(process.getId(), java.time.LocalDateTime.now());
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("title", beforeTitle);
-        meta.put("status", beforeStatus);
-        meta.put("deletedAt", process.getDeletedAt());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.PROCESS_DELETED,
-                HistoryTargetType.PROCESS,
-                process.getId(),
-                meta
-        );
     }
 
     private Map<Long, AttachmentSummaryDto> buildAttachmentSummaryMap(List<Long> processIds) {
@@ -2037,13 +2040,6 @@ public class ProcessService {
 
         // 변경 전 스냅샷
         ProcessStatus beforeStatus = process.getStatus();
-        // beforeOrder: lane_order 기준 (없으면 null)
-        Integer beforeOrder = processLaneOrderRepository
-                .findByProjectIdAndProcessIdAndLaneKeyAndStatusAndDeletedAtIsNull(projectId, processId, dbLaneKey, beforeStatus)
-                .map(ProcessLaneOrder::getSortOrder)
-                .orElse(null);
-        LocalDate beforeStart = process.getStartAt();
-        LocalDate beforeEnd = process.getEndAt();
 
         // 기간 변경
         LocalDate newStart = req.startDate();
@@ -2150,38 +2146,6 @@ public class ProcessService {
         LocalDate afterStart = process.getStartAt();
         LocalDate afterEnd = process.getEndAt();
 
-        boolean changed =
-                (beforeStatus != afterStatus) ||
-                        !java.util.Objects.equals(beforeOrder, afterOrder) ||
-                        !java.util.Objects.equals(beforeStart, afterStart) ||
-                        !java.util.Objects.equals(beforeEnd, afterEnd);
-
-        if (changed) {
-            java.util.Map<String, Object> meta = new java.util.LinkedHashMap<>();
-            meta.put("before", java.util.Map.of(
-                    "status", beforeStatus,
-                    "statusOrder", beforeOrder,
-                    "startAt", beforeStart,
-                    "endAt", beforeEnd
-            ));
-            meta.put("after", java.util.Map.of(
-                    "status", afterStatus,
-                    "statusOrder", afterOrder,
-                    "startAt", afterStart,
-                    "endAt", afterEnd
-            ));
-            meta.put("laneKey", apiLaneKeyForHistory);
-            meta.put("orderedProcessIds", orderedIds);
-
-            historyPublisher.publish(
-                    projectId,
-                    userId,
-                    HistoryAction.PROCESS_REORDERED,
-                    HistoryTargetType.PROCESS,
-                    processId,
-                    meta
-            );
-        }
 
         return new ProcessOrderUpdateResDto(
                 processId,
@@ -2452,19 +2416,6 @@ public class ProcessService {
         }
 
         process.updateStatus(after);
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("beforeStatus", before);
-        meta.put("afterStatus", after);
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.PROCESS_STATUS_CHANGED,
-                HistoryTargetType.PROCESS,
-                process.getId(),
-                meta
-        );
 
         return new ProcessStatusUpdateResDto(
                 process.getId(),
