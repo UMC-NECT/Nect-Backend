@@ -10,6 +10,8 @@ import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -89,16 +91,6 @@ class MyPageControllerRestDocsTest {
     @DisplayName("마이페이지 프로젝트 목록 조회 API")
     void getMyProjects() throws Exception {
         // given
-        MyProjectsResponseDto.TeamRoleInfo teamRole1 = MyProjectsResponseDto.TeamRoleInfo.builder()
-                .roleField(RoleField.FRONTEND)
-                .requiredCount(2)
-                .build();
-
-        MyProjectsResponseDto.TeamRoleInfo teamRole2 = MyProjectsResponseDto.TeamRoleInfo.builder()
-                .roleField(RoleField.BACKEND)
-                .requiredCount(2)
-                .build();
-
         MyProjectsResponseDto.LeaderInfo leader = MyProjectsResponseDto.LeaderInfo.builder()
                 .userId(100L)
                 .name("김팀장")
@@ -132,7 +124,7 @@ class MyPageControllerRestDocsTest {
                 .imageName("project_image_001.jpg")
                 .plannedStartedOn(LocalDate.of(2026, 3, 1))
                 .plannedEndedOn(LocalDate.of(2026, 8, 31))
-                .teamRoles(List.of(teamRole1, teamRole2))
+                .teamRoles(mockProjectMemberStatistics())
                 .leader(leader)
                 .teamMemberProjects(List.of(teamMemberProject1, teamMemberProject2))
                 .build();
@@ -144,16 +136,7 @@ class MyPageControllerRestDocsTest {
                 .imageName("project_image_003.jpg")
                 .plannedStartedOn(LocalDate.of(2026, 2, 15))
                 .plannedEndedOn(LocalDate.of(2026, 7, 15))
-                .teamRoles(List.of(
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.BACKEND)
-                                .requiredCount(1)
-                                .build(),
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.BACKEND)
-                                .requiredCount(1)
-                                .build()
-                ))
+                .teamRoles(mockProjectMemberStatistics())
                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                         .userId(200L)
                         .name("이리더")
@@ -190,7 +173,7 @@ class MyPageControllerRestDocsTest {
                 .andExpect(jsonPath("$.body.projects[0].project_id").value(1))
                 .andExpect(jsonPath("$.body.projects[0].project_title").value("스마트 런칭 플랫폼"))
                 .andExpect(jsonPath("$.body.projects[0].description").value("AI 기반 맞춤형 프로젝트 매칭 플랫폼"))
-                .andExpect(jsonPath("$.body.projects[0].team_roles").isArray())
+                .andExpect(jsonPath("$.body.projects[0].team_roles").isMap())
                 .andExpect(jsonPath("$.body.projects[0].leader.user_id").value(100))
                 .andExpect(jsonPath("$.body.projects[0].team_member_projects").isArray())
                 .andDo(document("mypage-projects-get",
@@ -218,10 +201,14 @@ class MyPageControllerRestDocsTest {
                                         fieldWithPath("body.projects[].planned_started_on").description("예상 시작일 (YYYY-MM-DD)"),
                                         fieldWithPath("body.projects[].planned_ended_on").description("예상 종료일 (YYYY-MM-DD)"),
 
-                                        // team_roles 배열
-                                        fieldWithPath("body.projects[].team_roles[]").description("팀 역할 구성 목록"),
-                                        fieldWithPath("body.projects[].team_roles[].role_field").description("역할 필드 (FRONTEND, BACKEND, DESIGNER 등)"),
-                                        fieldWithPath("body.projects[].team_roles[].required_count").description("필요 인원 수"),
+                                        // team_roles 객체
+                                        fieldWithPath("body.projects[].team_roles").description("프로젝트 멤버 통계"),
+                                        fieldWithPath("body.projects[].team_roles.roles").description("Role 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role").description("Role"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].count").description("Role 인원 수"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
 
                                         // leader 객체
                                         fieldWithPath("body.projects[].leader").description("리더 정보").optional(),
@@ -241,6 +228,36 @@ class MyPageControllerRestDocsTest {
                                 .build()
                         )
                 ));
+    }
+
+    private ProjectMemberStatisticResponse mockProjectMemberStatistics() {
+        return new ProjectMemberStatisticResponse(List.of(
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.PLANNER,
+                        1,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DESIGNER,
+                        2,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DEVELOPER,
+                        3,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.MARKETER,
+                        0,
+                        List.of()
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.OTHER,
+                        0,
+                        List.of()
+                )
+        ));
     }
 
     @Test
