@@ -1,4 +1,4 @@
-package com.nect.api.team.chat.controller;
+package com.nect.api.domain.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
@@ -171,7 +171,7 @@ class ChatFileControllerTest {
                                 partWithName("file").description("업로드할 파일(MultipartFile)")
                         ),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("채팅 파일 업로드")
                                 .description("채팅방에 파일을 업로드하고 파일 메시지를 전송합니다.")
                                 .pathParameters(
@@ -230,7 +230,7 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("채팅 파일 삭제")
                                 .description("채팅 파일을 삭제합니다.")
                                 .pathParameters(
@@ -295,7 +295,7 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("프로젝트 채팅 앨범 조회")
                                 .description("프로젝트 내 채팅방의 최근 파일 목록을 조회합니다.")
                                 .pathParameters(
@@ -368,7 +368,7 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("채팅방 앨범 상세 조회")
                                 .description("채팅방의 파일 앨범 상세 목록을 페이징 조회합니다.")
                                 .pathParameters(
@@ -435,7 +435,7 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("채팅 파일 상세 조회")
                                 .description("채팅 파일의 상세 정보를 조회합니다.")
                                 .pathParameters(
@@ -486,7 +486,7 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
+                                .tag("Workspace Chat")
                                 .summary("채팅 파일 다운로드(리다이렉트)")
                                 .description("파일 다운로드 URL을 조회한 뒤 302(FOUND)로 Location 헤더에 담아 리다이렉트합니다.")
                                 .pathParameters(
@@ -508,7 +508,7 @@ class ChatFileControllerTest {
     @Test
     @DisplayName("채팅 파일을 공유 문서함으로 등록 API")
     void createSharedDocumentFromChat() throws Exception {
-        // Given
+
         Long roomId = 1L;
         Long projectId = 10L;
         Long chatFileId = 100L;
@@ -517,16 +517,15 @@ class ChatFileControllerTest {
         SharedDocumentCreateByChatRequestDto request = new SharedDocumentCreateByChatRequestDto(chatFileId);
 
         SharedDocumentCreateResDto response = new SharedDocumentCreateResDto(
-                50L,                    // 생성된 문서 ID
-                "회의록_최종.pdf",        // 제목
-                DocumentType.FILE       // 문서 타입
+                50L,
+                "회의록_최종.pdf",
+                DocumentType.FILE
         );
 
-        // chatFileService (또는 위 컨트롤러 구조에 따라 주입된 서비스) Mocking
         given(chatFileService.createFromChatFile(eq(projectId), eq(roomId), eq(userId), eq(chatFileId)))
                 .willReturn(response);
 
-        // When & Then
+
         mockMvc.perform(
                         post("/api/v1/chats/rooms/{roomId}/shared-documents", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
@@ -543,8 +542,8 @@ class ChatFileControllerTest {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("채팅 파일을 공유 문서함으로 등록 API")
+                                .tag("Workspace Chat")
+                                .summary("채팅 파일을 공유 문서함으로 등록")
                                 .description("채팅방에 업로드된 파일을 해당 프로젝트의 공유 문서함 자산으로 등록합니다.")
                                 .requestHeaders(
                                         headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
