@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 알림(Notification) 도메인 엔티티를 생성하고
@@ -75,7 +76,7 @@ public class NotificationService {
     }
 
     // 알림 목록 조회
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = false)
     public NotificationListResponse getNotifications(
             Long userId,
             NotificationSearchFilter filter,
@@ -124,6 +125,14 @@ public class NotificationService {
         Long nextCursor = (notifications.size() == safeSize)
                 ? notifications.getLast().getId()
                 : null;
+
+        List<Long> unReadProjectIds = notifications.stream()
+                .filter(n -> !n.getIsRead()) // 읽지 않은 알림에 대해서만
+                .map(Notification::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        notificationRepository.markAllAsReadByIds(unReadProjectIds);
 
         // API 응답 객체 생성 후 반환
         return NotificationListResponse.from(notifications, nextCursor);
