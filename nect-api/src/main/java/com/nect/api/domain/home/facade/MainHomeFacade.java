@@ -7,6 +7,7 @@ import com.nect.api.domain.home.service.HomeProjectQueryService;
 import com.nect.api.domain.home.service.HomeStatisticsQueryService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
+import com.nect.api.domain.team.project.service.ProjectMemberQueryService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
@@ -34,6 +35,7 @@ public class MainHomeFacade {
     private final HomeStatisticsQueryService statisticsQueryService;
     private final S3Service s3Service;
     private final MyPageProjectQueryService myPageProjectQueryService;
+    private final ProjectMemberQueryService projectMemberQueryService;
 
     // 모집 중인 프로젝트
     public HomeProjectResponse getRecruitingProjects(Long userId, int count, Role role, InterestField interest){
@@ -75,6 +77,11 @@ public class MainHomeFacade {
                 .serviceUsers(serviceUsers)
                 .planFiles(planFiles)
                 .build();
+    }
+
+    // 홈화면 모집 중인 프로젝트 - 팀원 목록 조회
+    public HomeProjectMembersResponse homeReadProjectUsers(Long projectId) {
+        return projectMemberQueryService.homeReadProjectUsers(projectId);
     }
 
     // 홈화면 추천 프로젝트들

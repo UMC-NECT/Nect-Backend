@@ -6,6 +6,7 @@ import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectDetailResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
+import com.nect.api.domain.home.dto.HomeProjectMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.dto.HomeStatisticResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
@@ -18,6 +19,7 @@ import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -153,6 +155,34 @@ class HomeControllerTest {
                                         parameterWithName("projectId").description("프로젝트 ID")
                                 )
                                 .responseFields(projectDetailResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("모집 중인 프로젝트 팀원 목록 조회 API")
+    void 모집_중인_프로젝트_팀원_목록_조회_API() throws Exception {
+        given(mainHomeFacade.homeReadProjectUsers(eq(10L)))
+                .willReturn(mockProjectMembersResponse());
+
+        mockMvc.perform(get("/api/v1/home/projects/{projectId}/members", 10L)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("home-projects-recruiting-members",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Home")
+                                .summary("모집 중인 프로젝트 팀원 목록 조회")
+                                .description("홈 화면에서 모집 중인 프로젝트의 팀원 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .responseFields(projectMembersResponseFields())
                                 .build()
                         )
                 ));
@@ -418,6 +448,33 @@ class HomeControllerTest {
         ));
     }
 
+    private HomeProjectMembersResponse mockProjectMembersResponse() {
+        return new HomeProjectMembersResponse(List.of(
+                new HomeProjectMembersResponse.UserInfo(
+                        1L,
+                        "홍길동",
+                        "hong",
+                        "https://example.com/profile/1.png",
+                        "백엔드 개발자입니다.",
+                        RoleField.BACKEND,
+                        null,
+                        "Backend",
+                        ProjectMemberType.LEADER
+                ),
+                new HomeProjectMembersResponse.UserInfo(
+                        2L,
+                        "이영희",
+                        "lee",
+                        "https://example.com/profile/2.png",
+                        "UI/UX 디자이너입니다.",
+                        RoleField.UI_UX,
+                        null,
+                        "Design",
+                        ProjectMemberType.MEMBER
+                )
+        ));
+    }
+
     private HomeProjectDetailResponse mockProjectDetailResponse() {
         MyProjectsResponseDto.ProjectInfo projectInfo = MyProjectsResponseDto.ProjectInfo.builder()
                 .projectId(10L)
@@ -602,6 +659,24 @@ class HomeControllerTest {
                 fieldWithPath("body.members[].status").description("상태"),
                 fieldWithPath("body.members[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.members[].roles").description("역할 목록")
+        );
+    }
+
+    private static List<FieldDescriptor> projectMembersResponseFields() {
+        return List.of(
+                fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                fieldWithPath("status.message").description("응답 메시지"),
+                fieldWithPath("status.description").optional().description("응답 상세 설명"),
+                fieldWithPath("body.users").description("프로젝트 팀원 목록"),
+                fieldWithPath("body.users[].user_id").description("유저 ID"),
+                fieldWithPath("body.users[].name").description("이름"),
+                fieldWithPath("body.users[].nickname").description("닉네임"),
+                fieldWithPath("body.users[].profile_image_url").description("프로필 이미지 URL"),
+                fieldWithPath("body.users[].bio").description("자기소개"),
+                fieldWithPath("body.users[].role_field").description("역할 필드"),
+                fieldWithPath("body.users[].custom_role_field_name").optional().description("커스텀 역할명"),
+                fieldWithPath("body.users[].part_label").description("파트 라벨"),
+                fieldWithPath("body.users[].member_type").description("프로젝트 멤버 타입")
         );
     }
 
