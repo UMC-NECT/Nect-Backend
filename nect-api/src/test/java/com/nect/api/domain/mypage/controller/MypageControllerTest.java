@@ -944,7 +944,7 @@ class MypageControllerTest extends NectDocumentApiTester {
 
         String requestJson = """
             {
-              "roleField": "BACKEND",
+              "role_field": "BACKEND",
               "count": 5
             }
             """;
