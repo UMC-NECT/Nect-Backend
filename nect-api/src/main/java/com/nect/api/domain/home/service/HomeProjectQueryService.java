@@ -225,6 +225,7 @@ public class HomeProjectQueryService {
                 .teamRoles(memberStatistics)
                 .leader(leaderInfo)
                 .teamMemberProjects(teamMemberProjects)
+                .recruitmentStatus(project.getRecruitmentStatus())
                 .build();
     }
 

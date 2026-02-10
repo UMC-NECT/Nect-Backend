@@ -93,6 +93,7 @@ public class MyPageProjectQueryService {
                             .teamRoles(teamRoles)
                             .leader(leadersMap.get(projectId))
                             .teamMemberProjects(teamMemberProjectsMap.getOrDefault(projectId, List.of()))
+                            .recruitmentStatus(project.getRecruitmentStatus())
                             .build();
                 })
                 .collect(Collectors.toList());

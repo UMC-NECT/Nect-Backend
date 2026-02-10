@@ -6,6 +6,7 @@ import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -30,6 +31,7 @@ public class MyProjectsResponseDto {
         private LocalDate plannedStartedOn;
         private LocalDate plannedEndedOn;
         private String imageName;
+        private RecruitmentStatus recruitmentStatus;
 
         private ProjectMemberStatisticResponse teamRoles;
         private LeaderInfo leader;
