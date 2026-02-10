@@ -126,12 +126,13 @@ public class NotificationService {
                 ? notifications.getLast().getId()
                 : null;
 
-        List<Long> projectIds = notifications.stream()
+        List<Long> unReadProjectIds = notifications.stream()
+                .filter(n -> !n.getIsRead()) // 읽지 않은 알림에 대해서만
                 .map(Notification::getId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        notificationRepository.markAllAsReadByIds(projectIds);
+        notificationRepository.markAllAsReadByIds(unReadProjectIds);
 
         // API 응답 객체 생성 후 반환
         return NotificationListResponse.from(notifications, nextCursor);
