@@ -9,6 +9,8 @@ import com.nect.core.repository.team.history.ProjectHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -22,10 +24,10 @@ public class ProjectHistoryEventHandler {
     /**
      * 프로세스 CRUD 트랜잭션이 "커밋된 이후" 히스토리 저장
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(ProjectHistoryEvent e) {
         try {
-            // DB 조회 없이 참조만 잡음 (프록시)
             Project projectRef = projectRepository.getReferenceById(e.projectId());
 
             ProjectHistory history = ProjectHistory.builder()

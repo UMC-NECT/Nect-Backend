@@ -62,24 +62,6 @@ public class BoardsSharedDocumentFacade {
     public SharedDocumentCreatedResDto uploadFile(Long projectId, Long userId, MultipartFile file) {
         FileUploadResDto uploaded = fileService.upload(projectId, userId, file);
 
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("documentId", uploaded.fileId());
-        meta.put("type", "FILE");
-        meta.put("title", uploaded.fileName());
-        meta.put("fileName", uploaded.fileName());
-        meta.put("fileExt", uploaded.fileType());
-        meta.put("fileSize", uploaded.fileSize());
-
-        projectHistoryPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_CREATED,
-                HistoryTargetType.DOCUMENT,
-                uploaded.fileId(),
-                meta
-        );
-
         return new SharedDocumentCreatedResDto(
                 uploaded.fileId(),
                 DocumentType.FILE,

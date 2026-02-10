@@ -53,6 +53,12 @@ public record ProcessDetailResDto(
         @JsonProperty("attachments")
         List<AttachmentDto> attachments,
 
+        @JsonProperty("writer")
+        WriterDto writer,
+
+        @JsonProperty("last_edited_by")
+        LastEditedByDto lastEditedBy,
+
         @JsonProperty("created_at")
         LocalDateTime createdAt,
 
@@ -71,4 +77,30 @@ public record ProcessDetailResDto(
         feedbacks = (feedbacks == null) ? List.of() : feedbacks;
         attachments = (attachments == null) ? List.of() : attachments;
     }
+
+    public record WriterDto(
+            @JsonProperty("user_id")
+            Long userId,
+            @JsonProperty("name")
+            String name,
+            @JsonProperty("nickname")
+            String nickname,
+            @JsonProperty("role_field")
+            RoleField roleField,
+            @JsonProperty("custom_field_name")
+            String customFieldName
+    ) {}
+
+    public record LastEditedByDto(
+            @JsonProperty("user_id")
+            Long userId,
+            @JsonProperty("user_name")
+            String userName,
+            @JsonProperty("nickname")
+            String nickname,
+            @JsonProperty("role_field")
+            RoleField roleField,
+            @JsonProperty("custom_role_field_name")
+            String customRoleFieldName
+    ) {}
 }

@@ -3,6 +3,7 @@ package com.nect.api.domain.team.history.controller;
 import com.epages.restdocs.apispec.ResourceDocumentation;
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.team.history.dto.res.ProjectHistoryItemResDto;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryListResDto;
 import com.nect.api.domain.team.history.dto.res.ProjectHistoryResDto;
 import com.nect.api.domain.team.history.service.ProjectHistoryService;
@@ -12,6 +13,7 @@ import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.history.enums.HistoryAction;
 import com.nect.core.entity.team.history.enums.HistoryTargetType;
+import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -111,22 +113,36 @@ class ProjectHistoryControllerTest {
         ProjectHistoryListResDto response = new ProjectHistoryListResDto(
                 99L, // next_cursor
                 List.of(
-                        new ProjectHistoryResDto(
-                                100L,                       // history_id
-                                2L,                         // actor_user_id
+                        new ProjectHistoryItemResDto(
+                                100L, // history_id
                                 HistoryAction.PROCESS_CREATED,
                                 HistoryTargetType.PROCESS,
-                                10L,                        // target_id
-                                "{\"foo\":\"bar\"}",
+                                10L,  // target_id
+                                new ProjectHistoryItemResDto.ActorDto(
+                                        2L,                 // user_id
+                                        "임시유저",           // name
+                                        "패트",              // nickname
+                                        RoleField.BACKEND,   // role_field
+                                        null                // custom_field_name
+                                ),
+                                "프로세스를 생성했어요.",          // main_message
+                                "프로세스: 요구사항 정리",          // content_message
                                 LocalDateTime.of(2026, 1, 24, 12, 0, 0)
                         ),
-                        new ProjectHistoryResDto(
+                        new ProjectHistoryItemResDto(
                                 99L,
-                                3L,
                                 HistoryAction.PROCESS_UPDATED,
                                 HistoryTargetType.TASK_ITEM,
                                 55L,
-                                "{\"before\":\"A\",\"after\":\"B\"}",
+                                new ProjectHistoryItemResDto.ActorDto(
+                                        3L,
+                                        "임시유저2",
+                                        "닉네임2",
+                                        RoleField.CUSTOM,
+                                        "디자이너" // custom_field_name
+                                ),
+                                "태스크를 수정했어요.",
+                                "변경: A → B",
                                 LocalDateTime.of(2026, 1, 24, 12, 1, 0)
                         )
                 )
@@ -170,11 +186,20 @@ class ProjectHistoryControllerTest {
 
                                                 fieldWithPath("body.items").type(ARRAY).description("히스토리 로그 목록(최대 10개)"),
                                                 fieldWithPath("body.items[].history_id").type(NUMBER).description("히스토리 ID"),
-                                                fieldWithPath("body.items[].actor_user_id").type(NUMBER).description("행위자(유저) ID"),
                                                 fieldWithPath("body.items[].action").type(STRING).description("액션 타입(HistoryAction)"),
                                                 fieldWithPath("body.items[].target_type").type(STRING).description("대상 타입(HistoryTargetType)"),
                                                 fieldWithPath("body.items[].target_id").type(NUMBER).description("대상 ID"),
-                                                fieldWithPath("body.items[].meta_json").optional().type(STRING).description("메타 정보(JSON 문자열)"),
+
+                                                fieldWithPath("body.items[].actor").type(OBJECT).description("행위자 정보"),
+                                                fieldWithPath("body.items[].actor.user_id").type(NUMBER).description("행위자(유저) ID"),
+                                                fieldWithPath("body.items[].actor.name").type(STRING).description("행위자 이름"),
+                                                fieldWithPath("body.items[].actor.nickname").type(STRING).description("행위자 닉네임"),
+                                                fieldWithPath("body.items[].actor.role_field").type(STRING).description("행위자 역할(RoleField)"),
+                                                fieldWithPath("body.items[].actor.custom_field_name").optional().type(STRING)
+                                                        .description("커스텀 역할명(role_field=CUSTOM 인 경우)"),
+
+                                                fieldWithPath("body.items[].main_message").type(STRING).description("메인 메시지"),
+                                                fieldWithPath("body.items[].content_message").type(STRING).description("상세 메시지"),
                                                 fieldWithPath("body.items[].created_at").type(STRING).description("생성일시(ISO-8601)")
                                         )
                                         .build()
