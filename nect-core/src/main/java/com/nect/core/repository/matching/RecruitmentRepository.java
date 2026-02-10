@@ -19,14 +19,6 @@ public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> 
             RoleField field
     );
 
-    @Query("""
-        select r.project.id as projectId, sum(r.capacity) as capacitySum
-        from Recruitment r
-        where r.project.id in :projectIds
-        group by r.project.id
-    """)
-    List<ProjectCapacityRow> sumCapacityByProjectIds(@Param("projectIds") List<Long> projectIds);
-
     List<Recruitment> findByProject(Project project);
 
     List<Recruitment> findAllByProject_IdIn(@Param("projectIds") List<Long> projectIds);
@@ -43,15 +35,4 @@ public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> 
 
     Optional<Recruitment> findByIdAndProject(Long recruitmentId, Project project);
 
-
-    interface ProjectCapacityRow {
-        Long getProjectId();
-        Integer getCapacitySum();
-    }
-
-    interface ProjectRoleCapacityRow {
-        Long getProjectId();
-        String getRoleName();
-        Integer getCapacitySum();
-    }
 }
