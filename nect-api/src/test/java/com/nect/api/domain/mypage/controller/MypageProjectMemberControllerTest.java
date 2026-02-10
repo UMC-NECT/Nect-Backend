@@ -217,7 +217,7 @@ class MypageProjectMemberControllerTest {
                         preprocessResponse(prettyPrint()),
                         resource(
                                 ResourceSnippetParameters.builder()
-                                        .tag("MyPage")
+                                        .tag("Mypage")
                                         .summary("프로젝트 유저 순서 재정렬")
                                         .description("프로젝트 멤버들의 정렬 순서를 지정합니다. userId를 보내주시면 됩니다.")
                                         .pathParameters(
