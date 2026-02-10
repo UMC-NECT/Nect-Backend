@@ -159,7 +159,7 @@ public class MainHomeFacade {
                     Integer dDay = homeProjectQueryService.getDDay(p);
                     Integer maxMemberCount = batch.maxMemberCountByProjectId().getOrDefault(projectId, 0);
                     Integer currentMemberCount = batch.activeCountByProjectId().getOrDefault(projectId, 0);
-                    Map<String, Integer> partCounts = batch.partCountsByProjectId().getOrDefault(projectId, Map.of());
+                    var memberStatistics = batch.memberStatisticsByProjectId().get(projectId);
 
                     return HomeProjectItem.of(
                             projectId,
@@ -173,7 +173,7 @@ public class MainHomeFacade {
                             currentMemberCount,
                             false,
                             p.getRecruitmentStatus() != null ? p.getRecruitmentStatus().getStatus() : null,
-                            partCounts
+                            memberStatistics
                     );
                 })
                 .toList();

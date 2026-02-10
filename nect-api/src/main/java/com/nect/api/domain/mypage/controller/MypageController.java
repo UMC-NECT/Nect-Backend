@@ -19,6 +19,8 @@ import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserTypeReqDto;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -45,6 +47,7 @@ public class MypageController {
     private final ProjectUserService projectUserService;
     private final RecruitmentService recruitmentService;
     private final UserTeamRoleQueryService userTeamRoleQueryService;
+    private final ProjectMemberStatisticService projectMemberStatisticService;
 
     /**
      * 프로필 조회
@@ -111,11 +114,10 @@ public class MypageController {
 
     // 팀 구성 편집 조회(파트,인원)
     @GetMapping("/{projectId}/team-roles")
-    public ApiResponse<List<TeamRoleResponseDto>> getTeamRoles(
+    public ApiResponse<ProjectMemberStatisticResponse> getTeamRoles(
             @PathVariable Long projectId
     ) {
-        List<TeamRoleResponseDto> response = userTeamRoleQueryService.getTeamRoles(projectId);
-        return ApiResponse.ok(response);
+        return ApiResponse.ok(projectMemberStatisticService.getStatistics(projectId));
     }
 
     // 팀 구성 편집

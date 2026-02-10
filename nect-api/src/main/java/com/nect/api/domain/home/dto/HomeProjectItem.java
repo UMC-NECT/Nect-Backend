@@ -1,12 +1,11 @@
 package com.nect.api.domain.home.dto;
 
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.Map;
 
 @Getter
 @Builder(access = AccessLevel.PRIVATE)
@@ -24,7 +23,7 @@ public class HomeProjectItem {
     private Integer curMemberCount;
     private Boolean isScrapped;
     private String status;
-    private Map<String, Integer> roles;
+    private ProjectMemberStatisticResponse roles;
 
     public static HomeProjectItem of(
             Long projectId,
@@ -38,7 +37,7 @@ public class HomeProjectItem {
             Integer curMemberCount,
             Boolean isScrapped,
             String status,
-            Map<String, Integer> roles
+            ProjectMemberStatisticResponse roles
     ) {
         return HomeProjectItem.builder()
                 .projectId(projectId)

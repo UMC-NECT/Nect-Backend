@@ -8,7 +8,6 @@ import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.TeamRoleAddRequestDto;
-import com.nect.api.domain.mypage.dto.TeamRoleResponseDto;
 import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.service.MypageService;
@@ -16,11 +15,14 @@ import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
+import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.enums.InterestField;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -64,6 +66,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private UserTeamRoleQueryService userTeamRoleQueryService;
+
+    @MockitoBean
+    private ProjectMemberStatisticService projectMemberStatisticService;
 
     @Test
     void getProfile() throws Exception {
@@ -888,20 +893,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
         Long projectId = 1L;
 
-        List<TeamRoleResponseDto> responseList = List.of(
-                TeamRoleResponseDto.builder()
-                        .roleField(RoleField.BACKEND)
-                        .customRoleFieldName(null)
-                        .requiredCount(3)
-                        .build(),
-                TeamRoleResponseDto.builder()
-                        .roleField(RoleField.CUSTOM)
-                        .customRoleFieldName("AI Researcher")
-                        .requiredCount(1)
-                        .build()
-        );
+        ProjectMemberStatisticResponse response = mockProjectMemberStatistics();
 
-        given(userTeamRoleQueryService.getTeamRoles(projectId)).willReturn(responseList);
+        given(projectMemberStatisticService.getStatistics(projectId)).willReturn(response);
 
 
         mockMvc.perform(get("/api/v1/mypage/{projectId}/team-roles", projectId)
@@ -926,9 +920,12 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("status.message").description("상태 메시지"),
                                         fieldWithPath("status.description").description("상태 설명").optional(),
 
-                                        fieldWithPath("body[].role_field").description("직무 분야"),
-                                        fieldWithPath("body[].custom_role_field_name").type(JsonFieldType.STRING).description("커스텀 직무명").optional(),
-                                        fieldWithPath("body[].required_count").description("설정된 인원 수")
+                                        fieldWithPath("body.roles").description("Role 기준 통계 목록"),
+                                        fieldWithPath("body.roles[].role").description("Role"),
+                                        fieldWithPath("body.roles[].count").description("Role 인원 수"),
+                                        fieldWithPath("body.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                                        fieldWithPath("body.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.roles[].role_fields[].count").description("RoleField 인원 수")
                                 )
                                 .build()
                         )
@@ -999,16 +996,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 .imageName("project-image.jpg")
                                 .plannedStartedOn(LocalDate.of(2024, 1, 1))
                                 .plannedEndedOn(LocalDate.of(2024, 6, 30))
-                                .teamRoles(List.of(
-                                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                                .roleField(RoleField.BACKEND)
-                                                .requiredCount(2)
-                                                .build(),
-                                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                                .roleField(RoleField.FRONTEND)
-                                                .requiredCount(2)
-                                                .build()
-                                ))
+                                .teamRoles(mockProjectMemberStatistics())
                                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                                         .userId(1L)
                                         .name("김리더")
@@ -1058,9 +1046,13 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("body.projects[].planned_started_on").description("프로젝트 시작 예정일").optional(),
                                         fieldWithPath("body.projects[].planned_ended_on").description("프로젝트 종료 예정일").optional(),
 
-                                        fieldWithPath("body.projects[].team_roles[]").description("팀 구성(직무) 정보"),
-                                        fieldWithPath("body.projects[].team_roles[].role_field").description("직무 분야 (Enum)"),
-                                        fieldWithPath("body.projects[].team_roles[].required_count").description("필요 인원 수"),
+                                        fieldWithPath("body.projects[].team_roles").description("프로젝트 멤버 통계"),
+                                        fieldWithPath("body.projects[].team_roles.roles").description("Role 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role").description("Role"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].count").description("Role 인원 수"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
 
                                         fieldWithPath("body.projects[].leader").description("프로젝트 리더 정보"),
                                         fieldWithPath("body.projects[].leader.user_id").description("리더 유저 ID"),
@@ -1078,5 +1070,35 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 .build()
                         )
                 ));
+    }
+
+    private ProjectMemberStatisticResponse mockProjectMemberStatistics() {
+        return new ProjectMemberStatisticResponse(List.of(
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.PLANNER,
+                        1,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DESIGNER,
+                        2,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DEVELOPER,
+                        3,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.MARKETER,
+                        0,
+                        List.of()
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.OTHER,
+                        0,
+                        List.of()
+                )
+        ));
     }
 }
