@@ -1,9 +1,11 @@
 package com.nect.api.domain.mypage.controller;
 
+import com.nect.api.domain.mypage.dto.*;
 import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
+import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
@@ -12,6 +14,7 @@ import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
 import com.nect.api.domain.mypage.service.MypageService;
+import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
@@ -28,7 +31,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,6 +44,7 @@ public class MypageController {
     private final MyPageProjectCommandService projectCommandService;
     private final ProjectUserService projectUserService;
     private final RecruitmentService recruitmentService;
+    private final UserTeamRoleQueryService userTeamRoleQueryService;
 
     /**
      * 프로필 조회
@@ -104,7 +107,29 @@ public class MypageController {
     }
 
 
-    // 모집정보 추가
+
+
+    // 팀 구성 편집 조회(파트,인원)
+    @GetMapping("/{projectId}/team-roles")
+    public ApiResponse<List<TeamRoleResponseDto>> getTeamRoles(
+            @PathVariable Long projectId
+    ) {
+        List<TeamRoleResponseDto> response = userTeamRoleQueryService.getTeamRoles(projectId);
+        return ApiResponse.ok(response);
+    }
+
+    // 팀 구성 편집
+    @PostMapping("/{projectId}/team-roles")
+    public ApiResponse<Void> addTeamRole(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long projectId,
+            @RequestBody @Valid TeamRoleAddRequestDto request) {
+
+        userTeamRoleQueryService.addTeamRole(userDetails.getUserId(), projectId, request);
+
+        return ApiResponse.ok(null);
+    }
+
 
     // 프로젝트 목표 조회
     @GetMapping("/projects/{projectId}/purposes")

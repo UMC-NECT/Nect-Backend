@@ -79,7 +79,7 @@ class IdeaAnalysisControllerTest {
     }
 
     @Test
-    @DisplayName("프로젝트 아이디어 분석 API")
+    @DisplayName("프로젝트 아이디어 분석")
     void 프로젝트_아이디어_분석_API() throws Exception {
         // given
         IdeaAnalysisRequestDto requestDto = IdeaAnalysisRequestDto.builder()
@@ -108,7 +108,7 @@ class IdeaAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("idea-analysis-create",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("아이디어 분석")
+                                .tag("Analysis")
                                 .summary("AI 프로젝트 아이디어 분석")
                                 .description("""
                                         사용자의 프로젝트 아이디어를 AI가 분석하여 팀 구성, 프로젝트 기간, 보완점, 주차별 로드맵을 제안합니다.
@@ -195,7 +195,7 @@ class IdeaAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("idea-analysis-page",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("아이디어 분석")
+                                .tag("Analysis")
                                 .summary("분석서 페이징 조회")
                                 .description("""
                                         사용자의 아이디어 분석 결과를 페이징하여 조회합니다.
@@ -366,7 +366,7 @@ class IdeaAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andDo(document("idea-analysis-delete",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("아이디어 분석")
+                                .tag("Analysis")
                                 .summary("분석서 삭제")
                                 .description("""
                                     사용자의 아이디어 분석 결과를 삭제합니다.
