@@ -399,13 +399,13 @@ public class WeekMissionService {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("processType", "WEEK_MISSION");
         meta.put("missionNumber", process.getMissionNumber());
-        meta.put("title", process.getTitle());
+        meta.put("processTitle", process.getTitle());
         meta.put("beforeStatus", before.name());
         meta.put("afterStatus", after.name());
 
         publishWeekMissionHistory(
                 projectId, userId, processId,
-                HistoryAction.PROCESS_STATUS_CHANGED,
+                HistoryAction.WEEK_MISSION_STATUS_CHANGED,
                 meta
         );
     }
@@ -504,9 +504,11 @@ public class WeekMissionService {
         notifyWorkspaceWeekMissionUpdated(project, actor, process);
 
         Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processType", "WEEK_MISSION");
         meta.put("missionNumber", process.getMissionNumber());
-        meta.put("title", process.getTitle());
+        meta.put("processTitle", process.getTitle());
         meta.put("taskItemId", item.getId());
+        meta.put("taskItemPreview", preview(item.getContent(), 60));
 
         Map<String, Object> beforeMap = new LinkedHashMap<>();
         beforeMap.put("content", beforeContent);
@@ -527,7 +529,7 @@ public class WeekMissionService {
 
         publishWeekMissionHistory(
                 projectId, userId, processId,
-                HistoryAction.TASK_ITEM_UPDATED,
+                HistoryAction.WEEK_MISSION_TASK_ITEM_UPDATED,
                 meta
         );
 
@@ -540,6 +542,12 @@ public class WeekMissionService {
                 item.getSortOrder(),
                 item.getDoneAt()
         );
+    }
+
+    private String preview(String text, int max) {
+        if (text == null) return "";
+        String t = text.trim();
+        return (t.length() <= max) ? t : t.substring(0, max) + "...";
     }
 
     // 위크미션 드롭 다운용 조회
@@ -662,14 +670,18 @@ public class WeekMissionService {
         meta.put("processId", processId);
         meta.put("processType", "WEEK_MISSION");
         meta.put("missionNumber", process.getMissionNumber());
-        meta.put("title", process.getTitle());
+        meta.put("processTitle", process.getTitle());
         meta.put("groupMode", true);
         meta.put("roleField", roleField.name());
         meta.put("customRoleFieldName", customName);
         meta.put("beforeOrderedTaskItemIds", beforeIds);
         meta.put("afterOrderedTaskItemIds", orderedIds);
 
-        publishWeekMissionHistory(projectId, userId, processId, HistoryAction.TASK_ITEM_REORDERED, meta);
+        publishWeekMissionHistory(
+                projectId, userId, processId,
+                HistoryAction.WEEK_MISSION_TASK_ITEM_REORDERED,
+                meta
+        );
 
         // 응답(요청 순서대로)
         List<ProcessTaskItemResDto> resItems = orderedIds.stream()

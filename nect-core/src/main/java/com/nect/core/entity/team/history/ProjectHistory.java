@@ -9,6 +9,8 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -42,6 +44,7 @@ public class ProjectHistory extends BaseEntity {
     private Long targetId;
 
     // TEXT or jsonb
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "meta_json", columnDefinition = "jsonb")
     private String metaJson;
 

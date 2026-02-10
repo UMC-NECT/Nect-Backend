@@ -46,7 +46,10 @@ public record ProcessBasicUpdateResDto(
         LocalDateTime updatedAt,
 
         @JsonProperty("writer")
-        WriterDto writer
+        WriterDto writer,
+
+        @JsonProperty("last_edited_by")
+        LastEditedByDto lastEditedBy
 ) {
     public ProcessBasicUpdateResDto {
         roleFields = (roleFields == null) ? List.of() : roleFields;
@@ -70,5 +73,22 @@ public record ProcessBasicUpdateResDto(
 
             @JsonProperty("custom_field_name")
             String customFieldName
+    ) {}
+
+    public record LastEditedByDto(
+            @JsonProperty("user_id")
+            Long userId,
+
+            @JsonProperty("user_name")
+            String userName,
+
+            @JsonProperty("nickname")
+            String nickname,
+
+            @JsonProperty("role_field")
+            RoleField roleField,
+
+            @JsonProperty("custom_role_field_name")
+            String customRoleFieldName
     ) {}
 }

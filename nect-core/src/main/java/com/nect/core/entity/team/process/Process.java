@@ -36,6 +36,11 @@ public class Process extends BaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
+    // 수정자
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "updated_by_user_id", nullable = false)
+    private User updatedBy;
+
     @Column(name = "title", length = 50, nullable = false)
     private String title;
 
@@ -100,9 +105,10 @@ public class Process extends BaseEntity {
 
 
     @Builder
-    private Process(Project project, User createdBy, String title, String content) {
+    private Process(Project project, User createdBy, User updatedBy, String title, String content) {
         this.project = project;
         this.createdBy = createdBy;
+        this.updatedBy = updatedBy;
         this.title = title;
         this.content = content;
         this.status = ProcessStatus.PLANNING;

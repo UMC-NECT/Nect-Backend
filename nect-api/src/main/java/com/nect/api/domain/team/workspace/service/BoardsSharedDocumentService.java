@@ -1,6 +1,5 @@
 package com.nect.api.domain.team.workspace.service;
 
-import com.nect.api.domain.team.history.service.ProjectHistoryPublisher;
 import com.nect.api.domain.team.workspace.dto.req.SharedDocumentLinkCreateReqDto;
 import com.nect.api.domain.team.workspace.dto.req.SharedDocumentNameUpdateReqDto;
 import com.nect.api.domain.team.workspace.dto.res.SharedDocumentNameUpdateResDto;
@@ -13,8 +12,6 @@ import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.SharedDocument;
 import com.nect.core.entity.team.enums.DocumentType;
-import com.nect.core.entity.team.history.enums.HistoryAction;
-import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
@@ -41,7 +38,6 @@ public class BoardsSharedDocumentService {
     private final SharedDocumentRepository sharedDocumentRepository;
     private final ProcessSharedDocumentRepository processSharedDocumentRepository;
     private final S3Service s3Service;
-    private final ProjectHistoryPublisher historyPublisher;
 
     private String toPresignedUserImage(String fileKey) {
         if (fileKey == null || fileKey.isBlank()) return null;
@@ -202,23 +198,6 @@ public class BoardsSharedDocumentService {
 
         doc.updateTitle(after);
 
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("documentId", doc.getId());
-        meta.put("beforeTitle", before);
-        meta.put("afterTitle", after);
-        meta.put("documentType", doc.getDocumentType().name());
-        if (doc.getDocumentType() == DocumentType.LINK) meta.put("url", doc.getLinkUrl());
-        if (doc.getDocumentType() == DocumentType.FILE) meta.put("fileExt", doc.getFileExt());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_RENAMED,
-                HistoryTargetType.DOCUMENT,
-                doc.getId(),
-                meta
-        );
-
         return new SharedDocumentNameUpdateResDto(doc.getId(), doc.getTitle());
     }
 
@@ -250,14 +229,6 @@ public class BoardsSharedDocumentService {
         int detachedCount = processSharedDocumentRepository.softDeleteAllAttachments(projectId, documentId);
         meta.put("detachedFromProcesses", detachedCount);
 
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.DOCUMENT_DELETED,
-                HistoryTargetType.DOCUMENT,
-                doc.getId(),
-                meta
-        );
     }
 
     // 링크 생성 서비스
@@ -287,21 +258,6 @@ public class BoardsSharedDocumentService {
         );
 
         SharedDocument saved = sharedDocumentRepository.save(doc);
-
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("documentId", saved.getId());
-        meta.put("type", "LINK");
-        meta.put("title", saved.getTitle());
-        meta.put("url", saved.getLinkUrl());
-
-        historyPublisher.publish(
-                projectId,
-                userId,
-                HistoryAction.LINK_CREATED,
-                HistoryTargetType.DOCUMENT,
-                saved.getId(),
-                meta
-        );
 
         return saved;
     }

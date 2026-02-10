@@ -292,10 +292,9 @@ class ProcessControllerTest {
 
                 feedbacks,
 
-                // attachments (FILE + LINK 통합)
                 List.of(
                         new AttachmentDto(
-                                com.nect.api.domain.team.process.enums.AttachmentType.FILE,
+                                AttachmentType.FILE,
                                 1001L,
                                 LocalDateTime.of(2026, 1, 23, 12, 0),
                                 null, null,
@@ -305,7 +304,7 @@ class ProcessControllerTest {
                                 1024L
                         ),
                         new AttachmentDto(
-                                com.nect.api.domain.team.process.enums.AttachmentType.LINK,
+                                AttachmentType.LINK,
                                 2001L,
                                 LocalDateTime.of(2026, 1, 22, 9, 0),
                                 "Backend Repo",
@@ -314,10 +313,27 @@ class ProcessControllerTest {
                         )
                 ),
 
+                new ProcessDetailResDto.WriterDto(
+                        1L,
+                        "작성자",
+                        "패트",
+                        RoleField.BACKEND,
+                        null
+                ),
+
+                new ProcessDetailResDto.LastEditedByDto(
+                        2L,
+                        "수정자",
+                        "수정자닉",
+                        RoleField.FRONTEND,
+                        null
+                ),
+
                 LocalDateTime.of(2026, 1, 19, 0, 0, 0),
                 LocalDateTime.of(2026, 1, 24, 0, 0, 0),
                 null
         );
+
 
         given(processService.getProcessDetail(eq(projectId), eq(userId), eq(processId), nullable(String.class)))
                 .willReturn(response);
@@ -405,6 +421,20 @@ class ProcessControllerTest {
 
                                                 fieldWithPath("body.feedbacks[].created_at").type(STRING).description("피드백 생성일시"),
 
+                                                fieldWithPath("body.writer").type(OBJECT).description("작성자 정보"),
+                                                fieldWithPath("body.writer.user_id").type(NUMBER).description("작성자 유저 ID"),
+                                                fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
+                                                fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
+                                                fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할(RoleField)"),
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)"),
+
+                                                fieldWithPath("body.last_edited_by").type(OBJECT).description("마지막 수정자 정보"),
+                                                fieldWithPath("body.last_edited_by.user_id").type(NUMBER).description("수정자 유저 ID"),
+                                                fieldWithPath("body.last_edited_by.user_name").type(STRING).description("수정자 이름"),
+                                                fieldWithPath("body.last_edited_by.nickname").type(STRING).description("수정자 닉네임"),
+                                                fieldWithPath("body.last_edited_by.role_field").optional().type(STRING).description("수정자 역할(RoleField, null 가능)"),
+                                                fieldWithPath("body.last_edited_by.custom_role_field_name").optional().type(STRING).description("수정자 커스텀 역할명(null 가능)"),
+
                                                 fieldWithPath("body.created_at").type(STRING).description("생성일시"),
                                                 fieldWithPath("body.updated_at").type(STRING).description("수정일시"),
                                                 fieldWithPath("body.deleted_at").optional().type(STRING).description("삭제일시(null 가능)")
@@ -465,6 +495,14 @@ class ProcessControllerTest {
                         "작성자이름",
                         "작성자닉네임",
                         RoleField.BACKEND,
+                        null
+                ),
+
+                new ProcessBasicUpdateResDto.LastEditedByDto(
+                        2L,
+                        "수정자이름",
+                        "수정자닉네임",
+                        RoleField.FRONTEND,
                         null
                 )
         );
@@ -542,7 +580,14 @@ class ProcessControllerTest {
                                                 fieldWithPath("body.writer.name").type(STRING).description("작성자 이름"),
                                                 fieldWithPath("body.writer.nickname").type(STRING).description("작성자 닉네임"),
                                                 fieldWithPath("body.writer.role_field").type(STRING).description("작성자 역할(RoleField)"),
-                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)")
+                                                fieldWithPath("body.writer.custom_field_name").optional().type(STRING).description("작성자 커스텀 역할명(null 가능)"),
+
+                                                fieldWithPath("body.last_edited_by").type(OBJECT).description("마지막 수정자 정보"),
+                                                fieldWithPath("body.last_edited_by.user_id").type(NUMBER).description("마지막 수정자 유저 ID"),
+                                                fieldWithPath("body.last_edited_by.user_name").type(STRING).description("마지막 수정자 이름"),
+                                                fieldWithPath("body.last_edited_by.nickname").type(STRING).description("마지막 수정자 닉네임"),
+                                                fieldWithPath("body.last_edited_by.role_field").type(STRING).description("마지막 수정자 역할(RoleField)"),
+                                                fieldWithPath("body.last_edited_by.custom_role_field_name").optional().type(STRING).description("마지막 수정자 커스텀 역할명(null 가능)")
                                         )
                                         .build()
                         )

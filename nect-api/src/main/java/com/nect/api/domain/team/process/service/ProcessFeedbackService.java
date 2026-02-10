@@ -20,6 +20,7 @@ import com.nect.core.entity.team.history.enums.HistoryTargetType;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.team.process.ProcessFeedback;
 import com.nect.core.entity.team.process.ProcessUser;
+import com.nect.core.entity.team.process.enums.ProcessFeedbackStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.team.ProjectUserRepository;
@@ -161,14 +162,15 @@ public class ProcessFeedbackService {
 
         // 히스토리
         Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processTitle", process.getTitle());
+        meta.put("feedbackContent", preview(saved.getContent(), 60));
         meta.put("processId", processId);
         meta.put("feedbackId", saved.getId());
-        meta.put("content", saved.getContent());
 
         historyPublisher.publish(
                 projectId,
                 userId,
-                HistoryAction.FEEDBACK_CREATED,
+                HistoryAction.PROCESS_FEEDBACK_CREATED,
                 HistoryTargetType.PROCESS,
                 processId,
                 meta
@@ -231,12 +233,12 @@ public class ProcessFeedbackService {
         // 부모 프로세스 검증
         getActiveProcess(projectId, processId);
 
+        Process process = getActiveProcess(projectId, processId);
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
         String beforeContent = feedback.getContent();
         var beforeStatus = feedback.getStatus();
 
-        boolean changed = false;
 
         // content 변경(있을 때만)
         if (hasContent) {
@@ -244,7 +246,6 @@ public class ProcessFeedbackService {
             String after = req.content().trim();
             if (!Objects.equals(beforeContent, after)) {
                 feedback.updateContent(after);
-                changed = true;
             }
         }
 
@@ -252,33 +253,39 @@ public class ProcessFeedbackService {
         if (hasStatus) {
             if (beforeStatus != req.status()) {
                 feedback.updateStatus(req.status());
-                changed = true;
             }
         }
 
-        // 변경 없으면 그대로 응답
-        if (changed) {
+        String afterContent = feedback.getContent();
+        ProcessFeedbackStatus afterStatus = feedback.getStatus();
+
+        Map<String, Object> changed = new LinkedHashMap<>();
+        if (hasContent && !Objects.equals(beforeContent, afterContent)) {
+            changed.put("content", Map.of("before", beforeContent, "after", afterContent));
+        }
+        if (hasStatus && beforeStatus != afterStatus) {
+            changed.put("status", Map.of("before", beforeStatus, "after", afterStatus));
+        }
+
+        if (!changed.isEmpty()) {
             Map<String, Object> meta = new LinkedHashMap<>();
+            meta.put("processTitle", process.getTitle());
+            meta.put("feedbackContent", preview(afterContent, 60));
             meta.put("processId", processId);
             meta.put("feedbackId", feedbackId);
-            meta.put("before", Map.of(
-                    "content", beforeContent,
-                    "status", beforeStatus == null ? null : beforeStatus.name()
-            ));
-            meta.put("after", Map.of(
-                    "content", feedback.getContent(),
-                    "status", feedback.getStatus() == null ? null : feedback.getStatus().name()
-            ));
+            meta.put("changedKeys", changed.keySet());
 
             historyPublisher.publish(
                     projectId,
                     userId,
-                    HistoryAction.FEEDBACK_UPDATED,
+                    HistoryAction.PROCESS_FEEDBACK_UPDATED,
                     HistoryTargetType.PROCESS,
                     processId,
                     meta
             );
         }
+
+
 
         return toFeedbackUpdateRes(projectId, feedback);
     }
@@ -313,25 +320,28 @@ public class ProcessFeedbackService {
 
         getActiveProcess(projectId, processId);
 
+        Process process = getActiveProcess(projectId, processId);
         ProcessFeedback feedback = getFeedback(processId, feedbackId);
 
         String beforeContent = feedback.getContent();
+
         feedback.softDelete();
 
-
         Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("processTitle", process.getTitle());
+        meta.put("feedbackContent", preview(beforeContent, 60));
         meta.put("processId", processId);
         meta.put("feedbackId", feedbackId);
-        meta.put("content", beforeContent);
 
         historyPublisher.publish(
                 projectId,
                 userId,
-                HistoryAction.FEEDBACK_DELETED,
+                HistoryAction.PROCESS_FEEDBACK_DELETED,
                 HistoryTargetType.PROCESS,
                 processId,
                 meta
         );
+
 
         return new ProcessFeedbackDeleteResDto(feedbackId);
     }
