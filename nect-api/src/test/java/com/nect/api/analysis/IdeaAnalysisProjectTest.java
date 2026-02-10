@@ -92,7 +92,7 @@ class IdeaAnalysisProjectTest {
                 .andExpect(status().isOk())
                 .andDo(document("analysis-create-project",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("아이디어 분석")
+                                .tag("Analysis")
                                 .summary("분석서 기반 프로젝트 생성")
                                 .description("""
                                        
@@ -152,7 +152,7 @@ class IdeaAnalysisProjectTest {
                 .andExpect(status().isOk())
                 .andDo(document("analysis-delete",
                         resource(ResourceSnippetParameters.builder()
-                                .tag("아이디어 분석")
+                                .tag("Analysis")
                                 .summary("분석서 삭제")
                                 .description("""
                                         사용자의 아이디어 분석서를 삭제합니다.

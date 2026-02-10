@@ -301,4 +301,5 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
 
     Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
 
+    boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
 }

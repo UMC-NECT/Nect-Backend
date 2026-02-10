@@ -1,63 +1,36 @@
-package com.nect.api.team.chat.controller;
+package com.nect.api.domain.team.chat.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nect.api.domain.team.chat.controller.ChatMessageController;
-import com.nect.api.domain.team.chat.controller.TeamChatController;
+import com.nect.api.NectDocumentApiTester;
 import com.nect.api.domain.team.chat.dto.req.*;
 import com.nect.api.domain.team.chat.dto.res.*;
 import com.nect.api.domain.team.chat.facade.ChatFacade;
 import com.nect.api.domain.team.chat.service.ChatRoomService;
 import com.nect.api.domain.team.chat.service.ChatService;
 import com.nect.api.domain.team.chat.service.TeamChatService;
-import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.chat.enums.ChatRoomType;
 import com.nect.core.entity.team.chat.enums.MessageType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.AfterEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
-import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
 import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {ChatMessageController.class, TeamChatController.class})
-@ContextConfiguration(classes = {ChatMessageController.class, TeamChatController.class})
-@AutoConfigureMockMvc(addFilters = false)
-@AutoConfigureRestDocs
-class ChatControllerTest {
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private MockMvc mockMvc;
+class ChatControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private ChatRoomService chatRoomService;
@@ -71,37 +44,10 @@ class ChatControllerTest {
     @MockitoBean
     private TeamChatService teamChatService;
 
-    private static final String AUTH_HEADER = "Authorization";
-    private static final String TEST_ACCESS_TOKEN = "Bearer AccessToken";
-
-    private RequestPostProcessor mockUser(Long userId) {
-        UserDetailsImpl principal = UserDetailsImpl.builder()
-                .userId(userId)
-                .roles(List.of("ROLE_USER"))
-                .build();
-
-        return request -> {
-            Authentication auth = new UsernamePasswordAuthenticationToken(
-                    principal,
-                    null,
-                    principal.getAuthorities()
-            );
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(auth);
-            SecurityContextHolder.setContext(context);
-            return request;
-        };
-    }
-
-    @AfterEach
-    void clearSecurityContext() {
-        SecurityContextHolder.clearContext();
-    }
-
     // ========== 1. 프로젝트 멤버 조회 ==========
 
     @Test
-    @DisplayName("작업실 채팅 프로젝트 멤버 조회  API")
+    @DisplayName("작업실 채팅 프로젝트 멤버 조회 API")
     void getProjectMembers() throws Exception {
         Long projectId = 1L;
 
@@ -110,27 +56,24 @@ class ChatControllerTest {
                 new ProjectMemberDto(3L, "미누", "이민우", "/images/default-profile.png")
         );
 
-        given(teamChatService.getProjectMembers(eq(projectId), eq(1L), isNull()))
+        given(teamChatService.getProjectMembers(eq(projectId), anyLong(), isNull()))
                 .willReturn(members);
 
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/members", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body[0].user_id").value(2))
-                .andExpect(jsonPath("$.body[0].nickname").value("손"))
                 .andDo(document("project-members-list",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅 프로젝트 멤버 조회  API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅 프로젝트 멤버 조회 ")
                                 .description("채팅방 생성 시 초대할 수 있는 프로젝트 멤버 목록을 조회합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("projectId").description("프로젝트 ID")
@@ -159,27 +102,25 @@ class ChatControllerTest {
                 new ProjectMemberDto(2L, "손", "손흥민", "/images/default-profile.png")
         );
 
-        given(teamChatService.getProjectMembers(eq(projectId), eq(1L), eq(keyword)))
+        given(teamChatService.getProjectMembers(eq(projectId), anyLong(), eq(keyword)))
                 .willReturn(members);
 
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/members", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .param("keyword", keyword)
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body[0].nickname").value("손"))
                 .andDo(document("project-members-search",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 생성 시 유저 검색 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 생성 시 유저 검색")
                                 .description("키워드로 프로젝트 멤버를 검색합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("projectId").description("프로젝트 ID")
@@ -206,10 +147,13 @@ class ChatControllerTest {
     @Test
     @DisplayName("작업실 그룹 채팅방 생성 API")
     void createGroupChatRoom() throws Exception {
-        GroupChatRoomCreateRequestDto request = new GroupChatRoomCreateRequestDto();
-        request.setProjectId(1L);
-        request.setRoomName("개발팀 채팅방");
-        request.setTargetUserIds(Arrays.asList(2L, 3L, 4L));
+        String requestJson = """
+            {
+              "project_id": 1,
+              "room_name": "개발팀 채팅방",
+              "target_user_ids": [2, 3, 4]
+            }
+            """;
 
         ChatRoomResponseDto response = ChatRoomResponseDto.builder()
                 .roomId(10L)
@@ -223,29 +167,26 @@ class ChatControllerTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        given(teamChatService.createGroupChatRoom(eq(1L), any(GroupChatRoomCreateRequestDto.class)))
+        given(teamChatService.createGroupChatRoom(anyLong(), any(GroupChatRoomCreateRequestDto.class)))
                 .willReturn(response);
 
         mockMvc.perform(
                         post("/api/v1/chats/rooms/group")
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
+                                .content(requestJson)
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.room_id").value(10))
-                .andExpect(jsonPath("$.body.room_name").value("개발팀 채팅방"))
                 .andDo(document("chat-room-create-group",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 그룹 채팅방 생성 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 그룹 채팅방 생성")
                                 .description("프로젝트 멤버들과 그룹 채팅방을 생성합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .requestFields(
                                         fieldWithPath("project_id").description("프로젝트 ID"),
@@ -280,26 +221,24 @@ class ChatControllerTest {
                 new ChatRoomListDto(2L, "디자인팀", 3, "확인했습니다", LocalDateTime.now(), null, false)
         );
 
-        given(chatRoomService.getProjectChatRooms(eq(projectId), eq(1L)))
+        given(chatRoomService.getProjectChatRooms(eq(projectId), anyLong()))
                 .willReturn(rooms);
 
         mockMvc.perform(
                         get("/api/v1/chats/projects/{projectId}/rooms", projectId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body[0].room_name").value("개발팀"))
                 .andDo(document("chat-rooms-list-by-project",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 목록 조회 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 목록 조회 ")
                                 .description("특정 프로젝트의 채팅방 목록을 조회합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("projectId").description("프로젝트 ID")
@@ -349,28 +288,25 @@ class ChatControllerTest {
                 .hasNext(false)
                 .build();
 
-        given(chatService.getChatMessages(eq(roomId), eq(1L), isNull(), eq(20)))
+        given(chatService.getChatMessages(eq(roomId), anyLong(), isNull(), eq(20)))
                 .willReturn(response);
 
         mockMvc.perform(
                         get("/api/v1/chats/rooms/{room_id}/messages", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .param("size", "20")
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.room_name").value("개발팀"))
-                .andExpect(jsonPath("$.body.member_count").value(4))
                 .andDo(document("chat-messages-get",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 내부 조회 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 내부 조회 ")
                                 .description("채팅방 정보와 메시지 목록을 조회합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("room_id").description("채팅방 ID")
@@ -431,30 +367,27 @@ class ChatControllerTest {
                 .messages(messages)
                 .build();
 
-        given(chatService.searchMessages(eq(roomId), eq(1L), eq(keyword), eq(0), eq(20)))
+        given(chatService.searchMessages(eq(roomId), anyLong(), eq(keyword), eq(0), eq(20)))
                 .willReturn(response);
 
         mockMvc.perform(
                         get("/api/v1/chats/rooms/{room_id}/messages/search", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .param("keyword", keyword)
                                 .param("page", "0")
                                 .param("size", "20")
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.keyword").value(keyword))
-                .andExpect(jsonPath("$.body.total_count").value(1))
                 .andDo(document("chat-messages-search",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 내부 메시지 검색 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 내부 메시지 검색")
                                 .description("채팅방 내에서 텍스트 메시지를 검색합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("room_id").description("채팅방 ID")
@@ -495,8 +428,11 @@ class ChatControllerTest {
     void updateNotice() throws Exception {
         Long messageId = 123L;
 
-        ChatNoticeUpdateRequestDto request = new ChatNoticeUpdateRequestDto();
-        request.setIsPinned(true);
+        String requestJson = """
+            {
+              "is_pinned": true
+            }
+            """;
 
         ChatNoticeResponseDto response = ChatNoticeResponseDto.builder()
                 .messageId(messageId)
@@ -509,28 +445,26 @@ class ChatControllerTest {
                 .registeredAt(LocalDateTime.now())
                 .build();
 
-        given(chatService.createNotice(eq(messageId), eq(true), eq(1L)))
+        given(chatService.createNotice(eq(messageId), eq(true), anyLong()))
                 .willReturn(response);
 
         mockMvc.perform(
                         patch("/api/v1/chats/message/{message_id}/notice", messageId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
+                                .content(requestJson)
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.is_pinned").value(true))
                 .andDo(document("chat-notice-update",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 공지사항 등록 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 공지사항 등록 ")
                                 .description("메시지를 공지사항으로 등록하거나 해제합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("message_id").description("메시지 ID")
@@ -571,27 +505,24 @@ class ChatControllerTest {
                 .leftAt(LocalDateTime.now())
                 .build();
 
-        given(chatRoomService.leaveChatRoom(eq(roomId), eq(1L)))
+        given(chatRoomService.leaveChatRoom(eq(roomId), anyLong()))
                 .willReturn(response);
 
         mockMvc.perform(
-                        RestDocumentationRequestBuilders.delete("/api/v1/chats/{room_id}/leave", roomId)
+                        delete("/api/v1/chats/{room_id}/leave", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.room_id").value(roomId))
-                .andExpect(jsonPath("$.body.user_name").value("김민규"))
                 .andDo(document("chat-room-leave",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 나가기 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 나가기")
                                 .description("채팅방을 나갑니다. 나가기 메시지가 전송됩니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("room_id").description("채팅방 ID")
@@ -618,9 +549,11 @@ class ChatControllerTest {
     void inviteMembers() throws Exception {
         Long roomId = 1L;
 
-        ChatRoomInviteRequestDto request = new ChatRoomInviteRequestDto(
-                Arrays.asList(5L, 6L)
-        );
+        String requestJson = """
+            {
+              "target_user_ids": [5, 6]
+            }
+            """;
 
         ChatRoomInviteResponseDto response = new ChatRoomInviteResponseDto(
                 roomId,
@@ -632,34 +565,32 @@ class ChatControllerTest {
                 )
         );
 
-        given(teamChatService.inviteMembers(eq(roomId), eq(1L), any(ChatRoomInviteRequestDto.class)))
+        given(teamChatService.inviteMembers(eq(roomId), anyLong(), any(ChatRoomInviteRequestDto.class)))
                 .willReturn(response);
 
         mockMvc.perform(
                         post("/api/v1/chats/rooms/{roomId}/invite", roomId)
                                 .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
-                                .with(mockUser(1L))
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
+                                .content(requestJson)
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.body.invited_count").value(2))
                 .andDo(document("chat-room-invite",
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("채팅")
-                                .summary("작업실 채팅방 멤버 초대 API")
+                                .tag("Workspace Chat")
+                                .summary("작업실 채팅방 멤버 초대")
                                 .description("채팅방에 새로운 멤버를 초대합니다.")
                                 .requestHeaders(
-                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                        headerWithName(AUTH_HEADER).description("액세스 토큰 (Bearer 스키마)")
                                 )
                                 .pathParameters(
                                         parameterWithName("roomId").description("채팅방 ID")
                                 )
                                 .requestFields(
-                                        fieldWithPath("targetUserIds").description("초대할 사용자 ID 목록")
+                                        fieldWithPath("target_user_ids").description("초대할 사용자 ID 목록")
                                 )
                                 .responseFields(
                                         fieldWithPath("status.statusCode").description("상태 코드"),

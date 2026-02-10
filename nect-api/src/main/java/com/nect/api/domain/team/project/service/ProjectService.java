@@ -6,7 +6,6 @@ import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.domain.user.service.UserService;
 import com.nect.api.domain.user.enums.UserErrorCode;
-import com.nect.api.domain.user.service.UserService;
 import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.process.Process;
 import com.nect.core.entity.analysis.*;
@@ -14,14 +13,12 @@ import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.enums.ProjectStatus;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.team.process.ProcessTaskItem;
 import com.nect.core.entity.team.ProjectTeamRole;
-import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.analysis.*;
@@ -30,15 +27,17 @@ import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
-import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -59,6 +58,7 @@ public class ProjectService {
     private final ProcessRepository processRepository;
     private final UserService userService;
     private final ProjectInterestFieldRepository projectInterestFieldRepository;
+    private final UserTeamRoleRepository userTeamRoleRepository;
 
     public Project getProject(Long projectId){
         return projectRepository.findById(projectId)
@@ -98,10 +98,14 @@ public class ProjectService {
         // 3. Project 생성
         Project project = createProject(analysis);
 
-        addProjectLeader(project, userId);
+        RoleField leaderRole = analysis.getTeamCompositions().get(0).getRoleField();
+        addProjectLeader(project, userId, leaderRole);
+
 
         // 4. 팀 구성 복사
         saveTeamRoles(project.getId(), analysis);
+        //TODO : 리팩토링
+        saveUserTeamRoles(project, analysis);
 
         // 5. 주차별 로드맵 복사
         saveWeeklyRoadmap(project.getId(), analysis);
@@ -179,6 +183,8 @@ public class ProjectService {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
+
+
 
     private void saveWeeklyRoadmap(Long projectId, ProjectIdeaAnalysis analysis) {
         try {
@@ -301,23 +307,40 @@ public class ProjectService {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
     }
-    private void addProjectLeader(Project project, Long userId) {
-
+    private void addProjectLeader(Project project, Long userId, RoleField leaderRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ProjectException(UserErrorCode.USER_NOT_FOUND));
-
 
         ProjectUser projectUser = ProjectUser.builder()
                 .project(project)
                 .userId(userId)
                 .memberType(ProjectMemberType.LEADER)
                 .memberStatus(ProjectMemberStatus.ACTIVE)
-                .roleField(RoleField.SERVICE)
+                .roleField(leaderRole)
                 .customRoleFieldName(null)
                 .build();
 
         projectUserRepository.save(projectUser);
-
     }
+
+
+    private void saveUserTeamRoles(Project project, ProjectIdeaAnalysis analysis) {
+        try {
+            List<UserTeamRole> userTeamRoles = analysis.getTeamCompositions().stream()
+                    .map(tc -> UserTeamRole.builder()
+                            .project(project)
+                            .roleField(tc.getRoleField())
+//                            .customRoleFieldName(tc.getC())
+                            .requiredCount(tc.getRequiredCount())
+                            .build())
+                    .collect(Collectors.toList());
+
+            userTeamRoleRepository.saveAll(userTeamRoles);
+        } catch (Exception e) {
+
+            throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
+        }
+    }
+
 
 }
