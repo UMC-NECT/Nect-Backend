@@ -29,7 +29,7 @@ public class IdeaAnalysisEntityConverter {
         List<TeamMember> teamComposition = analysis.getTeamCompositions().stream()
                 .map(tc -> TeamMember.builder()
                         .roleField(tc.getRoleField().name())
-                        .roleFieldDisplayName(tc.getRoleField().getDescription())
+                        .roleFieldDisplayName(tc.getRoleField().getLabelEn())
                         .requiredCount(tc.getRequiredCount())
                         .build())
                 .collect(Collectors.toList());
@@ -50,7 +50,7 @@ public class IdeaAnalysisEntityConverter {
                     List<RoleTask> roleTasks = wr.getRoleTasks().stream()
                             .map(rt -> RoleTask.builder()
                                     .roleField(rt.getRoleField().name())
-                                    .roleFieldDisplayName(rt.getRoleField().getDescription())
+                                    .roleFieldDisplayName(rt.getRoleField().getLabelEn())
                                     .tasks(rt.getTasks())
                                     .build())
                             .collect(Collectors.toList());
