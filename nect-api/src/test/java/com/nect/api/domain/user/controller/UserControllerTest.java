@@ -432,9 +432,17 @@ class UserControllerTest extends NectDocumentApiTester {
         roleRec.leader = "설계 역할에서 팀을 주도할 수 있습니다.";
         roleRec.team_member = "디자인 팀원으로 세부사항에 집중하세요.";
 
-        OnboardingAnalysisScheme.GrowthGuide guide = new OnboardingAnalysisScheme.GrowthGuide();
-        guide.order = 1;
-        guide.tip = "포트폴리오를 꾸준히 업데이트하세요.";
+        OnboardingAnalysisScheme.GrowthGuide guide1 = new OnboardingAnalysisScheme.GrowthGuide();
+        guide1.order = 1;
+        guide1.tip = "앞으로 이런 활동을 하면 좋아요!";
+        guide1.title = "포트폴리오 제작을 위한 '실무 프로세스 경험'";
+        guide1.content = "포트폴리오로 제작한 것들을 팀 프로젝트에서 실현할 기회를 적극 활용하세요. 다양한 협업 경험을 통해 소통 능력을 향상시킬 수 있습니다.";
+
+        OnboardingAnalysisScheme.GrowthGuide guide2 = new OnboardingAnalysisScheme.GrowthGuide();
+        guide2.order = 2;
+        guide2.tip = "확장 가능한 스킬 추천";
+        guide2.title = "이미 Figma에 능숙하시네요! 온오프라인 통합 브랜드 경험도 함께하면 어떨까요?";
+        guide2.content = "온오프라인 통합 브랜드 경험 역량을 쌓아보세요. 이를 통해 전체적인 브랜드 일관성을 유지하는 능력을 개발할 수 있습니다.";
 
         ProfileAnalysisDto responseDto = ProfileAnalysisDto.builder()
                 .profileType("창의형 디자이너")
@@ -442,7 +450,7 @@ class UserControllerTest extends NectDocumentApiTester {
                 .collaborationStyle(style)
                 .skills(List.of(skillCat))
                 .roleRecommendation(roleRec)
-                .growthGuide(List.of(guide))
+                .growthGuide(List.of(guide1, guide2))
                 .build();
 
         when(userService.analyzeProfile(anyLong())).thenReturn(responseDto);
@@ -478,7 +486,9 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.roleRecommendation.leader").type(JsonFieldType.STRING).description("리더로서의 역할 추천"),
                                                 fieldWithPath("body.roleRecommendation.team_member").type(JsonFieldType.STRING).description("팀원으로서의 역할 추천"),
                                                 fieldWithPath("body.growthGuide[].order").type(JsonFieldType.NUMBER).description("성장가이드 순서"),
-                                                fieldWithPath("body.growthGuide[].tip").type(JsonFieldType.STRING).description("성장 팁")
+                                                fieldWithPath("body.growthGuide[].tip").type(JsonFieldType.STRING).description("성장 팁 (고정값)"),
+                                                fieldWithPath("body.growthGuide[].title").type(JsonFieldType.STRING).description("성장 가이드 제목 (AI 생성)"),
+                                                fieldWithPath("body.growthGuide[].content").type(JsonFieldType.STRING).description("성장 가이드 내용 (AI 생성)")
                                         )
                                         .build()
                         )
