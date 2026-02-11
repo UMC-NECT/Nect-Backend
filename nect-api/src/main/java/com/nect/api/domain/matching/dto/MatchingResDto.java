@@ -50,6 +50,7 @@ public class MatchingResDto {
             String nickname,
             String bio,
             RoleField field,
+            String customField,
             String profileUrl
     ){}
 
@@ -59,6 +60,7 @@ public class MatchingResDto {
             String title,
             String description,
             long currentMembersNum,
+            long totalMemberNum,
             String imageUrl
     ){}
 }

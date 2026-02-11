@@ -14,6 +14,12 @@ import java.util.Optional;
 @Repository
 public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> {
 
+    Optional<Recruitment> findRecruitmentByProjectAndFieldAndCustomField(
+            Project project,
+            RoleField field,
+            String customField
+    );
+
     Optional<Recruitment> findRecruitmentByProjectAndField(
             Project project,
             RoleField field
