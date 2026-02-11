@@ -136,6 +136,7 @@ public class MatchingService {
                     .map(m -> {
                         User u = m.getRequestUser();
                         return MatchingConverter.toUserSummary(
+                                m.getId(),
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
                                 m.getField(),
@@ -157,14 +158,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
-                    .map(Matching::getProject)
-                    .map(project -> MatchingConverter.toProjectSummary(
-                            project,
-                            projectService.getUserNumberOfProject(project),
-                            projectTeamCommandService.getTotalUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
-                        )
-                    )
+                    .map( m -> {
+                            Project project = m.getProject();
+                            return MatchingConverter.toProjectSummary(
+                                    m.getId(),
+                                    project,
+                                    projectService.getUserNumberOfProject(project),
+                                    projectTeamCommandService.getTotalUserNumberOfProject(project),
+                                    s3Service.getPresignedGetUrl(project.getImageName())
+                            );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -195,6 +198,7 @@ public class MatchingService {
                     .map(m -> {
                         User u = m.getTargetUser();
                         return MatchingConverter.toUserSummary(
+                                m.getId(),
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
                                 m.getField(),
@@ -214,14 +218,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
-                    .map(Matching::getProject)
-                    .map(project -> MatchingConverter.toProjectSummary(
-                            project,
-                            projectService.getUserNumberOfProject(project),
-                            projectTeamCommandService.getTotalUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
-                            )
-                    )
+                    .map( m -> {
+                        Project project = m.getProject();
+                        return MatchingConverter.toProjectSummary(
+                                m.getId(),
+                                project,
+                                projectService.getUserNumberOfProject(project),
+                                projectTeamCommandService.getTotalUserNumberOfProject(project),
+                                s3Service.getPresignedGetUrl(project.getImageName())
+                        );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
