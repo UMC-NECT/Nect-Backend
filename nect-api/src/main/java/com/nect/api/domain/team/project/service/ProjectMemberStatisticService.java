@@ -71,7 +71,11 @@ public class ProjectMemberStatisticService {
                             .map(rf -> {
                                 Long count = roleFieldCounts.get(rf);
                                 if (count == null || count == 0) return null;
-                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(rf, count.intValue());
+                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(
+                                        rf,
+                                        rf.getLabelEn(),
+                                        count.intValue()
+                                );
                             })
                             .filter(rf -> rf != null)
                             .toList();

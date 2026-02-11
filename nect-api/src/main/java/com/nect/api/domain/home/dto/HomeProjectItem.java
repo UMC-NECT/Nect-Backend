@@ -1,6 +1,7 @@
 package com.nect.api.domain.home.dto;
 
 import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.user.enums.InterestField;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,6 +24,7 @@ public class HomeProjectItem {
     private Integer curMemberCount;
     private Boolean isScrapped;
     private String status;
+    private InterestField interestField;
     private ProjectMemberStatisticResponse roles;
 
     public static HomeProjectItem of(
@@ -37,7 +39,8 @@ public class HomeProjectItem {
             Integer curMemberCount,
             Boolean isScrapped,
             String status,
-            ProjectMemberStatisticResponse roles
+            ProjectMemberStatisticResponse roles,
+            InterestField interestField
     ) {
         return HomeProjectItem.builder()
                 .projectId(projectId)
@@ -52,6 +55,7 @@ public class HomeProjectItem {
                 .isScrapped(isScrapped)
                 .status(status)
                 .roles(roles)
+                .interestField(interestField)
                 .build();
     }
 }

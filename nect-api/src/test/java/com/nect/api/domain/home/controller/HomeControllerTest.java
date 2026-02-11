@@ -393,7 +393,8 @@ class HomeControllerTest {
                         3,
                         true,
                         "모집 중",
-                        mockProjectMemberStatistics()
+                        mockProjectMemberStatistics(),
+                        InterestField.IT_WEB_MOBILE
                 ),
                 HomeProjectItem.of(
                         11L,
@@ -407,7 +408,8 @@ class HomeControllerTest {
                         4,
                         false,
                         "매칭 가능",
-                        mockProjectMemberStatistics()
+                        mockProjectMemberStatistics(),
+                        InterestField.IT_WEB_MOBILE
                 )
         ));
     }
@@ -454,17 +456,17 @@ class HomeControllerTest {
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.PLANNER,
                         1,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, RoleField.SERVICE.getLabelEn(), 1))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.DESIGNER,
                         2,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, RoleField.UI_UX.getLabelEn(), 2))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.DEVELOPER,
                         3,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, RoleField.BACKEND.getLabelEn(), 3))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.MARKETER,
@@ -658,12 +660,14 @@ class HomeControllerTest {
                 fieldWithPath("body.projects[].curMemberCount").description("현재 참여 인원"),
                 fieldWithPath("body.projects[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.projects[].status").description("프로젝트 상태"),
+                fieldWithPath("body.projects[].interestField").description("프로젝트 관심 분야"),
                 fieldWithPath("body.projects[].roles").description("프로젝트 멤버 통계"),
                 fieldWithPath("body.projects[].roles.roles").description("Role 기준 통계 목록"),
                 fieldWithPath("body.projects[].roles.roles[].role").description("Role"),
                 fieldWithPath("body.projects[].roles.roles[].count").description("Role 인원 수"),
                 fieldWithPath("body.projects[].roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
                 fieldWithPath("body.projects[].roles.roles[].role_fields[].role_field").description("RoleField"),
+                fieldWithPath("body.projects[].roles.roles[].role_fields[].label_en").description("RoleField 영어 라벨"),
                 fieldWithPath("body.projects[].roles.roles[].role_fields[].count").description("RoleField 인원 수")
         );
     }
@@ -737,6 +741,7 @@ class HomeControllerTest {
                 fieldWithPath("body.defaultInfo.team_roles.roles[].count").description("Role 인원 수"),
                 fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
                 fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].label_en").description("RoleField 영어 라벨"),
                 fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
                 fieldWithPath("body.defaultInfo.leader").description("프로젝트 리더 정보"),
                 fieldWithPath("body.defaultInfo.leader.user_id").description("리더 유저 ID"),

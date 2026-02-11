@@ -7,6 +7,7 @@ import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
@@ -16,6 +17,7 @@ import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.matching.RecruitmentRepository;
+import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.team.ProjectUserRepository;
@@ -46,6 +48,7 @@ public class HomeProjectQueryService {
     private final UserRepository userRepository;
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
     private final UserTeamRoleRepository userTeamRoleRepository;
+    private final ProjectInterestFieldRepository interestFieldRepository;
     private final S3Service s3Service;
 
     public record HomeProjectBatch(
@@ -141,7 +144,7 @@ public class HomeProjectQueryService {
                             .map(rf -> {
                                 Long count = roleFieldCounts.get(rf);
                                 if (count == null || count == 0) return null;
-                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(rf, count.intValue());
+                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(rf, rf.getLabelEn(), count.intValue());
                             })
                             .filter(Objects::nonNull)
                             .toList();
@@ -233,6 +236,18 @@ public class HomeProjectQueryService {
         LocalDate today = LocalDate.now();
         LocalDate endDate = project.getPlannedEndedOn();
         return (int) ChronoUnit.DAYS.between(today, endDate);
+    }
+
+    public ProjectInterest getProjectInterest(Long projectId) {
+        List<ProjectInterest> projectInterests = interestFieldRepository.findByProjectId(projectId);
+        List<ProjectInterest> list = projectInterests.stream()
+                .filter(ProjectInterest::getSelected)
+                .toList();
+        if (!list.isEmpty()) {
+            return list.getFirst();
+        }else{
+            return null;
+        }
     }
 
     private List<MyProjectsResponseDto.TeamMemberProjectInfo> getTeamMemberProjectsByProject(List<ProjectUser> activeMembers, Long projectId) {

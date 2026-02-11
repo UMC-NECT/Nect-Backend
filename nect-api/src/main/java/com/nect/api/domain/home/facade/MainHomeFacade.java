@@ -10,6 +10,7 @@ import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.team.project.service.ProjectMemberQueryService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
@@ -160,6 +161,7 @@ public class MainHomeFacade {
                     Integer maxMemberCount = batch.maxMemberCountByProjectId().getOrDefault(projectId, 0);
                     Integer currentMemberCount = batch.activeCountByProjectId().getOrDefault(projectId, 0);
                     var memberStatistics = batch.memberStatisticsByProjectId().get(projectId);
+                    ProjectInterest projectInterest = homeProjectQueryService.getProjectInterest(projectId);
 
                     return HomeProjectItem.of(
                             projectId,
@@ -173,7 +175,8 @@ public class MainHomeFacade {
                             currentMemberCount,
                             false,
                             p.getRecruitmentStatus() != null ? p.getRecruitmentStatus().getStatus() : null,
-                            memberStatistics
+                            memberStatistics,
+                            projectInterest.getInterestField()
                     );
                 })
                 .toList();
