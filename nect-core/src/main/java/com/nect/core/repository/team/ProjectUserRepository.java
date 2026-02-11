@@ -327,4 +327,7 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
         String getNickname();
         String getProfileImageUrl();
     }
+
+    long countByUserIdAndMemberType(Long userId, ProjectMemberType memberType);
+
 }
