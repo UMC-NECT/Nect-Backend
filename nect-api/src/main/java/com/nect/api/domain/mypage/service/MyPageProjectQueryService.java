@@ -16,6 +16,7 @@ import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 
@@ -24,6 +25,7 @@ import com.nect.core.repository.team.ProjectPlanFileRepository;
 import com.nect.core.repository.team.ProjectRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,11 +51,13 @@ public class MyPageProjectQueryService {
     private final ProjectPlanFileRepository planFileRepository;
     private final ProjectListConverter projectListConverter;
     private final S3Service s3Service;
-
+    private final UserTeamRoleRepository userTeamRoleRepository;
 
     public MyProjectsResponseDto getMyProjects(Long userId) {
         List<ProjectUser> myProjectUsers = projectUserRepositoryComplete
                 .findByUserIdAndMemberStatus(userId, ProjectMemberStatus.ACTIVE);
+
+
 
         if (myProjectUsers.isEmpty()) {
             return MyProjectsResponseDto.builder()
@@ -64,6 +68,8 @@ public class MyPageProjectQueryService {
         List<Long> projectIds = myProjectUsers.stream()
                 .map(pu -> pu.getProject().getId())
                 .collect(Collectors.toList());
+
+
 
         Map<Long, MyProjectsResponseDto.LeaderInfo> leadersMap = getLeadersMapByProjects(projectIds);
 
@@ -79,8 +85,12 @@ public class MyPageProjectQueryService {
                     Project project = projectUser.getProject();
                     Long projectId = project.getId();
 
+                    Map<Long, List<UserTeamRole>> teamRolesByProjectId = userTeamRoleRepository
+                            .findByProjectIdIn(projectIds).stream()
+                            .collect(Collectors.groupingBy(tr -> tr.getProject().getId()));
+
                     ProjectMemberStatisticResponse teamRoles = buildMemberStatistics(
-                            membersByProjectId.getOrDefault(projectId, List.of())
+                            teamRolesByProjectId.getOrDefault(projectId, List.of())
                     );
 
                     return MyProjectsResponseDto.ProjectInfo.builder()
@@ -103,15 +113,12 @@ public class MyPageProjectQueryService {
                 .build();
     }
 
-    private ProjectMemberStatisticResponse buildMemberStatistics(List<ProjectUser> members) {
-        Map<Role, List<ProjectUser>> byRole = members.stream()
+    private ProjectMemberStatisticResponse buildMemberStatistics(List<UserTeamRole> teamRoles) {
+        Map<RoleField, Integer> roleFieldCounts = teamRoles.stream()
+                .filter(tr -> !tr.isDeleted())
                 .collect(Collectors.groupingBy(
-                        pu -> {
-                            Role role = pu.getRoleField().getRole();
-                            return (role == null) ? Role.OTHER : role;
-                        },
-                        () -> new EnumMap<>(Role.class),
-                        Collectors.toList()
+                        UserTeamRole::getRoleField,
+                        Collectors.summingInt(UserTeamRole::getRequiredCount)
                 ));
 
         List<Role> roleOrder = List.of(
@@ -124,29 +131,29 @@ public class MyPageProjectQueryService {
 
         List<ProjectMemberStatisticResponse.RoleStatistic> roles = roleOrder.stream()
                 .map(role -> {
-                    List<ProjectUser> roleUsers = byRole.getOrDefault(role, List.of());
-                    Map<RoleField, Long> roleFieldCounts = roleUsers.stream()
-                            .collect(Collectors.groupingBy(ProjectUser::getRoleField, Collectors.counting()));
-
                     List<ProjectMemberStatisticResponse.RoleFieldStatistic> roleFields = Arrays.stream(RoleField.values())
                             .filter(rf -> {
                                 Role rfRole = rf.getRole();
                                 return ((rfRole == null) ? Role.OTHER : rfRole) == role;
                             })
-                            .map(rf -> {
-                                Long count = roleFieldCounts.get(rf);
-                                if (count == null || count == 0) return null;
-                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(rf, count.intValue());
-                            })
-                            .filter(Objects::nonNull)
+                            .filter(rf -> roleFieldCounts.containsKey(rf))
+                            .map(rf -> new ProjectMemberStatisticResponse.RoleFieldStatistic(
+                                    rf,
+                                    roleFieldCounts.get(rf)
+                            ))
                             .toList();
+
+                    int totalCount = roleFields.stream()
+                            .mapToInt(ProjectMemberStatisticResponse.RoleFieldStatistic::count)
+                            .sum();
 
                     return new ProjectMemberStatisticResponse.RoleStatistic(
                             role,
-                            roleUsers.size(),
+                            totalCount,
                             roleFields
                     );
                 })
+                .filter(rs -> rs.count() > 0)
                 .toList();
 
         return new ProjectMemberStatisticResponse(roles);
