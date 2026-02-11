@@ -333,4 +333,56 @@ public class MatchingService {
                 .projectMatchings(projectSummaries)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public MatchingResDto.MatchingListRes getReceivedTotalMatchingsByTarget(Long userId) {
+        User user = userService.getUser(userId);
+        List<Matching> projectMatchings = new ArrayList<>();
+        List<Matching> userMatchings = new ArrayList<>();
+
+        List<MatchingStatus> statuses = List.of(
+                MatchingStatus.PENDING,
+                MatchingStatus.ACCEPTED,
+                MatchingStatus.REJECTED,
+                MatchingStatus.CANCELED,
+                MatchingStatus.EXPIRED
+        );
+
+        for (MatchingStatus status: statuses) {
+            projectMatchings.addAll(matchingRepository.findReceivedMatchingsOrderByExpiresAt(MatchingRequestType.PROJECT_TO_USER, user, status));
+            userMatchings.addAll(matchingRepository.findReceivedMatchingsOrderByExpiresAt(MatchingRequestType.USER_TO_PROJECT, user, status));
+        }
+
+        List<MatchingResDto.ProjectSummary> projectSummaries = projectMatchings.stream()
+                .map( m -> {
+                    Project project = m.getProject();
+                    return MatchingConverter.toProjectSummary(
+                            m.getId(),
+                            project,
+                            projectService.getUserNumberOfProject(project),
+                            projectTeamCommandService.getTotalUserNumberOfProject(project),
+                            s3Service.getPresignedGetUrl(project.getImageName())
+                    );
+                })
+                .toList();
+
+        List<MatchingResDto.UserSummary> userSummaries = userMatchings.stream()
+                .map(m -> {
+                    User u = m.getTargetUser();
+                    return MatchingConverter.toUserSummary(
+                            m.getId(),
+                            u,
+                            s3Service.getPresignedGetUrl(u.getProfileImageName()),
+                            m.getField(),
+                            m.getCustomField()
+                    );
+                })
+                .toList();
+
+        return MatchingResDto.MatchingListRes.builder()
+                .counterParty(null)
+                .userMatchings(userSummaries)
+                .projectMatchings(projectSummaries)
+                .build();
+    }
 }
