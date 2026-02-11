@@ -315,33 +315,22 @@ public class UserService {
         Role role = parseRole(request.role());
         Goal goal = parseGoal(request.firstGoal());
 
-        User updatedUser = User.builder()
-                .userId(user.getUserId())
-                .email(user.getEmail())
-                .password(user.getPassword())
-                .name(user.getName())
-                .phoneNumber(user.getPhoneNumber())
-                .userType(user.getUserType())
-                .socialProvider(user.getSocialProvider())
-                .socialId(user.getSocialId())
-                .isAutoLoginEnabled(user.getIsAutoLoginEnabled())
-                .nickname(request.nickname())
-                .birthDate(birthDate)
-                .job(job)
-                .role(role)
-                .firstGoal(goal)
-                .collaborationStylePlanning(request.collaborationStyle() != null ? request.collaborationStyle().planning() : null)
-                .collaborationStyleLogic(request.collaborationStyle() != null ? request.collaborationStyle().logic() : null)
-                .collaborationStyleLeadership(request.collaborationStyle() != null ? request.collaborationStyle().leadership() : null)
-                .isOnboardingCompleted(true)
-                .build();
-        userRepository.save(updatedUser);
+        user.setNickname(request.nickname());
+        user.setBirthDate(birthDate);
+        user.setJob(job);
+        user.setRole(role);
+        user.setFirstGoal(goal);
+        user.setCollaborationStylePlanning(request.collaborationStyle() != null ? request.collaborationStyle().planning() : null);
+        user.setCollaborationStyleLogic(request.collaborationStyle() != null ? request.collaborationStyle().logic() : null);
+        user.setCollaborationStyleLeadership(request.collaborationStyle() != null ? request.collaborationStyle().leadership() : null);
+        user.setIsOnboardingCompleted(true);
+        userRepository.save(user);
 
         if (request.fields() != null) {
             for (ProfileDto.FieldDto fieldDto : request.fields()) {
                 RoleField field = parseField(fieldDto.field());
                 UserRole userRole = UserRole.builder()
-                        .user(updatedUser)
+                        .user(user)
                         .roleField(field)
                         .customField(field == RoleField.CUSTOM ? fieldDto.customField() : null)
                         .build();
@@ -353,7 +342,7 @@ public class UserService {
             for (ProfileDto.SkillDto skillDto : request.skills()) {
                 Skill skill = parseSkill(skillDto.skill());
                 UserSkill userSkill = UserSkill.builder()
-                        .user(updatedUser)
+                        .user(user)
                         .skillCategory(skillDto.skillCategory())
                         .skill(skill)
                         .customSkillName(skill == Skill.CUSTOM ? skillDto.customSkillName() : null)
@@ -366,7 +355,7 @@ public class UserService {
             for (String interestStr : request.interests()) {
                 InterestField interestField = parseInterestField(interestStr);
                 UserInterest userInterest = UserInterest.builder()
-                        .user(updatedUser)
+                        .user(user)
                         .interestField(interestField)
                         .build();
                 userInterestRepository.save(userInterest);
