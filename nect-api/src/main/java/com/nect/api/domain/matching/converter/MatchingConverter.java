@@ -7,8 +7,6 @@ import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 
-import java.time.LocalDateTime;
-
 public class MatchingConverter {
 
     public static MatchingResDto.MatchingRes toMatchingResDto(Matching matching) {
@@ -44,41 +42,39 @@ public class MatchingConverter {
     }
 
     public static MatchingResDto.UserSummary toUserSummary(
-            Long matchingId,
             User user,
             String profileImageUrl,
-            RoleField field,
-            String customField,
-            LocalDateTime expiresAt){
+            Matching matching){
       return MatchingResDto.UserSummary.builder()
-              .matchingId(matchingId)
+              .matchingId(matching.getId())
               .userId(user.getUserId())
               .nickname(user.getNickname())
               .bio(user.getBio())
-              .field(field)
-              .customField(customField)
+              .field(matching.getField())
+              .customField(matching.getCustomField())
               .profileUrl(profileImageUrl)
-              .expiresAt(expiresAt)
+              .expiresAt(matching.getExpiresAt())
+              .status(matching.getMatchingStatus())
               .build();
 }
 
     public static MatchingResDto.ProjectSummary toProjectSummary(
-            Long matchingId,
             Project project,
             long countUserNum,
             long totalUserNum,
             String projectImageUrl,
-            LocalDateTime expiresAt
+            Matching matching
     ) {
         return MatchingResDto.ProjectSummary.builder()
-                .matchingId(matchingId)
+                .matchingId(matching.getId())
                 .projectId(project.getId())
                 .title(project.getTitle())
                 .description(project.getDescription())
                 .imageUrl(projectImageUrl)
                 .currentMembersNum(countUserNum)
                 .totalMemberNum(totalUserNum)
-                .expiresAt(expiresAt)
+                .expiresAt(matching.getExpiresAt())
+                .status(matching.getMatchingStatus())
                 .build();
     }
 }

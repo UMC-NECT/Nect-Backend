@@ -137,12 +137,9 @@ public class MatchingService {
                     .map(m -> {
                         User u = m.getRequestUser();
                         return MatchingConverter.toUserSummary(
-                                m.getId(),
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
-                                m.getField(),
-                                m.getCustomField(),
-                                m.getExpiresAt()
+                                m
                         );
                     })
                     .toList();
@@ -163,12 +160,11 @@ public class MatchingService {
                     .map( m -> {
                             Project project = m.getProject();
                             return MatchingConverter.toProjectSummary(
-                                    m.getId(),
                                     project,
                                     projectService.getUserNumberOfProject(project),
                                     projectTeamCommandService.getTotalUserNumberOfProject(project),
                                     s3Service.getPresignedGetUrl(project.getImageName()),
-                                    m.getExpiresAt()
+                                    m
                             );
                     })
                     .toList();
@@ -201,12 +197,9 @@ public class MatchingService {
                     .map(m -> {
                         User u = m.getTargetUser();
                         return MatchingConverter.toUserSummary(
-                                m.getId(),
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
-                                m.getField(),
-                                m.getCustomField(),
-                                m.getExpiresAt()
+                                m
                         );
                     })
                     .toList();
@@ -225,12 +218,11 @@ public class MatchingService {
                     .map( m -> {
                         Project project = m.getProject();
                         return MatchingConverter.toProjectSummary(
-                                m.getId(),
                                 project,
                                 projectService.getUserNumberOfProject(project),
                                 projectTeamCommandService.getTotalUserNumberOfProject(project),
                                 s3Service.getPresignedGetUrl(project.getImageName()),
-                                m.getExpiresAt()
+                                m
                         );
                     })
                     .toList();
@@ -309,12 +301,11 @@ public class MatchingService {
                 .map( m -> {
                     Project project = m.getProject();
                     return MatchingConverter.toProjectSummary(
-                            m.getId(),
                             project,
                             projectService.getUserNumberOfProject(project),
                             projectTeamCommandService.getTotalUserNumberOfProject(project),
                             s3Service.getPresignedGetUrl(project.getImageName()),
-                            m.getExpiresAt()
+                            m
                     );
                 })
                 .toList();
@@ -323,12 +314,9 @@ public class MatchingService {
                 .map(m -> {
                     User u = m.getTargetUser();
                     return MatchingConverter.toUserSummary(
-                            m.getId(),
                             u,
                             s3Service.getPresignedGetUrl(u.getProfileImageName()),
-                            m.getField(),
-                            m.getCustomField(),
-                            m.getExpiresAt()
+                            m
                     );
                 })
                 .toList();
@@ -363,12 +351,11 @@ public class MatchingService {
                 .map( m -> {
                     Project project = m.getProject();
                     return MatchingConverter.toProjectSummary(
-                            m.getId(),
                             project,
                             projectService.getUserNumberOfProject(project),
                             projectTeamCommandService.getTotalUserNumberOfProject(project),
                             s3Service.getPresignedGetUrl(project.getImageName()),
-                            m.getExpiresAt()
+                            m
                     );
                 })
                 .toList();
@@ -377,12 +364,9 @@ public class MatchingService {
                 .map(m -> {
                     User u = m.getRequestUser();
                     return MatchingConverter.toUserSummary(
-                            m.getId(),
                             u,
                             s3Service.getPresignedGetUrl(u.getProfileImageName()),
-                            m.getField(),
-                            m.getCustomField(),
-                            m.getExpiresAt()
+                            m
                     );
                 })
                 .toList();

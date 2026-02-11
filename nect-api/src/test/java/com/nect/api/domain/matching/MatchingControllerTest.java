@@ -546,6 +546,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(3)
                 .totalMemberNum(12)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.PENDING)
                 .build();
 
         MatchingResDto.UserSummary userSummary = MatchingResDto.UserSummary.builder()
@@ -557,6 +558,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/image.jpg")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.MatchingListRes dto = MatchingResDto.MatchingListRes.builder()
@@ -605,6 +607,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].customField").description("커스텀 분야 (분야가 CUSTOM일 때)"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
                                         fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.userMatchings[].status").description("매칭 상태"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
                                         fieldWithPath("body.projectMatchings[].matchingId").description("매칭 ID"),
@@ -614,7 +617,8 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.projectMatchings[].imageUrl").description("프로젝트 대표 이미지"),
                                         fieldWithPath("body.projectMatchings[].currentMembersNum").description("현재 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].totalMemberNum").description("프로젝트가 필요로 하는 총 멤버 수"),
-                                        fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간")
+                                        fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.projectMatchings[].status").description("매칭 상태")
                                         )
                                 .build()
                         )
@@ -635,6 +639,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/avatar.jpg")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.ProjectSummary projectSummary = MatchingResDto.ProjectSummary.builder()
@@ -646,6 +651,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(3)
                 .totalMemberNum(12)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.MatchingListRes dto = MatchingResDto.MatchingListRes.builder()
@@ -695,6 +701,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].customField").description("커스텀 분야 (분야가 CUSTOM일 때)"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
                                         fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.userMatchings[].status").description("매칭 상태"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
                                         fieldWithPath("body.projectMatchings[].matchingId").description("매칭 ID"),
@@ -704,7 +711,8 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.projectMatchings[].imageUrl").description("프로젝트 대표 이미지"),
                                         fieldWithPath("body.projectMatchings[].currentMembersNum").description("현재 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].totalMemberNum").description("프로젝트가 필요로 하는 총 멤버 수"),
-                                        fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간")
+                                        fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.projectMatchings[].status").description("매칭 상태")
                                         )
                                 .build()
                         )
@@ -986,6 +994,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(1)
                 .totalMemberNum(3)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.PENDING)
                 .build();
 
         MatchingResDto.ProjectSummary projectAccepted = MatchingResDto.ProjectSummary.builder()
@@ -997,6 +1006,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(2)
                 .totalMemberNum(4)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.ProjectSummary projectRejected = MatchingResDto.ProjectSummary.builder()
@@ -1008,6 +1018,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(0)
                 .totalMemberNum(2)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.REJECTED)
                 .build();
 
         MatchingResDto.ProjectSummary projectCanceled = MatchingResDto.ProjectSummary.builder()
@@ -1019,6 +1030,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(3)
                 .totalMemberNum(5)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.CANCELED)
                 .build();
 
         MatchingResDto.ProjectSummary projectExpired = MatchingResDto.ProjectSummary.builder()
@@ -1030,6 +1042,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(1)
                 .totalMemberNum(1)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.EXPIRED)
                 .build();
 
         // 유저 매칭 (상태 순서: PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED)
@@ -1042,6 +1055,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/user-pending.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.PENDING)
                 .build();
 
         MatchingResDto.UserSummary userAccepted = MatchingResDto.UserSummary.builder()
@@ -1053,6 +1067,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/user-accepted.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.UserSummary userRejected = MatchingResDto.UserSummary.builder()
@@ -1064,6 +1079,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/user-rejected.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.REJECTED)
                 .build();
 
         MatchingResDto.UserSummary userCanceled = MatchingResDto.UserSummary.builder()
@@ -1075,6 +1091,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/user-canceled.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.CANCELED)
                 .build();
 
         MatchingResDto.UserSummary userExpired = MatchingResDto.UserSummary.builder()
@@ -1086,6 +1103,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/user-expired.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.EXPIRED)
                 .build();
 
         MatchingResDto.MatchingListRes dto = MatchingResDto.MatchingListRes.builder()
@@ -1140,6 +1158,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.projectMatchings[].currentMembersNum").description("현재 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].totalMemberNum").description("프로젝트가 필요로 하는 총 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.projectMatchings[].status").description("매칭 상태"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록"),
                                         fieldWithPath("body.userMatchings[].matchingId").description("매칭 ID"),
@@ -1149,7 +1168,8 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].field").description("분야"),
                                         fieldWithPath("body.userMatchings[].customField").description("커스텀 분야 (분야가 CUSTOM일 때)"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
-                                        fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간")
+                                        fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.userMatchings[].status").description("매칭 상태")
                                         )
                                 .build()
                         )
@@ -1171,6 +1191,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(1)
                 .totalMemberNum(3)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.PENDING)
                 .build();
 
         MatchingResDto.ProjectSummary projectAccepted = MatchingResDto.ProjectSummary.builder()
@@ -1182,6 +1203,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(2)
                 .totalMemberNum(4)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.ProjectSummary projectRejected = MatchingResDto.ProjectSummary.builder()
@@ -1193,6 +1215,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(0)
                 .totalMemberNum(2)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.REJECTED)
                 .build();
 
         MatchingResDto.ProjectSummary projectCanceled = MatchingResDto.ProjectSummary.builder()
@@ -1204,6 +1227,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(3)
                 .totalMemberNum(5)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.CANCELED)
                 .build();
 
         MatchingResDto.ProjectSummary projectExpired = MatchingResDto.ProjectSummary.builder()
@@ -1215,6 +1239,7 @@ public class MatchingControllerTest {
                 .currentMembersNum(1)
                 .totalMemberNum(1)
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.EXPIRED)
                 .build();
 
         // 유저 매칭 (상태 순서: PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED)
@@ -1227,6 +1252,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/recv-user-pending.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.PENDING)
                 .build();
 
         MatchingResDto.UserSummary userAccepted = MatchingResDto.UserSummary.builder()
@@ -1238,6 +1264,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/recv-user-accepted.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.ACCEPTED)
                 .build();
 
         MatchingResDto.UserSummary userRejected = MatchingResDto.UserSummary.builder()
@@ -1249,6 +1276,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/recv-user-rejected.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.REJECTED)
                 .build();
 
         MatchingResDto.UserSummary userCanceled = MatchingResDto.UserSummary.builder()
@@ -1260,6 +1288,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/recv-user-canceled.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.CANCELED)
                 .build();
 
         MatchingResDto.UserSummary userExpired = MatchingResDto.UserSummary.builder()
@@ -1271,6 +1300,7 @@ public class MatchingControllerTest {
                 .customField(null)
                 .profileUrl("https://example.com/recv-user-expired.png")
                 .expiresAt(LocalDateTime.now().plusDays(1))
+                .status(MatchingStatus.EXPIRED)
                 .build();
 
         MatchingResDto.MatchingListRes dto = MatchingResDto.MatchingListRes.builder()
@@ -1325,6 +1355,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.projectMatchings[].currentMembersNum").description("현재 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].totalMemberNum").description("프로젝트가 필요로 하는 총 멤버 수"),
                                         fieldWithPath("body.projectMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.projectMatchings[].status").description("매칭 상태"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록(프로젝트 목록 다음에 나열됨)"),
                                         fieldWithPath("body.userMatchings[].matchingId").description("매칭 ID"),
@@ -1334,8 +1365,9 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].field").description("분야"),
                                         fieldWithPath("body.userMatchings[].customField").description("커스텀 분야 (분야가 CUSTOM일 때)"),
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
-                                        fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간")
-                                        )
+                                        fieldWithPath("body.userMatchings[].expiresAt").description("만료 시간"),
+                                        fieldWithPath("body.userMatchings[].status").description("매칭 상태")
+                                )
                                 .build()
                         )
                 ));
