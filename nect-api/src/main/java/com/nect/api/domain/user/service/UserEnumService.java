@@ -18,7 +18,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getJobs() {
         return Arrays.stream(Job.values())
-                .map(job -> new EnumValueDto(job.name(), job.getDescription()))
+                .map(job -> new EnumValueDto(job.name(), job.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -27,7 +27,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getRoles() {
         return Arrays.stream(Role.values())
-                .map(role -> new EnumValueDto(role.name(), role.getDescription()))
+                .map(role -> new EnumValueDto(role.name(), role.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -37,7 +37,7 @@ public class UserEnumService {
     public RoleFieldsResponseDto getRoleFields(Role role) {
         List<EnumValueDto> fields = Arrays.stream(RoleField.values())
                 .filter(field -> field.getRole() == null || field.getRole().equals(role))
-                .map(field -> new EnumValueDto(field.name(), field.getLabelEn()))
+                .map(field -> new EnumValueDto(field.name(), field.getLabelEn(), field.getLabelEn()))
                 .collect(Collectors.toList());
 
         return new RoleFieldsResponseDto(
@@ -52,7 +52,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getAllFields() {
         return Arrays.stream(RoleField.values())
-                .map(field -> new EnumValueDto(field.name(), field.getDescription()))
+                .map(field -> new EnumValueDto(field.name(), field.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -61,7 +61,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getSkillCategories() {
         return Arrays.stream(SkillCategory.values())
-                .map(category -> new EnumValueDto(category.name(), category.getDescription()))
+                .map(category -> new EnumValueDto(category.name(), category.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -71,7 +71,7 @@ public class UserEnumService {
     public CategorySkillsResponseDto getCategorySkills(SkillCategory category) {
         List<EnumValueDto> skills = Arrays.stream(Skill.values())
                 .filter(skill -> skill.getCategory().equals(category))
-                .map(skill -> new EnumValueDto(skill.name(), skill.getDisplayName()))
+                .map(skill -> new EnumValueDto(skill.name(), skill.getDisplayName(), null))
                 .collect(Collectors.toList());
 
         return new CategorySkillsResponseDto(
@@ -86,7 +86,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getAllSkills() {
         return Arrays.stream(Skill.values())
-                .map(skill -> new EnumValueDto(skill.name(), skill.getDisplayName()))
+                .map(skill -> new EnumValueDto(skill.name(), skill.getDisplayName(), null))
                 .collect(Collectors.toList());
     }
 
@@ -95,7 +95,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getInterestFields() {
         return Arrays.stream(InterestField.values())
-                .map(interest -> new EnumValueDto(interest.name(), interest.getDescription()))
+                .map(interest -> new EnumValueDto(interest.name(), interest.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -104,7 +104,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getGoals() {
         return Arrays.stream(Goal.values())
-                .map(goal -> new EnumValueDto(goal.name(), goal.getDescription()))
+                .map(goal -> new EnumValueDto(goal.name(), goal.getDescription(), null))
                 .collect(Collectors.toList());
     }
 
@@ -113,7 +113,7 @@ public class UserEnumService {
      */
     public List<EnumValueDto> getUserStatuses() {
         return Arrays.stream(UserStatus.values())
-                .map(status -> new EnumValueDto(status.name(), status.getDescription()))
+                .map(status -> new EnumValueDto(status.name(), status.getDescription(), null))
                 .collect(Collectors.toList());
     }
 }
