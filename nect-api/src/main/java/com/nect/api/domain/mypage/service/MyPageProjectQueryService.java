@@ -57,8 +57,6 @@ public class MyPageProjectQueryService {
         List<ProjectUser> myProjectUsers = projectUserRepositoryComplete
                 .findByUserIdAndMemberStatus(userId, ProjectMemberStatus.ACTIVE);
 
-
-
         if (myProjectUsers.isEmpty()) {
             return MyProjectsResponseDto.builder()
                     .projects(List.of())
@@ -69,25 +67,21 @@ public class MyPageProjectQueryService {
                 .map(pu -> pu.getProject().getId())
                 .collect(Collectors.toList());
 
-
-
         Map<Long, MyProjectsResponseDto.LeaderInfo> leadersMap = getLeadersMapByProjects(projectIds);
 
         Map<Long, List<MyProjectsResponseDto.TeamMemberProjectInfo>> teamMemberProjectsMap =
                 getTeamMemberProjectsMapByProjects(projectIds, userId);
 
-        Map<Long, List<ProjectUser>> membersByProjectId = projectUserRepositoryComplete
-                .findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE).stream()
-                .collect(Collectors.groupingBy(pu -> pu.getProject().getId()));
+        Map<Long, List<UserTeamRole>> teamRolesByProjectId = userTeamRoleRepository
+                .findByProjectIdIn(projectIds).stream()
+                .collect(Collectors.groupingBy(tr -> tr.getProject().getId()));
+
 
         List<MyProjectsResponseDto.ProjectInfo> projectInfos = myProjectUsers.stream()
                 .map(projectUser -> {
                     Project project = projectUser.getProject();
                     Long projectId = project.getId();
 
-                    Map<Long, List<UserTeamRole>> teamRolesByProjectId = userTeamRoleRepository
-                            .findByProjectIdIn(projectIds).stream()
-                            .collect(Collectors.groupingBy(tr -> tr.getProject().getId()));
 
                     ProjectMemberStatisticResponse teamRoles = buildMemberStatistics(
                             teamRolesByProjectId.getOrDefault(projectId, List.of())
@@ -112,6 +106,7 @@ public class MyPageProjectQueryService {
                 .projects(projectInfos)
                 .build();
     }
+
 
     private ProjectMemberStatisticResponse buildMemberStatistics(List<UserTeamRole> teamRoles) {
         Map<RoleField, Integer> roleFieldCounts = teamRoles.stream()
