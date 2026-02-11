@@ -102,8 +102,6 @@ public class ProjectService {
 
         RoleField leaderRole = analysis.getTeamCompositions().get(0).getRoleField();
         addProjectLeader(project, userId, leaderRole);
-
-
         // 4. 팀 구성 복사
         saveTeamRoles(project.getId(), analysis);
         //TODO : 리팩토링
