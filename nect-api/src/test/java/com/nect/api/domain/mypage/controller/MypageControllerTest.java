@@ -8,7 +8,6 @@ import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.TeamRoleAddRequestDto;
-import com.nect.api.domain.mypage.dto.TeamRoleResponseDto;
 import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
 import com.nect.api.domain.mypage.service.MypageService;
@@ -16,11 +15,15 @@ import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
+import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -64,6 +67,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private UserTeamRoleQueryService userTeamRoleQueryService;
+
+    @MockitoBean
+    private ProjectMemberStatisticService projectMemberStatisticService;
 
     @Test
     void getProfile() throws Exception {
@@ -124,6 +130,45 @@ class MypageControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("프로필 분석 키워드 태그 (예: #프로그래밍전문가, #백엔드개발자)").optional()
                                         )
                                         .build()
+                        )
+                ));
+    }
+
+    @Test
+    void changeProjectStatus() throws Exception {
+        Long projectId = 1L;
+
+        doNothing().when(projectCommandService)
+                .editProjectRecruitmentStatus(projectId, RecruitmentStatus.OPEN);
+
+        mockMvc.perform(patch("/api/v1/mypage/projects/{projectId}", projectId)
+                        .header("Authorization", "Bearer AccessToken")
+                        .queryParam("status", "OPEN")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-change-project-status",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("프로젝트 상태 변경")
+                                .description("프로젝트 모집 상태를 변경합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .queryParameters(
+                                        parameterWithName("status").description("모집 상태 (UPCOMING, OPEN, CLOSED)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
                         )
                 ));
     }
@@ -888,20 +933,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
         Long projectId = 1L;
 
-        List<TeamRoleResponseDto> responseList = List.of(
-                TeamRoleResponseDto.builder()
-                        .roleField(RoleField.BACKEND)
-                        .customRoleFieldName(null)
-                        .requiredCount(3)
-                        .build(),
-                TeamRoleResponseDto.builder()
-                        .roleField(RoleField.CUSTOM)
-                        .customRoleFieldName("AI Researcher")
-                        .requiredCount(1)
-                        .build()
-        );
+        ProjectMemberStatisticResponse response = mockProjectMemberStatistics();
 
-        given(userTeamRoleQueryService.getTeamRoles(projectId)).willReturn(responseList);
+        given(projectMemberStatisticService.getStatistics(projectId)).willReturn(response);
 
 
         mockMvc.perform(get("/api/v1/mypage/{projectId}/team-roles", projectId)
@@ -912,7 +946,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 조회  ")
                                 .description("프로젝트의 팀 구성원(직무/인원) 목록을 조회합니다.")
                                 .pathParameters(
@@ -926,9 +960,12 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("status.message").description("상태 메시지"),
                                         fieldWithPath("status.description").description("상태 설명").optional(),
 
-                                        fieldWithPath("body[].role_field").description("직무 분야"),
-                                        fieldWithPath("body[].custom_role_field_name").type(JsonFieldType.STRING).description("커스텀 직무명").optional(),
-                                        fieldWithPath("body[].required_count").description("설정된 인원 수")
+                                        fieldWithPath("body.roles").description("Role 기준 통계 목록"),
+                                        fieldWithPath("body.roles[].role").description("Role"),
+                                        fieldWithPath("body.roles[].count").description("Role 인원 수"),
+                                        fieldWithPath("body.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                                        fieldWithPath("body.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.roles[].role_fields[].count").description("RoleField 인원 수")
                                 )
                                 .build()
                         )
@@ -959,7 +996,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행중인 프로젝트 팀 구성편집 ")
                                 .description("프로젝트 팀 구성을 편집(인원 수 설정)합니다. 기존에 해당 직무가 있으면 인원수를 수정하고, 없으면 새로 생성합니다.")
                                 .pathParameters(
@@ -999,16 +1036,8 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 .imageName("project-image.jpg")
                                 .plannedStartedOn(LocalDate.of(2024, 1, 1))
                                 .plannedEndedOn(LocalDate.of(2024, 6, 30))
-                                .teamRoles(List.of(
-                                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                                .roleField(RoleField.BACKEND)
-                                                .requiredCount(2)
-                                                .build(),
-                                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                                .roleField(RoleField.FRONTEND)
-                                                .requiredCount(2)
-                                                .build()
-                                ))
+                                .recruitmentStatus(RecruitmentStatus.OPEN)
+                                .teamRoles(mockProjectMemberStatistics())
                                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                                         .userId(1L)
                                         .name("김리더")
@@ -1039,7 +1068,7 @@ class MypageControllerTest extends NectDocumentApiTester {
                         preprocessRequest(prettyPrint()),
                         preprocessResponse(prettyPrint()),
                         resource(ResourceSnippetParameters.builder()
-                                .tag("MyPage")
+                                .tag("Mypage")
                                 .summary("마이페이지 진행 중인 프로젝트 조회")
                                 .description("사용자가 현재 참여 중(ACTIVE)인 프로젝트 목록을 조회합니다, 모집등록 전 프로젝트 조회입니다.")
                                 .requestHeaders(
@@ -1057,10 +1086,15 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("body.projects[].image_name").description("프로젝트 대표 이미지 파일명").optional(),
                                         fieldWithPath("body.projects[].planned_started_on").description("프로젝트 시작 예정일").optional(),
                                         fieldWithPath("body.projects[].planned_ended_on").description("프로젝트 종료 예정일").optional(),
+                                        fieldWithPath("body.projects[].recruitment_status").description("프로젝트 모집 상태").optional(),
 
-                                        fieldWithPath("body.projects[].team_roles[]").description("팀 구성(직무) 정보"),
-                                        fieldWithPath("body.projects[].team_roles[].role_field").description("직무 분야 (Enum)"),
-                                        fieldWithPath("body.projects[].team_roles[].required_count").description("필요 인원 수"),
+                                        fieldWithPath("body.projects[].team_roles").description("프로젝트 멤버 통계"),
+                                        fieldWithPath("body.projects[].team_roles.roles").description("Role 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role").description("Role"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].count").description("Role 인원 수"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
 
                                         fieldWithPath("body.projects[].leader").description("프로젝트 리더 정보"),
                                         fieldWithPath("body.projects[].leader.user_id").description("리더 유저 ID"),
@@ -1078,5 +1112,35 @@ class MypageControllerTest extends NectDocumentApiTester {
                                 .build()
                         )
                 ));
+    }
+
+    private ProjectMemberStatisticResponse mockProjectMemberStatistics() {
+        return new ProjectMemberStatisticResponse(List.of(
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.PLANNER,
+                        1,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DESIGNER,
+                        2,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DEVELOPER,
+                        3,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.MARKETER,
+                        0,
+                        List.of()
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.OTHER,
+                        0,
+                        List.of()
+                )
+        ));
     }
 }

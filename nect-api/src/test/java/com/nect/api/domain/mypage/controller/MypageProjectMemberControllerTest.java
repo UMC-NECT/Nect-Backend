@@ -2,8 +2,10 @@ package com.nect.api.domain.mypage.controller;
 
 import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nect.api.domain.mypage.dto.ReorderProjectMembersRequest;
 import com.nect.api.domain.team.project.dto.ProjectUsersResDto;
 import com.nect.api.domain.team.project.service.ProjectMemberQueryService;
+import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -29,20 +31,16 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
-import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
-import static com.epages.restdocs.apispec.ResourceDocumentation.parameterWithName;
-import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static com.epages.restdocs.apispec.ResourceDocumentation.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessRequest;
-import static org.springframework.restdocs.operation.preprocess.Preprocessors.preprocessResponse;
+import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
 import static org.springframework.restdocs.payload.JsonFieldType.*;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -62,6 +60,9 @@ class MypageProjectMemberControllerTest {
 
     @MockitoBean
     private ProjectMemberQueryService projectMemberQueryService;
+
+    @MockitoBean
+    private ProjectUserService projectUserService;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -178,5 +179,67 @@ class MypageProjectMemberControllerTest {
                 ));
 
         verify(projectMemberQueryService).readProjectUsers(eq(projectId), eq(userId));
+    }
+
+    @Test
+    @DisplayName("프로젝트 유저 순서 재정렬")
+    void reorderProjectUsers() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        String requestJson = """
+                {
+                  "updates": [
+                    {
+                      "roleField": "BACKEND",
+                      "customRoleField": null,
+                      "orderedUserIds": [101, 102, 103]
+                    },
+                    {
+                      "roleField": "FRONTEND",
+                      "customRoleField": null,
+                      "orderedUserIds": [201, 202]
+                    }
+                  ]
+                }
+                """;
+
+        doNothing().when(projectUserService).reorderProjectUsers(eq(projectId), any(ReorderProjectMembersRequest.class));
+
+        mockMvc.perform(post("/api/v1/mypage/projects/{projectId}/users/reorder", projectId)
+                        .with(mockUser(userId))
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-project-users-reorder",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(
+                                ResourceSnippetParameters.builder()
+                                        .tag("Mypage")
+                                        .summary("프로젝트 유저 순서 재정렬")
+                                        .description("프로젝트 멤버들의 정렬 순서를 지정합니다. userId를 보내주시면 됩니다.")
+                                        .pathParameters(
+                                                parameterWithName("projectId").description("프로젝트 ID")
+                                        )
+                                        .requestHeaders(
+                                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                                        )
+                                        .requestFields(
+                                                fieldWithPath("updates").description("정렬 업데이트 목록"),
+                                                fieldWithPath("updates[].roleField").description("파트 (RoleField)"),
+                                                fieldWithPath("updates[].customRoleField").optional().description("커스텀 파트명 (CUSTOM일 때)"),
+                                                fieldWithPath("updates[].orderedUserIds").description("정렬할 User ID 리스트 (순서대로)")
+                                        )
+                                        .responseFields(
+                                                fieldWithPath("status").description("응답 상태"),
+                                                fieldWithPath("status.statusCode").description("상태 코드"),
+                                                fieldWithPath("status.message").description("상태 메시지"),
+                                                fieldWithPath("status.description").optional().description("상세 설명")
+                                        )
+                                        .build()
+                        )
+                ));
     }
 }
