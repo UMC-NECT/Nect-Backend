@@ -250,15 +250,16 @@ public class TeamChatService {
 
 
         return projectMembers.stream()
-                .map(user -> ProjectMemberDto.builder()
-                        .userId(user.getUserId())
-                        .nickname(user.getNickname())
-                        .name(user.getName())
-                        .profileImage(StringUtils.hasText(user.getProfileImageName())
+                .map(user -> new ProjectMemberDto(
+                        user.getUserId(),
+                        user.getNickname(),
+                        user.getName(),
+                        StringUtils.hasText(user.getProfileImageName())
                                 ? s3Service.getPresignedGetUrl(user.getProfileImageName())
-                                : null)
-                        .build())
+                                : null
+                ))
                 .collect(Collectors.toList());
     }
+
 
 }
