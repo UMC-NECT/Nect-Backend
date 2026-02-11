@@ -295,7 +295,8 @@ class UserControllerTest extends NectDocumentApiTester {
                         .content(toJson(new AgreeDto.AgreeRequestDto(
                                 true,
                                 true,
-                                false
+                                false,
+                                "test@example.com"
                         ))))
                 .andExpect(status().isOk())
                 .andDo(document("user-agree",
@@ -303,14 +304,15 @@ class UserControllerTest extends NectDocumentApiTester {
                                 ResourceSnippetParameters.builder()
                                         .tag("users")
                                         .summary("개인정보 동의")
-                                        .description("서비스 이용약관과 개인정보 수집 이용에 동의합니다. 두 가지 동의는 필수이며, 마케팅 정보 수신은 선택입니다.")
+                                        .description("서비스 이용약관과 개인정보 수집 이용에 동의합니다. 두 가지 동의는 필수이며, 마케팅 정보 수신과 이메일은 선택입니다.")
                                         .requestHeaders(
                                                 headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
                                         )
                                         .requestFields(
                                                 fieldWithPath("termsAgreed").type(JsonFieldType.BOOLEAN).description("서비스 이용약관 동의 (필수)"),
                                                 fieldWithPath("privacyAgreed").type(JsonFieldType.BOOLEAN).description("개인정보 수집 이용 동의 (필수)"),
-                                                fieldWithPath("marketingAgreed").type(JsonFieldType.BOOLEAN).description("마케팅 정보 수신 동의 (선택)").optional()
+                                                fieldWithPath("marketingAgreed").type(JsonFieldType.BOOLEAN).description("마케팅 정보 수신 동의 (선택)").optional(),
+                                                fieldWithPath("email").type(JsonFieldType.STRING).description("이메일 주소 (선택, 입력하면 저장, null이거나 생략하면 기존 이메일 유지)").optional()
                                         )
                                         .responseFields(
                                                 fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
@@ -419,10 +421,11 @@ class UserControllerTest extends NectDocumentApiTester {
         // given
         OnboardingAnalysisScheme.CollaborationStyle style = new OnboardingAnalysisScheme.CollaborationStyle();
         style.planning = 3;
+        style.execution = 3;
         style.logic = 4;
+        style.empathy = 2;
         style.leadership = 2;
-        style.empathy = 3;
-        style.execution = 4;
+        style.supporter = 4;
 
         OnboardingAnalysisScheme.SkillCategory skillCat = new OnboardingAnalysisScheme.SkillCategory();
         skillCat.category = "Design";
@@ -477,10 +480,11 @@ class UserControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.profileType").type(JsonFieldType.STRING).description("사용자 타입"),
                                                 fieldWithPath("body.tags").type(JsonFieldType.ARRAY).description("사용자 특성 태그"),
                                                 fieldWithPath("body.collaborationStyle.planning").type(JsonFieldType.NUMBER).description("협업스타일 - 계획형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.execution").type(JsonFieldType.NUMBER).description("협업스타일 - 실행형 (1-5, 6-계획형)"),
                                                 fieldWithPath("body.collaborationStyle.logic").type(JsonFieldType.NUMBER).description("협업스타일 - 논리형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.empathy").type(JsonFieldType.NUMBER).description("협업스타일 - 공감형 (1-5, 6-논리형)"),
                                                 fieldWithPath("body.collaborationStyle.leadership").type(JsonFieldType.NUMBER).description("협업스타일 - 리더형 (1-5)"),
-                                                fieldWithPath("body.collaborationStyle.empathy").type(JsonFieldType.NUMBER).description("협업스타일 - 공감형 (1-5)"),
-                                                fieldWithPath("body.collaborationStyle.execution").type(JsonFieldType.NUMBER).description("협업스타일 - 실행형 (1-5)"),
+                                                fieldWithPath("body.collaborationStyle.supporter").type(JsonFieldType.NUMBER).description("협업스타일 - 서포터형 (1-5, 6-리더형)"),
                                                 fieldWithPath("body.skills[].category").type(JsonFieldType.STRING).description("스킬 카테고리"),
                                                 fieldWithPath("body.skills[].skill_names").type(JsonFieldType.ARRAY).description("보유 스킬"),
                                                 fieldWithPath("body.roleRecommendation.leader").type(JsonFieldType.STRING).description("리더로서의 역할 추천"),
