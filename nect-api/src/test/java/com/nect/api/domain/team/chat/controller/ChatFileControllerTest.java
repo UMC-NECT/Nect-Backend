@@ -266,14 +266,16 @@ class ChatFileControllerTest {
                         2,
                         List.of(
                                 new ChatFileResponseDto(
-                                        "design.png",
-                                        "https://cdn.example.com/chat/files/design.png",
-                                        LocalDateTime.of(2025, 1, 10, 11, 0)
+                                        1L,
+                                        "image.jpg",
+                                        "https://example.com/image.jpg",
+                                        LocalDateTime.now()
                                 ),
                                 new ChatFileResponseDto(
-                                        "spec.pdf",
-                                        "https://cdn.example.com/chat/files/spec.pdf",
-                                        LocalDateTime.of(2025, 1, 9, 18, 30)
+                                        1L,
+                                        "image.jpg",
+                                        "https://example.com/image.jpg",
+                                        LocalDateTime.now()
                                 )
                         )
                 )
@@ -319,6 +321,7 @@ class ChatFileControllerTest {
                                         fieldWithPath("body[].room_type").type(STRING).description("채팅방 타입"),
                                         fieldWithPath("body[].file_count").type(NUMBER).description("파일 개수"),
                                         fieldWithPath("body[].files").type(ARRAY).description("파일 목록"),
+                                        fieldWithPath("body[].files[].file_id").type(NUMBER).description("파일 ID"),
                                         fieldWithPath("body[].files[].file_name").type(STRING).description("파일명"),
                                         fieldWithPath("body[].files[].file_url").type(STRING).description("파일 URL"),
                                         fieldWithPath("body[].files[].created_at").type(STRING).description("생성일시(ISO-8601)")
@@ -341,9 +344,10 @@ class ChatFileControllerTest {
                 "개발팀",
                 List.of(
                         new ChatFileResponseDto(
-                                "design.png",
-                                "https://cdn.example.com/chat/files/design.png",
-                                LocalDateTime.of(2025, 1, 10, 11, 0)
+                                1L,
+                                "image.jpg",
+                                "https://example.com/image.jpg",
+                                LocalDateTime.now()
                         )
                 ),
                 1,
@@ -391,6 +395,7 @@ class ChatFileControllerTest {
                                         fieldWithPath("body.room_id").type(NUMBER).description("채팅방 ID"),
                                         fieldWithPath("body.room_name").type(STRING).description("채팅방 이름"),
                                         fieldWithPath("body.files").type(ARRAY).description("파일 목록"),
+                                        fieldWithPath("body.files[].file_id").type(NUMBER).description("파일 ID"),
                                         fieldWithPath("body.files[].file_name").type(STRING).description("파일명"),
                                         fieldWithPath("body.files[].file_url").type(STRING).description("파일 URL"),
                                         fieldWithPath("body.files[].created_at").type(STRING).description("생성일시(ISO-8601)"),
