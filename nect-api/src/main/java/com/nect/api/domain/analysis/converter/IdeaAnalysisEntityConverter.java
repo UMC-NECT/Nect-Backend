@@ -72,6 +72,7 @@ public class IdeaAnalysisEntityConverter {
 
         return IdeaAnalysisResponseDto.builder()
                 .analysisId(analysis.getId())
+                .description(analysis.getDescription())
                 .recommendedProjectNames(analysis.getRecommendedProjectNames())
                 .projectDuration(projectDuration)
                 .teamComposition(teamComposition)
