@@ -5,7 +5,8 @@ public class AgreeDto {
     public record AgreeRequestDto(
             Boolean termsAgreed,
             Boolean privacyAgreed,
-            Boolean marketingAgreed
+            Boolean marketingAgreed,
+            String email
     ) {}
 
     public record AgreeResponseDto(
