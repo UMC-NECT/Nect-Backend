@@ -375,7 +375,7 @@ public class MatchingService {
 
         List<MatchingResDto.UserSummary> userSummaries = userMatchings.stream()
                 .map(m -> {
-                    User u = m.getTargetUser();
+                    User u = m.getRequestUser();
                     return MatchingConverter.toUserSummary(
                             m.getId(),
                             u,
