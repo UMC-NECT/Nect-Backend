@@ -5,7 +5,6 @@ import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
-import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
@@ -19,10 +18,13 @@ import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserTypeReqDto;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -45,6 +47,7 @@ public class MypageController {
     private final ProjectUserService projectUserService;
     private final RecruitmentService recruitmentService;
     private final UserTeamRoleQueryService userTeamRoleQueryService;
+    private final ProjectMemberStatisticService projectMemberStatisticService;
 
     /**
      * 프로필 조회
@@ -79,6 +82,16 @@ public class MypageController {
         return ApiResponse.ok(response);
     }
 
+    @PatchMapping("/projects/{projectId}")
+    public ApiResponse<Void> changeProjectStatus(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long projectId,
+            @RequestParam("status")RecruitmentStatus status
+            ) {
+        projectCommandService.editProjectRecruitmentStatus(projectId, status);
+        return ApiResponse.ok();
+    }
+
 
     /**
      * 프로필 분석 불러오기
@@ -111,11 +124,10 @@ public class MypageController {
 
     // 팀 구성 편집 조회(파트,인원)
     @GetMapping("/{projectId}/team-roles")
-    public ApiResponse<List<TeamRoleResponseDto>> getTeamRoles(
+    public ApiResponse<ProjectMemberStatisticResponse> getTeamRoles(
             @PathVariable Long projectId
     ) {
-        List<TeamRoleResponseDto> response = userTeamRoleQueryService.getTeamRoles(projectId);
-        return ApiResponse.ok(response);
+        return ApiResponse.ok(projectMemberStatisticService.getStatistics(projectId));
     }
 
     // 팀 구성 편집
