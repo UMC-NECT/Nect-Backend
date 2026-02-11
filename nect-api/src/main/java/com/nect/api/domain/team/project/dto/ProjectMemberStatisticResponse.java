@@ -33,6 +33,9 @@ public record ProjectMemberStatisticResponse(
             @JsonProperty("role_field")
             RoleField roleField,
 
+            @JsonProperty("label_en")
+            String labelEn,
+
             @JsonProperty("count")
             int count
     ) {}

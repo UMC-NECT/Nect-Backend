@@ -212,6 +212,7 @@ class MyPageControllerRestDocsTest {
                                         fieldWithPath("body.projects[].team_roles.roles[].count").description("Role 인원 수"),
                                         fieldWithPath("body.projects[].team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
                                         fieldWithPath("body.projects[].team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                                        fieldWithPath("body.projects[].team_roles.roles[].role_fields[].label_en").description("RoleField 영어 라벨"),
                                         fieldWithPath("body.projects[].team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
 
                                         // leader 객체
@@ -239,17 +240,17 @@ class MyPageControllerRestDocsTest {
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.PLANNER,
                         1,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, RoleField.SERVICE.getLabelEn(), 1))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.DESIGNER,
                         2,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, RoleField.UI_UX.getLabelEn(), 2))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.DEVELOPER,
                         3,
-                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, RoleField.BACKEND.getLabelEn(), 3))
                 ),
                 new ProjectMemberStatisticResponse.RoleStatistic(
                         Role.MARKETER,
