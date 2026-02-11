@@ -8,10 +8,7 @@ import com.nect.api.domain.matching.service.RecruitmentService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.TeamRoleAddRequestDto;
-import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
-import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
-import com.nect.api.domain.mypage.service.MypageService;
-import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
+import com.nect.api.domain.mypage.service.*;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
@@ -70,6 +67,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private ProjectMemberStatisticService projectMemberStatisticService;
+
+    @MockitoBean
+    private ProjectDeleteService projectDeleteService;
 
     @Test
     void getProfile() throws Exception {
@@ -1142,5 +1142,50 @@ class MypageControllerTest extends NectDocumentApiTester {
                         List.of()
                 )
         ));
+    }
+
+    @Test
+    void deleteProject() throws Exception {
+        Long projectId = 1L;
+
+        doNothing().when(projectDeleteService)
+                .deleteProject(eq(projectId), anyLong());
+
+        mockMvc.perform(delete("/api/v1/mypage/{projectId}", projectId)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("mypage-delete-project",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("프로젝트 삭제")
+                                .description(
+                                        "프로젝트를 삭제합니다.\n\n" +
+                                                "**권한**\n" +
+                                                "- 프로젝트 리더만 삭제 가능합니다.\n\n" +
+                                                "**삭제 범위**\n" +
+                                                "- 프로젝트 및 연관된 모든 데이터가 함께 삭제됩니다.\n" +
+                                                "- 채팅방, 메시지, 일정, 프로세스, 알림, 매칭 등 포함\n\n" +
+                                                "**에러**\n" +
+                                                "- 프로젝트가 존재하지 않으면 404\n" +
+                                                "- 리더가 아니면 403"
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("삭제할 프로젝트 ID")
+                                )
+                                .requestHeaders(
+                                        headerWithName(AUTH_HEADER).description("Bearer AccessToken")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").type(JsonFieldType.STRING).optional().description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
     }
 }

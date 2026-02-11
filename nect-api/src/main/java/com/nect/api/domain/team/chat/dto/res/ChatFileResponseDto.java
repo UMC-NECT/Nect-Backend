@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record ChatFileResponseDto(
+        Long fileId,
         String fileName,
         String fileUrl,
         LocalDateTime createdAt
