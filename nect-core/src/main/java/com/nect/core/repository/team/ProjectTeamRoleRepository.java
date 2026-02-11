@@ -1,4 +1,5 @@
 package com.nect.core.repository.team;
+import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,10 +33,13 @@ public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole
     """)
     List<TeamRoleRow> findActiveTeamRoleRowsByProjectId(@Param("projectId") Long projectId);
 
-    interface TeamRoleRow {
-        RoleField getRoleField();
-        String getCustomRoleFieldName();
-    }
+    @Query("""
+        select coalesce(sum(ptr.requiredCount), 0)
+        from ProjectTeamRole ptr
+        where ptr.project = :project
+            and ptr.deletedAt is null
+    """)
+    long countTotalUserNumberByProject(@Param("project") Project project);
 
     boolean existsByProject_IdAndRoleField(Long projectId, RoleField roleField);
 
@@ -53,11 +57,9 @@ public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole
             String customRoleFieldName
     );
 
-
     Optional<ProjectTeamRole> findByIdAndDeletedAtIsNull(Long id);
 
     Optional<ProjectTeamRole> findByIdAndProject_IdAndDeletedAtIsNull(Long id, Long projectId);
-
 
     @Query("""
         select ptr
@@ -70,5 +72,11 @@ public interface ProjectTeamRoleRepository extends JpaRepository<ProjectTeamRole
           ptr.id asc
     """)
     List<ProjectTeamRole> findActiveOrderedForMissionProgress(@Param("projectId") Long projectId);
+
+
+    interface TeamRoleRow {
+        RoleField getRoleField();
+        String getCustomRoleFieldName();
+    }
 
 }

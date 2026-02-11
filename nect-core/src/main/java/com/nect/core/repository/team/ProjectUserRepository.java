@@ -170,12 +170,14 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     Long findLeaderByProject(@Param("project") Project project);
 
     @Query("""
-        select pu.project
+        select distinct p
         from ProjectUser pu
+            join pu.project p
         where pu.userId = :userId
             and pu.memberType = com.nect.core.entity.team.enums.ProjectMemberType.LEADER
+            and p.recruitmentStatus = com.nect.core.entity.team.enums.RecruitmentStatus.OPEN
     """)
-    List<Project> findProjectsAsLeader(@Param("userId") Long userId);
+    List<Project> findRecruitingProjectsAsLeader(@Param("userId") Long userId);
 
     @Query("""
         select count(pu)

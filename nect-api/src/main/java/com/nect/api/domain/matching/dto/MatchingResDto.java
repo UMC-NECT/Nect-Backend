@@ -46,19 +46,23 @@ public class MatchingResDto {
 
     @Builder
     public record UserSummary(
+            Long matchingId,
             Long userId,
             String nickname,
             String bio,
             RoleField field,
+            String customField,
             String profileUrl
     ){}
 
     @Builder
     public record ProjectSummary(
+            Long matchingId,
             Long projectId,
             String title,
             String description,
             long currentMembersNum,
+            long totalMemberNum,
             String imageUrl
     ){}
 }

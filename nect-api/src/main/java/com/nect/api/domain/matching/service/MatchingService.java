@@ -6,6 +6,7 @@ import com.nect.api.domain.matching.enums.CounterParty;
 import com.nect.api.domain.matching.enums.code.MatchingErrorCode;
 import com.nect.api.domain.matching.exception.MatchingException;
 import com.nect.api.domain.team.project.service.ProjectService;
+import com.nect.api.domain.team.project.service.ProjectTeamCommandService;
 import com.nect.api.domain.user.service.UserService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Matching;
@@ -31,6 +32,7 @@ public class MatchingService {
     private final UserService userService;
     private final ProjectService projectService;
     private final S3Service s3Service;
+    private final ProjectTeamCommandService projectTeamCommandService;
 
     public Matching createUserToProjectMatching(
             User requestUser,
@@ -63,12 +65,13 @@ public class MatchingService {
     public Matching createProjectToUserMatching(
             User requestUser, User targetUser, Project project, RoleField field, String customField
     ) {
-        if (matchingRepository.countByRequestTypeAndProjectAndFieldAndMatchingStatus(
+        if (matchingRepository.countByRequestTypeAndProjectAndFieldAndCustomFieldAndMatchingStatus(
                 MatchingRequestType.PROJECT_TO_USER,
                 project,
                 field,
+                customField,
                 MatchingStatus.PENDING
-        ) > 3) {
+        ) >= 3) {
             throw new MatchingException(MatchingErrorCode.MATCHING_INVITE_COUNT_EXCEEDED);
         }
 
@@ -122,7 +125,7 @@ public class MatchingService {
         User user = userService.getUser(userId);
         List<Matching> pendingMatchings;
 
-        if (counterParty == CounterParty.USER){
+        if (counterParty == CounterParty.USER) {
             pendingMatchings = matchingRepository.findReceivedMatchingsOrderByExpiresAt(
                     MatchingRequestType.USER_TO_PROJECT,
                     user,
@@ -130,11 +133,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
-                    .map(Matching::getRequestUser)
-                    .map(u -> MatchingConverter.toUserSummary(
-                            u,
-                            s3Service.getPresignedGetUrl(u.getProfileImageName()))
-                    )
+                    .map(m -> {
+                        User u = m.getRequestUser();
+                        return MatchingConverter.toUserSummary(
+                                m.getId(),
+                                u,
+                                s3Service.getPresignedGetUrl(u.getProfileImageName()),
+                                m.getField(),
+                                m.getCustomField()
+                        );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -150,13 +158,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
-                    .map(Matching::getProject)
-                    .map(project -> MatchingConverter.toProjectSummary(
-                            project,
-                            projectService.getUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
-                        )
-                    )
+                    .map( m -> {
+                            Project project = m.getProject();
+                            return MatchingConverter.toProjectSummary(
+                                    m.getId(),
+                                    project,
+                                    projectService.getUserNumberOfProject(project),
+                                    projectTeamCommandService.getTotalUserNumberOfProject(project),
+                                    s3Service.getPresignedGetUrl(project.getImageName())
+                            );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -184,11 +195,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.UserSummary> userSummaries = pendingMatchings.stream()
-                    .map(Matching::getTargetUser)
-                    .map(u -> MatchingConverter.toUserSummary(
-                            u,
-                            s3Service.getPresignedGetUrl(u.getProfileImageName())
-                    ))
+                    .map(m -> {
+                        User u = m.getTargetUser();
+                        return MatchingConverter.toUserSummary(
+                                m.getId(),
+                                u,
+                                s3Service.getPresignedGetUrl(u.getProfileImageName()),
+                                m.getField(),
+                                m.getCustomField()
+                        );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -202,13 +218,16 @@ public class MatchingService {
             );
 
             List<MatchingResDto.ProjectSummary> projectSummaries = pendingMatchings.stream()
-                    .map(Matching::getProject)
-                    .map(project -> MatchingConverter.toProjectSummary(
-                            project,
-                            projectService.getUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
-                            )
-                    )
+                    .map( m -> {
+                        Project project = m.getProject();
+                        return MatchingConverter.toProjectSummary(
+                                m.getId(),
+                                project,
+                                projectService.getUserNumberOfProject(project),
+                                projectTeamCommandService.getTotalUserNumberOfProject(project),
+                                s3Service.getPresignedGetUrl(project.getImageName())
+                        );
+                    })
                     .toList();
 
             return MatchingResDto.MatchingListRes.builder()
@@ -224,7 +243,7 @@ public class MatchingService {
     public Matching rejectMatchingRequest(Long matchingId, User user, MatchingRejectReason rejectReason) {
         Matching matching = getMatching(matchingId);
 
-        if (!(matching.getTargetUser().equals(user))){
+        if (!(matching.getTargetUser().getUserId().equals(user.getUserId()))){
             throw new MatchingException(MatchingErrorCode.MATCHING_ACCESS_DENIED);
         }
 

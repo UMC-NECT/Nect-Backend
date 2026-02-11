@@ -186,4 +186,8 @@ public class ProjectTeamCommandService {
                 part.getRequiredCount()
         );
     }
+
+    public long getTotalUserNumberOfProject(Project project) {
+        return projectTeamRoleRepository.countTotalUserNumberByProject(project);
+    }
 }

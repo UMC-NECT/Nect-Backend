@@ -13,6 +13,7 @@ import com.nect.core.entity.matching.Matching;
 import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.matching.RecruitmentRequirement;
 import com.nect.core.entity.team.Project;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.matching.RecruitmentRepository;
@@ -30,15 +31,27 @@ public class RecruitmentService {
     private final ProjectService projectService;
     private final UserService userService;
 
-    public void validateRecruitable(Project project, RoleField field){
-        Recruitment recruitment = recruitmentRepository
-                .findRecruitmentByProjectAndField(project, field)
-                .orElseThrow(
-                        () -> new RecruitmentException(RecruitmentErrorCode.RECRUITMENT_NOT_OPEN)
-                );
+    public void validateRecruitable(Project project, RoleField field, String customField){
+        if (project.getRecruitmentStatus() != RecruitmentStatus.OPEN) {
+            throw new RecruitmentException(RecruitmentErrorCode.PROJECT_RECRUITMENT_NOT_OPEN);
+        }
+
+        Recruitment recruitment;
+        if (field == RoleField.CUSTOM) {
+            recruitment = recruitmentRepository
+                    .findRecruitmentByProjectAndFieldAndCustomField(project, field, customField)
+                    .orElseThrow(
+                            () -> new RecruitmentException(RecruitmentErrorCode.RECRUITMENT_NOT_OPEN)
+                    );
+        } else {
+            recruitment = recruitmentRepository.findRecruitmentByProjectAndField(project, field)
+                    .orElseThrow(
+                            () -> new RecruitmentException(RecruitmentErrorCode.RECRUITMENT_NOT_OPEN)
+                    );
+        }
 
         if (recruitment.getCapacity() < 1){
-            throw new RecruitmentException(RecruitmentErrorCode.RECRUITMENT_NOT_OPEN);
+            throw new RecruitmentException(RecruitmentErrorCode.FIELD_RECRUITMENT_CLOSED);
         }
     }
 
@@ -52,7 +65,7 @@ public class RecruitmentService {
                 );
 
         if (recruitment.getCapacity() < 1){
-            throw new RecruitmentException(RecruitmentErrorCode.RECRUITMENT_NOT_OPEN);
+            throw new RecruitmentException(RecruitmentErrorCode.FIELD_RECRUITMENT_CLOSED);
         }
 
         recruitment.decreaseCapacity();
@@ -72,9 +85,9 @@ public class RecruitmentService {
     }
 
     public List<RecruitingProjectResDto> getMyRecruitingProjectAsLeader(Long userId) {
-        List<Project> projects= projectService.getProjectsAsLeader(userId);
+        List<Project> recruitingProjects= projectService.getRecruitingProjectsAsLeader(userId);
 
-        return projects.stream().map(ProjectConverter::toRecruitingProjectResDto).toList();
+        return recruitingProjects.stream().map(ProjectConverter::toRecruitingProjectResDto).toList();
     }
 
     @Transactional
