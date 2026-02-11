@@ -141,7 +141,8 @@ public class MatchingService {
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
                                 m.getField(),
-                                m.getCustomField()
+                                m.getCustomField(),
+                                m.getExpiresAt()
                         );
                     })
                     .toList();
@@ -166,7 +167,8 @@ public class MatchingService {
                                     project,
                                     projectService.getUserNumberOfProject(project),
                                     projectTeamCommandService.getTotalUserNumberOfProject(project),
-                                    s3Service.getPresignedGetUrl(project.getImageName())
+                                    s3Service.getPresignedGetUrl(project.getImageName()),
+                                    m.getExpiresAt()
                             );
                     })
                     .toList();
@@ -203,7 +205,8 @@ public class MatchingService {
                                 u,
                                 s3Service.getPresignedGetUrl(u.getProfileImageName()),
                                 m.getField(),
-                                m.getCustomField()
+                                m.getCustomField(),
+                                m.getExpiresAt()
                         );
                     })
                     .toList();
@@ -226,7 +229,8 @@ public class MatchingService {
                                 project,
                                 projectService.getUserNumberOfProject(project),
                                 projectTeamCommandService.getTotalUserNumberOfProject(project),
-                                s3Service.getPresignedGetUrl(project.getImageName())
+                                s3Service.getPresignedGetUrl(project.getImageName()),
+                                m.getExpiresAt()
                         );
                     })
                     .toList();
@@ -309,7 +313,8 @@ public class MatchingService {
                             project,
                             projectService.getUserNumberOfProject(project),
                             projectTeamCommandService.getTotalUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
+                            s3Service.getPresignedGetUrl(project.getImageName()),
+                            m.getExpiresAt()
                     );
                 })
                 .toList();
@@ -322,7 +327,8 @@ public class MatchingService {
                             u,
                             s3Service.getPresignedGetUrl(u.getProfileImageName()),
                             m.getField(),
-                            m.getCustomField()
+                            m.getCustomField(),
+                            m.getExpiresAt()
                     );
                 })
                 .toList();
@@ -361,7 +367,8 @@ public class MatchingService {
                             project,
                             projectService.getUserNumberOfProject(project),
                             projectTeamCommandService.getTotalUserNumberOfProject(project),
-                            s3Service.getPresignedGetUrl(project.getImageName())
+                            s3Service.getPresignedGetUrl(project.getImageName()),
+                            m.getExpiresAt()
                     );
                 })
                 .toList();
@@ -374,7 +381,8 @@ public class MatchingService {
                             u,
                             s3Service.getPresignedGetUrl(u.getProfileImageName()),
                             m.getField(),
-                            m.getCustomField()
+                            m.getCustomField(),
+                            m.getExpiresAt()
                     );
                 })
                 .toList();
