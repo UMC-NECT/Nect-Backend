@@ -537,6 +537,7 @@ public class MatchingControllerTest {
     @Test
     void getReceivedMatchingsByProject() throws Exception {
         MatchingResDto.ProjectSummary projectSummary = MatchingResDto.ProjectSummary.builder()
+                .matchingId(1L)
                 .projectId(1L)
                 .title("NECT")
                 .description("Project description")
@@ -546,6 +547,7 @@ public class MatchingControllerTest {
                 .build();
 
         MatchingResDto.UserSummary userSummary = MatchingResDto.UserSummary.builder()
+                .matchingId(1L)
                 .userId(1L)
                 .nickname("seoyeon")
                 .bio("Designer")
@@ -592,6 +594,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.counterParty").description("대상 타입 (PROJECT | USER)"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록(대상이 USER일 때 채워짐)"),
+                                        fieldWithPath("body.userMatchings[].matchingId").description("매칭 ID"),
                                         fieldWithPath("body.userMatchings[].userId").description("유저 ID"),
                                         fieldWithPath("body.userMatchings[].nickname").description("닉네임"),
                                         fieldWithPath("body.userMatchings[].bio").description("한줄 소개"),
@@ -600,6 +603,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
+                                        fieldWithPath("body.projectMatchings[].matchingId").description("매칭 ID"),
                                         fieldWithPath("body.projectMatchings[].projectId").description("프로젝트 ID"),
                                         fieldWithPath("body.projectMatchings[].title").description("프로젝트 제목"),
                                         fieldWithPath("body.projectMatchings[].description").description("프로젝트 설명"),
@@ -618,6 +622,7 @@ public class MatchingControllerTest {
         Authentication authentication = new UsernamePasswordAuthenticationToken(testUser, null, Collections.emptyList());
 
         MatchingResDto.UserSummary userSummary = MatchingResDto.UserSummary.builder()
+                .matchingId(1L)
                 .userId(1L)
                 .nickname("seoyeon")
                 .bio("Designer")
@@ -627,6 +632,7 @@ public class MatchingControllerTest {
                 .build();
 
         MatchingResDto.ProjectSummary projectSummary = MatchingResDto.ProjectSummary.builder()
+                .matchingId(1L)
                 .projectId(1L)
                 .title("NECT")
                 .description("Project description")
@@ -674,6 +680,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.counterParty").description("대상 타입 (PROJECT | USER)"),
 
                                         fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록(대상이 USER일 때 채워짐)"),
+                                        fieldWithPath("body.userMatchings[].matchingId").description("매칭 ID"),
                                         fieldWithPath("body.userMatchings[].userId").description("유저 ID"),
                                         fieldWithPath("body.userMatchings[].nickname").description("닉네임"),
                                         fieldWithPath("body.userMatchings[].bio").description("한줄 소개"),
@@ -682,6 +689,7 @@ public class MatchingControllerTest {
                                         fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL"),
 
                                         fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록(대상이 PROJECT일 때 채워짐)"),
+                                        fieldWithPath("body.projectMatchings[].matchingId").description("매칭 ID"),
                                         fieldWithPath("body.projectMatchings[].projectId").description("프로젝트 ID"),
                                         fieldWithPath("body.projectMatchings[].title").description("프로젝트 제목"),
                                         fieldWithPath("body.projectMatchings[].description").description("프로젝트 설명"),
