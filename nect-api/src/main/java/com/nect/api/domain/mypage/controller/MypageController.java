@@ -8,12 +8,9 @@ import com.nect.api.domain.matching.dto.RecruitmentResDto;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
-import com.nect.api.domain.mypage.service.MyPageProjectCommandService;
-import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
+import com.nect.api.domain.mypage.service.*;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
-import com.nect.api.domain.mypage.service.MypageService;
-import com.nect.api.domain.mypage.service.UserTeamRoleQueryService;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
@@ -48,6 +45,7 @@ public class MypageController {
     private final RecruitmentService recruitmentService;
     private final UserTeamRoleQueryService userTeamRoleQueryService;
     private final ProjectMemberStatisticService projectMemberStatisticService;
+    private final ProjectDeleteService  projectDeleteService;
 
     /**
      * 프로필 조회
@@ -327,5 +325,16 @@ public class MypageController {
     ){
         return ApiResponse.ok(recruitmentService.getRecruitmentsByProject(projectId));
     }
+
+
+    @DeleteMapping("/{projectId}")
+    public ApiResponse<Void> deleteProject(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails
+    ) {
+        projectDeleteService.deleteProject(projectId, userDetails.getUserId());
+        return ApiResponse.ok();
+    }
+
 
 }

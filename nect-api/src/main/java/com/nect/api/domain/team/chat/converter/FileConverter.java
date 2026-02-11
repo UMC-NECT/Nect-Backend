@@ -72,6 +72,7 @@ public class FileConverter {
     // 사진첩 조회를 위한 단건 DTO 변환
     public static ChatFileResponseDto toFileResponseDto(ChatFile chatFile) {
         return new ChatFileResponseDto(
+                chatFile.getId(),
                 chatFile.getOriginalFileName(),
                 chatFile.getFileUrl(),
                 chatFile.getCreatedAt()
