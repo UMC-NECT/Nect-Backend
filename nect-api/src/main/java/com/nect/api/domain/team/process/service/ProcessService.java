@@ -941,7 +941,6 @@ public class ProcessService {
                 .toList();
 
         final List<RoleField> beforeRoleFields = process.getProcessFields().stream()
-                .filter(pf -> pf.getDeletedAt() == null)
                 .map(ProcessField::getRoleField)
                 .filter(Objects::nonNull)
                 .filter(rf -> rf != RoleField.CUSTOM)
@@ -949,8 +948,8 @@ public class ProcessService {
                 .sorted(Comparator.comparing(Enum::name))
                 .toList();
 
+
         final List<String> beforeCustomFields = process.getProcessFields().stream()
-                .filter(pf -> pf.getDeletedAt() == null)
                 .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
                 .map(ProcessField::getCustomFieldName)
                 .filter(Objects::nonNull)
@@ -959,6 +958,7 @@ public class ProcessService {
                 .distinct()
                 .sorted()
                 .toList();
+
 
         final List<Long> beforeAssigneeIds = process.getProcessUsers().stream()
                 .filter(pu -> pu.getDeletedAt() == null)
@@ -1036,7 +1036,6 @@ public class ProcessService {
             List<RoleField> laneRoleFields = (requestedRoleFields != null)
                     ? requestedRoleFields
                     : process.getProcessFields().stream()
-                    .filter(pf -> pf.getDeletedAt() == null)
                     .map(ProcessField::getRoleField)
                     .filter(Objects::nonNull)
                     .filter(rf -> rf != RoleField.CUSTOM)
@@ -1046,7 +1045,6 @@ public class ProcessService {
             List<String> laneCustomFields = (requestedCustomFields != null)
                     ? requestedCustomFields
                     : process.getProcessFields().stream()
-                    .filter(pf -> pf.getDeletedAt() == null)
                     .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
                     .map(ProcessField::getCustomFieldName)
                     .filter(Objects::nonNull)
@@ -1091,39 +1089,25 @@ public class ProcessService {
         }
 
         if (fieldsPatchRequested) {
-            // 기존 전부 soft delete
-            process.getProcessFields().forEach(pf -> {
-                if (pf.getDeletedAt() == null) pf.softDelete();
-            });
-
             List<RoleField> finalRoleFields = (requestedRoleFields == null) ? List.of() : requestedRoleFields;
-            for (RoleField rf : finalRoleFields) {
-                ProcessField found = process.getProcessFields().stream()
-                        .filter(pf -> pf.getRoleField() == rf)
-                        .findFirst()
-                        .orElse(null);
+            List<String> finalCustomFields = (requestedCustomFields == null) ? List.of() : requestedCustomFields;
 
-                if (found != null) found.restore();
-                else process.getProcessFields().add(ProcessField.builder()
+            // 프로세스 필드를 재생성
+            process.getProcessFields().clear();
+
+            for (RoleField rf : finalRoleFields) {
+                process.getProcessFields().add(ProcessField.builder()
                         .process(process)
                         .roleField(rf)
                         .customFieldName(null)
                         .build());
             }
 
-            List<String> finalCustomFields = (requestedCustomFields == null) ? List.of() : requestedCustomFields;
             for (String name : finalCustomFields) {
-                ProcessField found = process.getProcessFields().stream()
-                        .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
-                        .filter(pf -> pf.getCustomFieldName() != null && pf.getCustomFieldName().trim().equals(name))
-                        .findFirst()
-                        .orElse(null);
-
-                if (found != null) found.restore();
-                else process.getProcessFields().add(ProcessField.builder()
+                process.getProcessFields().add(ProcessField.builder()
                         .process(process)
                         .roleField(RoleField.CUSTOM)
-                        .customFieldName(name)
+                        .customFieldName(name.trim())
                         .build());
             }
         }
@@ -1200,15 +1184,14 @@ public class ProcessService {
                 : mentionIdsForRes.stream().filter(Objects::nonNull).distinct().sorted().toList();
 
         final List<RoleField> afterRoleFields = process.getProcessFields().stream()
-                .filter(pf -> pf.getDeletedAt() == null)
                 .map(ProcessField::getRoleField)
                 .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM)
                 .distinct()
                 .sorted(Comparator.comparing(Enum::name))
                 .toList();
 
         final List<String> afterCustomFields = process.getProcessFields().stream()
-                .filter(pf -> pf.getDeletedAt() == null)
                 .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
                 .map(ProcessField::getCustomFieldName)
                 .filter(Objects::nonNull)

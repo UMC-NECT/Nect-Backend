@@ -14,15 +14,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
-        name="process_field",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name="uk_process_field_process_role_field",
-                        columnNames={"process_id","role_field"}
-                )
-        }
-)
+@Table(name = "process_field")
 public class ProcessField extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,7 +39,11 @@ public class ProcessField extends BaseEntity {
     public ProcessField(Process process, RoleField roleField, String customFieldName) {
         this.process = process;
         this.roleField = roleField;
-        this.customFieldName = customFieldName;
+        if (roleField == RoleField.CUSTOM) {
+            this.customFieldName = (customFieldName == null) ? null : customFieldName.trim();
+        } else {
+            this.customFieldName = null;
+        }
     }
 
     void setProcess(Process process) { this.process = process; }
