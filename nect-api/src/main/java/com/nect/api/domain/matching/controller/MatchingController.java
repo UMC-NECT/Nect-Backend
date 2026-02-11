@@ -1,10 +1,14 @@
 package com.nect.api.domain.matching.controller;
 
+import com.nect.api.domain.home.dto.HomeProjectDetailResponse;
+import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.domain.matching.dto.MatchingReqDto;
 import com.nect.api.domain.matching.dto.MatchingResDto;
 import com.nect.api.domain.matching.enums.CounterParty;
 import com.nect.api.domain.matching.facade.MatchingFacade;
 import com.nect.api.domain.matching.service.MatchingService;
+import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
+import com.nect.api.domain.mypage.service.MypageService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.core.entity.matching.enums.MatchingStatus;
@@ -21,6 +25,8 @@ public class MatchingController {
 
     private final MatchingService matchingService;
     private final MatchingFacade matchingFacade;
+    private final MypageService mypageService;
+    private final MainHomeFacade mainHomeFacade;
 
     // user -> project 매칭 요청
     @PostMapping("/projects/{projectId}")
@@ -102,5 +108,19 @@ public class MatchingController {
             @AuthenticationPrincipal UserDetailsImpl user
     ){
         return ApiResponse.ok(matchingService.getMatchingsCount(user.getUserId()));
+    }
+
+    @GetMapping("/users/{userId}")
+    public ApiResponse<ProfileSettingsDto.ProfileSettingsResponseDto> getMemberInfo(
+            @PathVariable @Positive Long userId
+    ) {
+        return ApiResponse.ok(mypageService.getProfile(userId));
+    }
+
+    @GetMapping("/projects/{projectId}")
+    public ApiResponse<HomeProjectDetailResponse> getProjectInfo(
+            @PathVariable @Positive Long projectId
+    ){
+        return ApiResponse.ok(mainHomeFacade.getRecruitingProjectsDetails(projectId));
     }
 }
