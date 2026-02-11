@@ -33,10 +33,11 @@ public class OnboardingAnalysisScheme {
     @AllArgsConstructor
     public static class CollaborationStyle {
         public Integer planning;
-        public Integer logic;
-        public Integer leadership;
-        public Integer empathy;
         public Integer execution;
+        public Integer logic;
+        public Integer empathy;
+        public Integer leadership;
+        public Integer supporter;
     }
 
     @Getter
