@@ -31,7 +31,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("직업 Enum 값 (예: EMPLOYEE)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("직업 한글명 (예: 직장인)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("직업 한글명 (예: 직장인)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("직업 영문명").optional()
                                         )
                                         .build()
                         )
@@ -53,7 +54,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("역할 Enum 값 (예: DEVELOPER)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("역할 한글명 (예: 개발자)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("역할 한글명 (예: 개발자)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("역할 영문명").optional()
                                         )
                                         .build()
                         )
@@ -81,7 +83,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.role").type(JsonFieldType.STRING).description("역할 Enum 값 (예: DEVELOPER)"),
                                                 fieldWithPath("body.roleLabel").type(JsonFieldType.STRING).description("역할 한글명 (예: 개발자)"),
                                                 fieldWithPath("body.fields[].value").type(JsonFieldType.STRING).description("직종 Enum 값 (예: FRONTEND)"),
-                                                fieldWithPath("body.fields[].label").type(JsonFieldType.STRING).description("직종 한글명 (예: 프론트엔드)")
+                                                fieldWithPath("body.fields[].label").type(JsonFieldType.STRING).description("직종 한글명 (예: 프론트엔드)"),
+                                                fieldWithPath("body.fields[].labelEn").type(JsonFieldType.STRING).description("직종 영문명").optional()
                                         )
                                         .build()
                         )
@@ -103,7 +106,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("직종 Enum 값"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("직종 한글명")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("직종 한글명"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("직종 영문명").optional()
                                         )
                                         .build()
                         )
@@ -125,7 +129,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("스킬 카테고리 Enum 값 (예: DESIGN)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("스킬 카테고리 한글명 (예: 디자인)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("스킬 카테고리 한글명 (예: 디자인)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("스킬 카테고리 영문명").optional()
                                         )
                                         .build()
                         )
@@ -153,7 +158,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("body.category").type(JsonFieldType.STRING).description("스킬 카테고리 Enum 값 (예: DESIGN)"),
                                                 fieldWithPath("body.categoryLabel").type(JsonFieldType.STRING).description("스킬 카테고리 한글명 (예: 디자인)"),
                                                 fieldWithPath("body.skills[].value").type(JsonFieldType.STRING).description("스킬 Enum 값 (예: FIGMA)"),
-                                                fieldWithPath("body.skills[].label").type(JsonFieldType.STRING).description("스킬 이름 (예: Figma)")
+                                                fieldWithPath("body.skills[].label").type(JsonFieldType.STRING).description("스킬 이름 (예: Figma)"),
+                                                fieldWithPath("body.skills[].labelEn").type(JsonFieldType.STRING).description("스킬 영문명").optional()
                                         )
                                         .build()
                         )
@@ -175,7 +181,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("스킬 Enum 값"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("스킬 이름")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("스킬 이름"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("스킬 영문명").optional()
                                         )
                                         .build()
                         )
@@ -197,7 +204,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("관심분야 Enum 값 (예: IT_WEB_MOBILE)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("관심분야 한글명 (예: IT·웹/모바일 서비스)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("관심분야 한글명 (예: IT·웹/모바일 서비스)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("관심분야 영문명").optional()
                                         )
                                         .build()
                         )
@@ -219,7 +227,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("목표 Enum 값 (예: PORTFOLIO)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("목표 한글명 (예: 포트폴리오 제작)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("목표 한글명 (예: 포트폴리오 제작)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("목표 영문명").optional()
                                         )
                                         .build()
                         )
@@ -241,7 +250,8 @@ class UserEnumControllerTest extends NectDocumentApiTester {
                                                 fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                                 fieldWithPath("status.description").type(JsonFieldType.STRING).description("상태 설명").optional(),
                                                 fieldWithPath("body[].value").type(JsonFieldType.STRING).description("사용자 상태 Enum 값 (예: ENROLLED, JOB_SEEKING, EMPLOYED)"),
-                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("사용자 상태 한글명 (예: 재학중)")
+                                                fieldWithPath("body[].label").type(JsonFieldType.STRING).description("사용자 상태 한글명 (예: 재학중)"),
+                                                fieldWithPath("body[].labelEn").type(JsonFieldType.STRING).description("사용자 상태 영문명").optional()
                                         )
                                         .build()
                         )

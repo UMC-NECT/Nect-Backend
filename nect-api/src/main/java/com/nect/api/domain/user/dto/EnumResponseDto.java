@@ -6,7 +6,8 @@ public class EnumResponseDto {
 
     public record EnumValueDto(
             String value,
-            String label
+            String label,
+            String labelEn
     ) {}
 
     public record RoleFieldsResponseDto(
