@@ -7,6 +7,8 @@ import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
 
+import java.time.LocalDateTime;
+
 public class MatchingConverter {
 
     public static MatchingResDto.MatchingRes toMatchingResDto(Matching matching) {
@@ -41,19 +43,33 @@ public class MatchingConverter {
                 .build();
     }
 
-    public static MatchingResDto.UserSummary toUserSummary(Long matchingId, User user, String profileImageUrl, RoleField field, String customField){
+    public static MatchingResDto.UserSummary toUserSummary(
+            Long matchingId,
+            User user,
+            String profileImageUrl,
+            RoleField field,
+            String customField,
+            LocalDateTime expiresAt){
       return MatchingResDto.UserSummary.builder()
-                .matchingId(matchingId)
-                .userId(user.getUserId())
-                .nickname(user.getNickname())
-                .bio(user.getBio())
-                .field(field)
-                .customField(customField)
-                .profileUrl(profileImageUrl)
-                .build();
-    }
+              .matchingId(matchingId)
+              .userId(user.getUserId())
+              .nickname(user.getNickname())
+              .bio(user.getBio())
+              .field(field)
+              .customField(customField)
+              .profileUrl(profileImageUrl)
+              .expiresAt(expiresAt)
+              .build();
+}
 
-    public static MatchingResDto.ProjectSummary toProjectSummary(Long matchingId, Project project, long countUserNum, long totalUserNum, String projectImageUrl) {
+    public static MatchingResDto.ProjectSummary toProjectSummary(
+            Long matchingId,
+            Project project,
+            long countUserNum,
+            long totalUserNum,
+            String projectImageUrl,
+            LocalDateTime expiresAt
+    ) {
         return MatchingResDto.ProjectSummary.builder()
                 .matchingId(matchingId)
                 .projectId(project.getId())
@@ -62,6 +78,7 @@ public class MatchingConverter {
                 .imageUrl(projectImageUrl)
                 .currentMembersNum(countUserNum)
                 .totalMemberNum(totalUserNum)
+                .expiresAt(expiresAt)
                 .build();
     }
 }

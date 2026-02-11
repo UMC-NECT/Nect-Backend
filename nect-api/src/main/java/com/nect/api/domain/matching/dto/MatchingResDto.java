@@ -52,7 +52,8 @@ public class MatchingResDto {
             String bio,
             RoleField field,
             String customField,
-            String profileUrl
+            String profileUrl,
+            LocalDateTime expiresAt
     ){}
 
     @Builder
@@ -63,6 +64,7 @@ public class MatchingResDto {
             String description,
             long currentMembersNum,
             long totalMemberNum,
-            String imageUrl
+            String imageUrl,
+            LocalDateTime expiresAt
     ){}
 }
