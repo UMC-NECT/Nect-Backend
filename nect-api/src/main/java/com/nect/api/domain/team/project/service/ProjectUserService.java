@@ -36,6 +36,8 @@ public class ProjectUserService {
         ProjectUser projectUser = ProjectUser.builder()
                 .project(project)
                 .userId(userId)
+                .memberType(ProjectMemberType.MEMBER)
+                .memberStatus(ProjectMemberStatus.ACTIVE)
                 .roleField(field)
                 .build();
 

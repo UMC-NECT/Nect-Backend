@@ -24,10 +24,11 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
             MatchingStatus status
     );
 
-    int countByRequestTypeAndProjectAndFieldAndMatchingStatus(
+    int countByRequestTypeAndProjectAndFieldAndCustomFieldAndMatchingStatus(
             MatchingRequestType requestType,
             Project project,
             RoleField field,
+            String customField,
             MatchingStatus status
     );
 

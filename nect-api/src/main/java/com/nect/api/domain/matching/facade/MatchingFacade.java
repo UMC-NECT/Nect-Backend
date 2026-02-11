@@ -44,7 +44,7 @@ public class MatchingFacade {
         User requestUser = userService.getUser(requestUserId);
         Project project = projectService.getProject(projectId);
 
-        recruitmentService.validateRecruitable(project, reqDto.field());
+        recruitmentService.validateRecruitable(project, reqDto.field(), reqDto.customField());
         Matching matching = matchingService.createUserToProjectMatching(
                 requestUser,
                 project,
@@ -76,7 +76,7 @@ public class MatchingFacade {
         User targetUser = userService.getUser(targetUserId);
         Project project = projectService.getProject(projectId);
 
-        recruitmentService.validateRecruitable(project, reqDto.field());
+        recruitmentService.validateRecruitable(project, reqDto.field(), reqDto.customField());
         Matching matching = matchingService.createProjectToUserMatching(
                 requestUser,
                 targetUser,
@@ -150,7 +150,7 @@ public class MatchingFacade {
 
         String targetName = (rejectedMatching.getRequestType() == MatchingRequestType.USER_TO_PROJECT)
                 ? rejectedMatching.getProject().getTitle()
-                : rejectedMatching.getTargetUser().getName();
+                : rejectedMatching.getTargetUser().getNickname();
 
         notificationFacade.notify(
                 rejectedMatching.getRequestUser(), NotificationCommand.builder()

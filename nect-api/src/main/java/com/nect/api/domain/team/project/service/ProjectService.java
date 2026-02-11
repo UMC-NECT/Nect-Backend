@@ -4,40 +4,42 @@ import com.nect.api.domain.analysis.dto.req.ProjectCreateRequestDto;
 import com.nect.api.domain.analysis.dto.res.ProjectCreateResponseDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
-import com.nect.api.domain.user.service.UserService;
 import com.nect.api.domain.user.enums.UserErrorCode;
-import com.nect.core.entity.team.ProjectInterest;
-import com.nect.core.entity.team.process.Process;
-import com.nect.core.entity.analysis.*;
+import com.nect.api.domain.user.service.UserService;
+import com.nect.core.entity.analysis.ProjectIdeaAnalysis;
+import com.nect.core.entity.analysis.ProjectImprovementPoint;
+import com.nect.core.entity.analysis.ProjectWeeklyPlan;
+import com.nect.core.entity.analysis.ProjectWeeklyTask;
 import com.nect.core.entity.team.Project;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
-import com.nect.core.entity.team.enums.ProjectStatus;
-import com.nect.core.entity.team.ProjectUser;
-import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.team.enums.RecruitmentStatus;
-import com.nect.core.entity.user.User;
-import com.nect.core.entity.team.process.ProcessTaskItem;
+import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.ProjectTeamRole;
+import com.nect.core.entity.team.ProjectUser;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
+import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.ProjectStatus;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
+import com.nect.core.entity.team.process.Process;
+import com.nect.core.entity.team.process.ProcessTaskItem;
+import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.RoleField;
-import com.nect.core.repository.analysis.*;
+import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
+import com.nect.core.repository.analysis.ProjectImprovementPointRepository;
+import com.nect.core.repository.analysis.ProjectWeeklyPlanRepository;
+import com.nect.core.repository.analysis.ProjectWeeklyTaskRepository;
+import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectRepository;
-import com.nect.core.repository.team.ProjectInterestFieldRepository;
-import com.nect.core.repository.team.ProjectUserRepository;
-import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectTeamRoleRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.process.ProcessRepository;
 import com.nect.core.repository.user.UserRepository;
 import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,8 +75,8 @@ public class ProjectService {
         return userService.getUser(userId);
     }
 
-    public List<Project> getProjectsAsLeader(Long userId){
-        return projectUserRepository.findProjectsAsLeader(userId);
+    public List<Project> getRecruitingProjectsAsLeader(Long userId){
+        return projectUserRepository.findRecruitingProjectsAsLeader(userId);
     }
 
     public long getUserNumberOfProject(Project project){
