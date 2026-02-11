@@ -176,7 +176,7 @@ public class MainHomeFacade {
                             false,
                             p.getRecruitmentStatus() != null ? p.getRecruitmentStatus().getStatus() : null,
                             memberStatistics,
-                            projectInterest.getInterestField()
+                            projectInterest != null ? projectInterest.getInterestField() : null
                     );
                 })
                 .toList();
