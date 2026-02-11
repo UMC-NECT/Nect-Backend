@@ -13,6 +13,7 @@ import com.nect.api.domain.matching.service.MatchingService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.service.MypageService;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
@@ -21,10 +22,8 @@ import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.matching.enums.MatchingRejectReason;
 import com.nect.core.entity.matching.enums.MatchingRequestType;
 import com.nect.core.entity.matching.enums.MatchingStatus;
-import com.nect.core.entity.team.enums.FileExt;
-import com.nect.core.entity.team.enums.PlanFileType;
-import com.nect.core.entity.team.enums.ProjectMemberStatus;
-import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.*;
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -160,9 +159,14 @@ public class MatchingControllerTest {
                 fieldWithPath("body.defaultInfo.planned_started_on").type(JsonFieldType.STRING).optional().description("프로젝트 시작 예정일"),
                 fieldWithPath("body.defaultInfo.planned_ended_on").type(JsonFieldType.STRING).optional().description("프로젝트 종료 예정일"),
                 fieldWithPath("body.defaultInfo.image_name").type(JsonFieldType.STRING).optional().description("프로젝트 이미지 파일명"),
-                fieldWithPath("body.defaultInfo.team_roles").description("프로젝트 팀 역할 목록"),
-                fieldWithPath("body.defaultInfo.team_roles[].role_field").description("팀 역할(RoleField)"),
-                fieldWithPath("body.defaultInfo.team_roles[].required_count").description("필요 인원"),
+                fieldWithPath("body.defaultInfo.recruitment_status").type(JsonFieldType.STRING).optional().description("프로젝트 모집 상태"),
+                fieldWithPath("body.defaultInfo.team_roles").description("프로젝트 멤버 통계"),
+                fieldWithPath("body.defaultInfo.team_roles.roles").description("Role 기준 통계 목록"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role").description("Role"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].count").description("Role 인원 수"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
                 fieldWithPath("body.defaultInfo.leader").description("프로젝트 리더 정보"),
                 fieldWithPath("body.defaultInfo.leader.user_id").description("리더 유저 ID"),
                 fieldWithPath("body.defaultInfo.leader.name").description("리더 이름"),
@@ -815,16 +819,8 @@ public class MatchingControllerTest {
                 .plannedStartedOn(LocalDate.of(2025, 9, 1))
                 .plannedEndedOn(LocalDate.of(2026, 2, 1))
                 .imageName("project-10.png")
-                .teamRoles(List.of(
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.BACKEND)
-                                .requiredCount(2)
-                                .build(),
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.UI_UX)
-                                .requiredCount(1)
-                                .build()
-                ))
+                .recruitmentStatus(RecruitmentStatus.OPEN)
+                .teamRoles(mockProjectMemberStatistics())
                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                         .userId(1L)
                         .name("홍길동")
@@ -926,5 +922,35 @@ public class MatchingControllerTest {
         } catch (Exception e) {
             throw new IllegalStateException("failed to create ProjectFieldResponse", e);
         }
+    }
+
+    private ProjectMemberStatisticResponse mockProjectMemberStatistics() {
+        return new ProjectMemberStatisticResponse(List.of(
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.PLANNER,
+                        1,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DESIGNER,
+                        2,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DEVELOPER,
+                        3,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.MARKETER,
+                        0,
+                        List.of()
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.OTHER,
+                        0,
+                        List.of()
+                )
+        ));
     }
 }
