@@ -42,6 +42,15 @@ public class HomeController {
         return ApiResponse.ok(mainHomeFacade.getRecruitingProjectsDetails(projectId));
     }
 
+    // 모집 중인 프로젝트 팀원 목록
+    @GetMapping("/projects/{projectId}/members")
+    public ApiResponse<HomeProjectMembersResponse> recruitingProjectMembers(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable Long projectId
+    ) {
+        return ApiResponse.ok(mainHomeFacade.homeReadProjectUsers(projectId));
+    }
+
     // 홈화면 프로젝트 추천
     @GetMapping("/recommendations/projects")
     public ApiResponse<HomeProjectResponse> recommendedProjects(@AuthenticationPrincipal UserDetailsImpl userDetails, @RequestParam("count") int count){

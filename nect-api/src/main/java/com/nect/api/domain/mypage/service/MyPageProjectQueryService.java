@@ -2,6 +2,7 @@ package com.nect.api.domain.mypage.service;
 
 import com.nect.api.domain.mypage.converter.ProjectListConverter;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.global.code.CommonResponseCode;
@@ -10,25 +11,30 @@ import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.ProjectPlanFile;
-import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.user.User;
+import com.nect.core.entity.user.UserTeamRole;
+import com.nect.core.entity.user.enums.Role;
+import com.nect.core.entity.user.enums.RoleField;
 
 import com.nect.core.repository.team.ProjectInterestFieldRepository;
 import com.nect.core.repository.team.ProjectPlanFileRepository;
 import com.nect.core.repository.team.ProjectRepository;
-import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.user.UserRepository;
+import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 // 마이페이지-프로젝트 데이터 조회(query) service
@@ -39,18 +45,19 @@ public class MyPageProjectQueryService {
 
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
     private final UserRepository userRepository;
-    private final ProjectTeamRoleRepository projectTeamRoleRepository;
     private final ProjectInterestFieldRepository projectInterestFieldRepository;
     private final ProjectPlanFileRepository projectPlanFileRepository;
     private final ProjectRepository projectRepository;
     private final ProjectPlanFileRepository planFileRepository;
     private final ProjectListConverter projectListConverter;
     private final S3Service s3Service;
-
+    private final UserTeamRoleRepository userTeamRoleRepository;
 
     public MyProjectsResponseDto getMyProjects(Long userId) {
         List<ProjectUser> myProjectUsers = projectUserRepositoryComplete
                 .findByUserIdAndMemberStatus(userId, ProjectMemberStatus.ACTIVE);
+
+
 
         if (myProjectUsers.isEmpty()) {
             return MyProjectsResponseDto.builder()
@@ -62,26 +69,29 @@ public class MyPageProjectQueryService {
                 .map(pu -> pu.getProject().getId())
                 .collect(Collectors.toList());
 
-        Map<Long, List<ProjectTeamRole>> teamRolesMap = getTeamRolesMapByProjects(projectIds);
+
 
         Map<Long, MyProjectsResponseDto.LeaderInfo> leadersMap = getLeadersMapByProjects(projectIds);
 
         Map<Long, List<MyProjectsResponseDto.TeamMemberProjectInfo>> teamMemberProjectsMap =
                 getTeamMemberProjectsMapByProjects(projectIds, userId);
 
+        Map<Long, List<ProjectUser>> membersByProjectId = projectUserRepositoryComplete
+                .findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE).stream()
+                .collect(Collectors.groupingBy(pu -> pu.getProject().getId()));
+
         List<MyProjectsResponseDto.ProjectInfo> projectInfos = myProjectUsers.stream()
                 .map(projectUser -> {
                     Project project = projectUser.getProject();
                     Long projectId = project.getId();
 
-                    List<MyProjectsResponseDto.TeamRoleInfo> teamRoles = teamRolesMap
-                            .getOrDefault(projectId, List.of())
-                            .stream()
-                            .map(role -> MyProjectsResponseDto.TeamRoleInfo.builder()
-                                    .roleField(role.getRoleField())
-                                    .requiredCount(role.getRequiredCount())
-                                    .build())
-                            .collect(Collectors.toList());
+                    Map<Long, List<UserTeamRole>> teamRolesByProjectId = userTeamRoleRepository
+                            .findByProjectIdIn(projectIds).stream()
+                            .collect(Collectors.groupingBy(tr -> tr.getProject().getId()));
+
+                    ProjectMemberStatisticResponse teamRoles = buildMemberStatistics(
+                            teamRolesByProjectId.getOrDefault(projectId, List.of())
+                    );
 
                     return MyProjectsResponseDto.ProjectInfo.builder()
                             .projectId(projectId)
@@ -93,6 +103,7 @@ public class MyPageProjectQueryService {
                             .teamRoles(teamRoles)
                             .leader(leadersMap.get(projectId))
                             .teamMemberProjects(teamMemberProjectsMap.getOrDefault(projectId, List.of()))
+                            .recruitmentStatus(project.getRecruitmentStatus())
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -100,6 +111,52 @@ public class MyPageProjectQueryService {
         return MyProjectsResponseDto.builder()
                 .projects(projectInfos)
                 .build();
+    }
+
+    private ProjectMemberStatisticResponse buildMemberStatistics(List<UserTeamRole> teamRoles) {
+        Map<RoleField, Integer> roleFieldCounts = teamRoles.stream()
+                .filter(tr -> !tr.isDeleted())
+                .collect(Collectors.groupingBy(
+                        UserTeamRole::getRoleField,
+                        Collectors.summingInt(UserTeamRole::getRequiredCount)
+                ));
+
+        List<Role> roleOrder = List.of(
+                Role.PLANNER,
+                Role.DESIGNER,
+                Role.DEVELOPER,
+                Role.MARKETER,
+                Role.OTHER
+        );
+
+        List<ProjectMemberStatisticResponse.RoleStatistic> roles = roleOrder.stream()
+                .map(role -> {
+                    List<ProjectMemberStatisticResponse.RoleFieldStatistic> roleFields = Arrays.stream(RoleField.values())
+                            .filter(rf -> {
+                                Role rfRole = rf.getRole();
+                                return ((rfRole == null) ? Role.OTHER : rfRole) == role;
+                            })
+                            .filter(rf -> roleFieldCounts.containsKey(rf))
+                            .map(rf -> new ProjectMemberStatisticResponse.RoleFieldStatistic(
+                                    rf,
+                                    roleFieldCounts.get(rf)
+                            ))
+                            .toList();
+
+                    int totalCount = roleFields.stream()
+                            .mapToInt(ProjectMemberStatisticResponse.RoleFieldStatistic::count)
+                            .sum();
+
+                    return new ProjectMemberStatisticResponse.RoleStatistic(
+                            role,
+                            totalCount,
+                            roleFields
+                    );
+                })
+                .filter(rs -> rs.count() > 0)
+                .toList();
+
+        return new ProjectMemberStatisticResponse(roles);
     }
 
     public MyProjectsResponseDto.ProjectFieldResponse getProjectFields(Long projectId) {
@@ -170,17 +227,9 @@ public class MyPageProjectQueryService {
         return s3Service.getPresignedGetUrl(fileKey);
     }
 
-    private Map<Long, List<ProjectTeamRole>> getTeamRolesMapByProjects(List<Long> projectIds) {
-        List<ProjectTeamRole> allTeamRoles = projectTeamRoleRepository
-                .findByProjectIdIn(projectIds);
-
-        return allTeamRoles.stream()
-                .collect(Collectors.groupingBy(role -> role.getProject().getId()));
-    }
-
 
     private Map<Long, MyProjectsResponseDto.LeaderInfo> getLeadersMapByProjects(List<Long> projectIds) {
-        // 모든 프로젝트의 리더 조회
+
         List<ProjectUser> leaderProjectUsers = projectUserRepositoryComplete
                 .findByProjectIdInAndMemberType(projectIds, ProjectMemberType.LEADER);
 
@@ -218,18 +267,16 @@ public class MyPageProjectQueryService {
             List<Long> projectIds, Long currentUserId) {
 
 
-        List<ProjectUser> myLeaderProjects = projectUserRepositoryComplete
-                .findByUserIdAndMemberTypeAndMemberStatus(
+        List<ProjectUser> myAllProjects = projectUserRepositoryComplete
+                .findByUserIdAndMemberStatus(
                         currentUserId,
-                        ProjectMemberType.LEADER,
                         ProjectMemberStatus.ACTIVE);
 
-        if (myLeaderProjects.isEmpty()) {
+        if (myAllProjects.isEmpty()) {
             return Map.of();
         }
 
-
-        List<MyProjectsResponseDto.TeamMemberProjectInfo> leaderProjectInfos = myLeaderProjects.stream()
+        List<MyProjectsResponseDto.TeamMemberProjectInfo> allProjectInfos = myAllProjects.stream()
                 .map(pu -> {
                     Project project = pu.getProject();
                     return MyProjectsResponseDto.TeamMemberProjectInfo.builder()
@@ -247,7 +294,7 @@ public class MyPageProjectQueryService {
         return projectIds.stream()
                 .collect(Collectors.toMap(
                         projectId -> projectId,
-                        projectId -> leaderProjectInfos.stream()
+                        projectId -> allProjectInfos.stream()
                                 .filter(info -> !info.getProjectId().equals(projectId))
                                 .collect(Collectors.toList())
                 ));

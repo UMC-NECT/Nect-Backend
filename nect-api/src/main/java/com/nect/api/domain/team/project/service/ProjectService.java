@@ -226,10 +226,11 @@ public class ProjectService {
 
                 weeklyTaskRepository.saveAll(tasks);
 
-                // 3) WEEK_MISSION Process 생성
+
                 Process mission = Process.builder()
                         .project(project)
                         .createdBy(leader)
+                        .updatedBy(leader)
                         .title(roadmap.getWeekTitle())
                         .content(null)
                         .build();

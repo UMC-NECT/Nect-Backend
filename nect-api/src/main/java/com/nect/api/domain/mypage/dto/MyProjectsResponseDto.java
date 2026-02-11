@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.nect.core.entity.team.ProjectInterest;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
-import com.nect.core.entity.user.enums.RoleField;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -30,20 +31,12 @@ public class MyProjectsResponseDto {
         private LocalDate plannedStartedOn;
         private LocalDate plannedEndedOn;
         private String imageName;
+        private RecruitmentStatus recruitmentStatus;
 
-        private List<TeamRoleInfo> teamRoles;
+        private ProjectMemberStatisticResponse teamRoles;
         private LeaderInfo leader;
 
         private List<TeamMemberProjectInfo> teamMemberProjects;
-    }
-
-    @Getter
-    @Builder
-    @AllArgsConstructor
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public static class TeamRoleInfo {
-        private RoleField roleField;
-        private Integer requiredCount;
     }
 
     @Getter

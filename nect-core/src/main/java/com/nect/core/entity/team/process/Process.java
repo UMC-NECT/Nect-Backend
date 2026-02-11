@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Getter
@@ -94,7 +95,6 @@ public class Process extends BaseEntity {
 
     // 여러 분야(파트/레인) 지원
     @OneToMany(mappedBy = "process", cascade = CascadeType.ALL, orphanRemoval = true)
-    @SQLRestriction("deleted_at is null")
     @BatchSize(size = 100)
     private final List<ProcessField> processFields = new ArrayList<>();
 
@@ -170,24 +170,20 @@ public class Process extends BaseEntity {
             throw new IllegalArgumentException("CUSTOM이면 customName(직접입력)이 필수입니다.");
         }
 
-        boolean exists = processFields.stream()
-                .anyMatch(pf ->
-                        pf.getRoleField() == roleField &&
-                                (roleField != RoleField.CUSTOM ||
-                                        (pf.getCustomFieldName() != null && pf.getCustomFieldName().equals(customName)))
-                );
+        boolean exists = processFields.stream().anyMatch(pf ->
+                pf.getRoleField() == roleField &&
+                        (roleField != RoleField.CUSTOM ||
+                                Objects.equals(pf.getCustomFieldName(), customName)));
 
         if (exists) {
             throw new IllegalStateException("이미 추가된 분야입니다. roleField=" + roleField + ", customName=" + customName);
         }
 
-        ProcessField pf = ProcessField.builder()
+        processFields.add(ProcessField.builder()
                 .process(this)
                 .roleField(roleField)
-                .customFieldName(roleField == RoleField.CUSTOM ? customName : null)
-                .build();
-
-        this.processFields.add(pf);
+                .customFieldName(roleField == RoleField.CUSTOM ? customName.trim() : null)
+                .build());
     }
 
     public void updateStatus(ProcessStatus status) {
@@ -229,7 +225,6 @@ public class Process extends BaseEntity {
         this.taskItems.forEach(ProcessTaskItem::softDelete);
         this.feedbacks.forEach(ProcessFeedback::softDelete);
         this.sharedDocuments.forEach(ProcessSharedDocument::softDelete);
-        this.processFields.forEach(ProcessField::softDelete);
         this.processUsers.forEach(ProcessUser::delete);
         this.mentions.forEach(ProcessMention::softDelete);
     }

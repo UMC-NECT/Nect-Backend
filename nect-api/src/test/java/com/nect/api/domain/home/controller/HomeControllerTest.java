@@ -6,8 +6,10 @@ import com.nect.api.domain.home.dto.HomeMemberItem;
 import com.nect.api.domain.home.dto.HomeMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectDetailResponse;
 import com.nect.api.domain.home.dto.HomeProjectItem;
+import com.nect.api.domain.home.dto.HomeProjectMembersResponse;
 import com.nect.api.domain.home.dto.HomeProjectResponse;
 import com.nect.api.domain.home.dto.HomeStatisticResponse;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.api.domain.home.facade.MainHomeFacade;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
@@ -18,6 +20,8 @@ import com.nect.api.global.security.UserDetailsImpl;
 import com.nect.api.global.security.UserDetailsServiceImpl;
 import com.nect.core.entity.team.enums.FileExt;
 import com.nect.core.entity.team.enums.PlanFileType;
+import com.nect.core.entity.team.enums.ProjectMemberType;
+import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -39,7 +43,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
 import static com.epages.restdocs.apispec.ResourceDocumentation.headerWithName;
@@ -153,6 +156,34 @@ class HomeControllerTest {
                                         parameterWithName("projectId").description("프로젝트 ID")
                                 )
                                 .responseFields(projectDetailResponseFields())
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    @DisplayName("모집 중인 프로젝트 팀원 목록 조회 API")
+    void 모집_중인_프로젝트_팀원_목록_조회_API() throws Exception {
+        given(mainHomeFacade.homeReadProjectUsers(eq(10L)))
+                .willReturn(mockProjectMembersResponse());
+
+        mockMvc.perform(get("/api/v1/home/projects/{projectId}/members", 10L)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("home-projects-recruiting-members",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Home")
+                                .summary("모집 중인 프로젝트 팀원 목록 조회")
+                                .description("홈 화면에서 모집 중인 프로젝트의 팀원 목록을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .responseFields(projectMembersResponseFields())
                                 .build()
                         )
                 ));
@@ -362,7 +393,7 @@ class HomeControllerTest {
                         3,
                         true,
                         "모집 중",
-                        Map.of("Backend", 2, "Design", 1)
+                        mockProjectMemberStatistics()
                 ),
                 HomeProjectItem.of(
                         11L,
@@ -376,7 +407,7 @@ class HomeControllerTest {
                         4,
                         false,
                         "매칭 가능",
-                        Map.of("PM", 1, "Design", 1)
+                        mockProjectMemberStatistics()
                 )
         ));
     }
@@ -418,6 +449,63 @@ class HomeControllerTest {
         ));
     }
 
+    private ProjectMemberStatisticResponse mockProjectMemberStatistics() {
+        return new ProjectMemberStatisticResponse(List.of(
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.PLANNER,
+                        1,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.SERVICE, 1))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DESIGNER,
+                        2,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.UI_UX, 2))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.DEVELOPER,
+                        3,
+                        List.of(new ProjectMemberStatisticResponse.RoleFieldStatistic(RoleField.BACKEND, 3))
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.MARKETER,
+                        0,
+                        List.of()
+                ),
+                new ProjectMemberStatisticResponse.RoleStatistic(
+                        Role.OTHER,
+                        0,
+                        List.of()
+                )
+        ));
+    }
+
+    private HomeProjectMembersResponse mockProjectMembersResponse() {
+        return new HomeProjectMembersResponse(List.of(
+                new HomeProjectMembersResponse.UserInfo(
+                        1L,
+                        "홍길동",
+                        "hong",
+                        "https://example.com/profile/1.png",
+                        "백엔드 개발자입니다.",
+                        RoleField.BACKEND,
+                        null,
+                        "Backend",
+                        ProjectMemberType.LEADER
+                ),
+                new HomeProjectMembersResponse.UserInfo(
+                        2L,
+                        "이영희",
+                        "lee",
+                        "https://example.com/profile/2.png",
+                        "UI/UX 디자이너입니다.",
+                        RoleField.UI_UX,
+                        null,
+                        "Design",
+                        ProjectMemberType.MEMBER
+                )
+        ));
+    }
+
     private HomeProjectDetailResponse mockProjectDetailResponse() {
         MyProjectsResponseDto.ProjectInfo projectInfo = MyProjectsResponseDto.ProjectInfo.builder()
                 .projectId(10L)
@@ -426,16 +514,8 @@ class HomeControllerTest {
                 .plannedStartedOn(LocalDate.of(2025, 9, 1))
                 .plannedEndedOn(LocalDate.of(2026, 2, 1))
                 .imageName("project-10.png")
-                .teamRoles(List.of(
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.BACKEND)
-                                .requiredCount(2)
-                                .build(),
-                        MyProjectsResponseDto.TeamRoleInfo.builder()
-                                .roleField(RoleField.UI_UX)
-                                .requiredCount(1)
-                                .build()
-                ))
+                .recruitmentStatus(RecruitmentStatus.OPEN)
+                .teamRoles(mockProjectMemberStatistics())
                 .leader(MyProjectsResponseDto.LeaderInfo.builder()
                         .userId(1L)
                         .name("홍길동")
@@ -578,12 +658,13 @@ class HomeControllerTest {
                 fieldWithPath("body.projects[].curMemberCount").description("현재 참여 인원"),
                 fieldWithPath("body.projects[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.projects[].status").description("프로젝트 상태"),
-                fieldWithPath("body.projects[].roles")
-                        .type(JsonFieldType.OBJECT)
-                        .description("모집 역할별 인원 (key=역할, value=인원)"),
-                fieldWithPath("body.projects[].roles.*")
-                        .type(JsonFieldType.NUMBER)
-                        .description("역할별 인원 값")
+                fieldWithPath("body.projects[].roles").description("프로젝트 멤버 통계"),
+                fieldWithPath("body.projects[].roles.roles").description("Role 기준 통계 목록"),
+                fieldWithPath("body.projects[].roles.roles[].role").description("Role"),
+                fieldWithPath("body.projects[].roles.roles[].count").description("Role 인원 수"),
+                fieldWithPath("body.projects[].roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                fieldWithPath("body.projects[].roles.roles[].role_fields[].role_field").description("RoleField"),
+                fieldWithPath("body.projects[].roles.roles[].role_fields[].count").description("RoleField 인원 수")
         );
     }
 
@@ -602,6 +683,24 @@ class HomeControllerTest {
                 fieldWithPath("body.members[].status").description("상태"),
                 fieldWithPath("body.members[].isScrapped").description("스크랩 여부"),
                 fieldWithPath("body.members[].roles").description("역할 목록")
+        );
+    }
+
+    private static List<FieldDescriptor> projectMembersResponseFields() {
+        return List.of(
+                fieldWithPath("status.statusCode").description("응답 상태 코드"),
+                fieldWithPath("status.message").description("응답 메시지"),
+                fieldWithPath("status.description").optional().description("응답 상세 설명"),
+                fieldWithPath("body.users").description("프로젝트 팀원 목록"),
+                fieldWithPath("body.users[].user_id").description("유저 ID"),
+                fieldWithPath("body.users[].name").description("이름"),
+                fieldWithPath("body.users[].nickname").description("닉네임"),
+                fieldWithPath("body.users[].profile_image_url").description("프로필 이미지 URL"),
+                fieldWithPath("body.users[].bio").description("자기소개"),
+                fieldWithPath("body.users[].role_field").description("역할 필드"),
+                fieldWithPath("body.users[].custom_role_field_name").optional().description("커스텀 역할명"),
+                fieldWithPath("body.users[].part_label").description("파트 라벨"),
+                fieldWithPath("body.users[].member_type").description("프로젝트 멤버 타입")
         );
     }
 
@@ -631,9 +730,14 @@ class HomeControllerTest {
                 fieldWithPath("body.defaultInfo.planned_started_on").type(JsonFieldType.STRING).optional().description("프로젝트 시작 예정일"),
                 fieldWithPath("body.defaultInfo.planned_ended_on").type(JsonFieldType.STRING).optional().description("프로젝트 종료 예정일"),
                 fieldWithPath("body.defaultInfo.image_name").type(JsonFieldType.STRING).optional().description("프로젝트 이미지 파일명"),
-                fieldWithPath("body.defaultInfo.team_roles").description("프로젝트 팀 역할 목록"),
-                fieldWithPath("body.defaultInfo.team_roles[].role_field").description("팀 역할(RoleField)"),
-                fieldWithPath("body.defaultInfo.team_roles[].required_count").description("필요 인원"),
+                fieldWithPath("body.defaultInfo.recruitment_status").type(JsonFieldType.STRING).optional().description("프로젝트 모집 상태"),
+                fieldWithPath("body.defaultInfo.team_roles").description("프로젝트 멤버 통계"),
+                fieldWithPath("body.defaultInfo.team_roles.roles").description("Role 기준 통계 목록"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role").description("Role"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].count").description("Role 인원 수"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields").description("RoleField 기준 통계 목록"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].role_field").description("RoleField"),
+                fieldWithPath("body.defaultInfo.team_roles.roles[].role_fields[].count").description("RoleField 인원 수"),
                 fieldWithPath("body.defaultInfo.leader").description("프로젝트 리더 정보"),
                 fieldWithPath("body.defaultInfo.leader.user_id").description("리더 유저 ID"),
                 fieldWithPath("body.defaultInfo.leader.name").description("리더 이름"),

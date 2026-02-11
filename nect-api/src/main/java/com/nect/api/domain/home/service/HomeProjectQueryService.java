@@ -1,16 +1,15 @@
 package com.nect.api.domain.home.service;
 
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Recruitment;
 import com.nect.core.entity.team.Project;
-import com.nect.core.entity.team.ProjectTeamRole;
 import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
-import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
@@ -18,7 +17,6 @@ import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.repository.matching.RecruitmentRepository;
 import com.nect.core.repository.team.ProjectRepository;
-import com.nect.core.repository.team.ProjectTeamRoleRepository;
 import com.nect.core.repository.user.ProjectUserRepositoryComplete;
 import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserRepository;
@@ -47,7 +45,6 @@ public class HomeProjectQueryService {
     private final RecruitmentRepository recruitmentRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
-    private final ProjectTeamRoleRepository projectTeamRoleRepository;
     private final UserTeamRoleRepository userTeamRoleRepository;
     private final S3Service s3Service;
 
@@ -55,7 +52,7 @@ public class HomeProjectQueryService {
             Map<Long, User> authorByProjectId,
             Map<Long, Integer> activeCountByProjectId,
             Map<Long, Integer> maxMemberCountByProjectId,
-            Map<Long, Map<String, Integer>> partCountsByProjectId
+            Map<Long, ProjectMemberStatisticResponse> memberStatisticsByProjectId
     ) {}
 
     public HomeProjectBatch loadHomeProjectBatch(List<Project> projects) {
@@ -93,37 +90,71 @@ public class HomeProjectQueryService {
                         utr -> utr.getRequirementSum() == null ? 0 : utr.getRequirementSum()
                 ));
 
-        Map<Long, Map<String, Integer>> partCountsByProjectId = new HashMap<>();
+        Map<Long, List<ProjectUser>> projectUsersByProjectId = projectUserRepositoryComplete
+                .findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE).stream()
+                .collect(Collectors.groupingBy(pu -> pu.getProject().getId()));
 
-        for (UserTeamRole userTeamRole : userTeamRoleRepository.findByProjectIdIn(projectIds)) {
-
-            Integer requirement = userTeamRole.getRequiredCount();
-
-            if (requirement == null || requirement <= 0) {
-                continue;
-            }
-
-            RoleField field = userTeamRole.getRoleField();
-            String roleKey;
-            if (field == RoleField.CUSTOM) {
-                String customField = userTeamRole.getCustomRoleFieldName();
-                roleKey = (customField == null || customField.isBlank()) ? RoleField.CUSTOM.name() : customField;
-            }else{
-                roleKey = field.getLabelEn();
-            }
-
-            partCountsByProjectId
-                    .computeIfAbsent(userTeamRole.getProject().getId(), k -> new HashMap<>())
-                    .merge(roleKey, requirement, Integer::sum);
-
+        Map<Long, ProjectMemberStatisticResponse> memberStatisticsByProjectId = new HashMap<>();
+        for (Long projectId : projectIds) {
+            List<ProjectUser> members = projectUsersByProjectId.getOrDefault(projectId, List.of());
+            memberStatisticsByProjectId.put(projectId, buildMemberStatistics(members));
         }
 
         return new HomeProjectBatch(
                 authorByProjectId,
                 activeCountByProjectId,
                 maxMemberCountByProjectId,
-                partCountsByProjectId
+                memberStatisticsByProjectId
         );
+    }
+
+    private ProjectMemberStatisticResponse buildMemberStatistics(List<ProjectUser> members) {
+        Map<Role, List<ProjectUser>> byRole = members.stream()
+                .collect(Collectors.groupingBy(
+                        pu -> {
+                            Role role = pu.getRoleField().getRole();
+                            return (role == null) ? Role.OTHER : role;
+                        },
+                        () -> new EnumMap<>(Role.class),
+                        Collectors.toList()
+                ));
+
+        List<Role> roleOrder = List.of(
+                Role.PLANNER,
+                Role.DESIGNER,
+                Role.DEVELOPER,
+                Role.MARKETER,
+                Role.OTHER
+        );
+
+        List<ProjectMemberStatisticResponse.RoleStatistic> roles = roleOrder.stream()
+                .map(role -> {
+                    List<ProjectUser> roleUsers = byRole.getOrDefault(role, List.of());
+                    Map<RoleField, Long> roleFieldCounts = roleUsers.stream()
+                            .collect(Collectors.groupingBy(ProjectUser::getRoleField, Collectors.counting()));
+
+                    List<ProjectMemberStatisticResponse.RoleFieldStatistic> roleFields = Arrays.stream(RoleField.values())
+                            .filter(rf -> {
+                                Role rfRole = rf.getRole();
+                                return ((rfRole == null) ? Role.OTHER : rfRole) == role;
+                            })
+                            .map(rf -> {
+                                Long count = roleFieldCounts.get(rf);
+                                if (count == null || count == 0) return null;
+                                return new ProjectMemberStatisticResponse.RoleFieldStatistic(rf, count.intValue());
+                            })
+                            .filter(Objects::nonNull)
+                            .toList();
+
+                    return new ProjectMemberStatisticResponse.RoleStatistic(
+                            role,
+                            roleUsers.size(),
+                            roleFields
+                    );
+                })
+                .toList();
+
+        return new ProjectMemberStatisticResponse(roles);
     }
 
     public List<Project> getProjects(Long userId, PageRequest pageRequest){
@@ -164,13 +195,9 @@ public class HomeProjectQueryService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND));
 
-        List<ProjectTeamRole> teamRoles = projectTeamRoleRepository.findByProjectId(projectId);
-        List<MyProjectsResponseDto.TeamRoleInfo> roleInfos = teamRoles.stream()
-                .map(role -> MyProjectsResponseDto.TeamRoleInfo.builder()
-                        .roleField(role.getRoleField())
-                        .requiredCount(role.getRequiredCount())
-                        .build())
-                .toList();
+        ProjectMemberStatisticResponse memberStatistics = buildMemberStatistics(
+                projectUserRepositoryComplete.findByProjectIdAndMemberStatus(projectId, ProjectMemberStatus.ACTIVE)
+        );
 
         MyProjectsResponseDto.LeaderInfo leaderInfo = projectUserRepositoryComplete
                 .findByProjectIdAndMemberType(projectId, ProjectMemberType.LEADER)
@@ -195,9 +222,10 @@ public class HomeProjectQueryService {
                 .imageName(s3Service.getPresignedGetUrl(project.getImageName()))
                 .plannedStartedOn(project.getPlannedStartedOn())
                 .plannedEndedOn(project.getPlannedEndedOn())
-                .teamRoles(roleInfos)
+                .teamRoles(memberStatistics)
                 .leader(leaderInfo)
                 .teamMemberProjects(teamMemberProjects)
+                .recruitmentStatus(project.getRecruitmentStatus())
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package com.nect.api.domain.team.project.service;
 
+import com.nect.api.domain.home.dto.HomeProjectMembersResponse;
 import com.nect.api.domain.team.project.dto.ProjectUsersResDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
@@ -31,10 +32,20 @@ public class ProjectMemberQueryService {
         return s3Service.getPresignedGetUrl(fileKey);
     }
 
-    // 프로젝트 멤버 전체 조회 서비스 (작업실 / 마이페이지 둘 다 사용)
-    @Transactional(readOnly = true)
-    public ProjectUsersResDto readProjectUsers(Long projectId, Long requesterUserId) {
-        assertActiveProjectMember(projectId, requesterUserId);
+    private String resolveLabel(RoleField rf, String customName) {
+        if (rf == null) return null;
+        return (rf == RoleField.CUSTOM) ? customName : rf.getLabelEn();
+    }
+
+    private <T> List<T> buildMembers(
+            Long projectId,
+            Long requesterUserId,
+            boolean requireActiveMember,
+            Function<MemberContext, T> mapper
+    ) {
+        if (requireActiveMember) {
+            assertActiveProjectMember(projectId, requesterUserId);
+        }
 
         List<ProjectUserRepository.MemberBoardRow> rows =
                 projectUserRepository.findActiveMemberBoardRows(projectId);
@@ -48,33 +59,76 @@ public class ProjectMemberQueryService {
         Map<Long, User> userMap = userRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(User::getUserId, Function.identity()));
 
-        List<ProjectUsersResDto.UserDto> users = rows.stream()
+        return rows.stream()
                 .map(r -> {
                     User u = userMap.get(r.getUserId());
                     String profileUrl = (u == null) ? null : toPresignedUserImage(u.getProfileImageName());
 
                     RoleField rf = r.getRoleField();
                     String customName = r.getCustomRoleFieldName();
+                    String label = resolveLabel(rf, customName);
 
-                    String label = (rf == RoleField.CUSTOM)
-                            ? customName
-                            : rf.getLabelEn();
-
-                    return new ProjectUsersResDto.UserDto(
-                            r.getUserId(),
-                            r.getName(),
-                            r.getNickname(),
-                            profileUrl,
-                            r.getBio(),
-                            rf,
-                            customName,
-                            label,
-                            r.getMemberType()
-                    );
+                    return mapper.apply(new MemberContext(r, profileUrl, label));
                 })
                 .toList();
+    }
+
+    public record MemberContext(
+            ProjectUserRepository.MemberBoardRow row,
+            String profileUrl,
+            String roleLabel
+    ) {}
+
+    // 본인이 속한 프로젝트에 대해서만 조회
+    @Transactional(readOnly = true)
+    public ProjectUsersResDto readProjectUsers(Long projectId, Long requesterUserId) {
+        List<ProjectUsersResDto.UserDto> users = buildMembers(
+                projectId,
+                requesterUserId,
+                true,
+                ctx -> {
+                    var r = ctx.row();
+                    return new ProjectUsersResDto.UserDto(
+                            r.getUserId(),
+                            r.getNickname(),
+                            r.getNickname(),
+                            ctx.profileUrl(),
+                            r.getBio(),
+                            r.getRoleField(),
+                            r.getCustomRoleFieldName(),
+                            ctx.roleLabel(),
+                            r.getMemberType()
+                    );
+                }
+        );
 
         return new ProjectUsersResDto(users);
+    }
+
+    // 홈화면 -> 프로젝트 유저 목록 조회
+    @Transactional(readOnly = true)
+    public HomeProjectMembersResponse homeReadProjectUsers(Long projectId) {
+        List<HomeProjectMembersResponse.UserInfo> users = buildMembers(
+                projectId,
+                null, // user 없음 it's okay...
+                false, // false이면 user 없어도 됨.
+                ctx -> {
+                    var r = ctx.row();
+                    return new HomeProjectMembersResponse.UserInfo(
+                            r.getUserId(),
+                            r.getNickname(),
+                            r.getNickname(),
+                            ctx.profileUrl(),
+                            r.getBio(),
+                            r.getRoleField(),
+                            r.getCustomRoleFieldName(),
+                            ctx.roleLabel(),
+                            r.getMemberType()
+                    );
+                }
+        );
+
+        return new HomeProjectMembersResponse(users);
     }
 
     private void assertActiveProjectMember(Long projectId, Long userId) {
@@ -82,8 +136,10 @@ public class ProjectMemberQueryService {
                 projectId, userId, ProjectMemberStatus.ACTIVE
         );
         if (!ok) {
-            throw new ProjectException(ProjectErrorCode.PROJECT_MEMBER_FORBIDDEN,
-                    "projectId=" + projectId + ", userId=" + userId);
+            throw new ProjectException(
+                    ProjectErrorCode.PROJECT_MEMBER_FORBIDDEN,
+                    "projectId=" + projectId + ", userId=" + userId
+            );
         }
     }
 }

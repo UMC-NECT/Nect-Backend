@@ -124,6 +124,7 @@ public class ChatService {
 
                 chatRoomUser.setLastReadMessageId(latestMessageId);
                 chatRoomUser.setLastReadAt(LocalDateTime.now());
+                chatRoomUserRepository.saveAndFlush(chatRoomUser);
 
                 log.info("자동 읽음 처리 - roomId: {}, userId: {}, messageId: {}",
                         roomId, userId, latestMessageId);
