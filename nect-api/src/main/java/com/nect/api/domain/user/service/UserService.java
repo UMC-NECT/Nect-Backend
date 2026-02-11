@@ -207,6 +207,11 @@ public class UserService {
 
         boolean marketingAgreed = Boolean.TRUE.equals(request.marketingAgreed());
 
+        if (request.email() != null && !request.email().isBlank()) {
+            user.setEmail(request.email());
+            userRepository.save(user);
+        }
+
         TermUser termUser = termUserRepository.findByUserUserId(userId)
                 .orElse(null);
 
