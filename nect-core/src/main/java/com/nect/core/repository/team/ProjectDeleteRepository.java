@@ -187,4 +187,16 @@ public class ProjectDeleteRepository {
                 .setParameter("projectId", projectId)
                 .executeUpdate();
     }
+    public void flushAndClear() {
+        em.flush();
+        em.clear();
+    }
+
+    public void deleteRecruitmentRequirements(Long projectId) {
+        em.createQuery(
+                        "DELETE FROM RecruitmentRequirement rr WHERE rr.recruitment.id IN " +
+                                "(SELECT r.id FROM Recruitment r WHERE r.project.id = :projectId)")
+                .setParameter("projectId", projectId)
+                .executeUpdate();
+    }
 }

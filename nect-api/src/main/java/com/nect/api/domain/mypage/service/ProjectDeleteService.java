@@ -35,7 +35,7 @@ public class ProjectDeleteService {
             throw new ProjectException(ProjectErrorCode.PROJECT_NOT_FOUND);
         }
 
-
+        projectDeleteRepository.flushAndClear();
 
         List<Long> processIds = projectDeleteRepository.findProcessIdsByProjectId(projectId);
         projectDeleteRepository.deleteProcessMentions(processIds);
@@ -67,6 +67,7 @@ public class ProjectDeleteService {
         projectDeleteRepository.deleteProjectHistory(projectId);
         projectDeleteRepository.deleteNotifications(projectId);
         projectDeleteRepository.deleteMatchings(projectId);
+        projectDeleteRepository.deleteRecruitmentRequirements(projectId);
         projectDeleteRepository.deleteRecruitments(projectId);
         projectDeleteRepository.deleteProjectInterests(projectId);
         projectDeleteRepository.deleteUserTeamRoles(projectId);
