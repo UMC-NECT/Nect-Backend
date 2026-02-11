@@ -102,6 +102,12 @@ public class MatchingController {
         return ApiResponse.ok(matchingService.getSentMatchingsByTarget(user.getUserId(), counterParty, matchingStatus));
     }
 
+    @GetMapping("/sent/total")
+    public ApiResponse<MatchingResDto.MatchingListRes> getTotalSentMatchings(
+            @AuthenticationPrincipal UserDetailsImpl user
+    ){
+        return ApiResponse.ok(matchingService.getSentTotalMatchingsByTarget(user.getUserId()));
+    }
     // 매칭 요청 개수 조회
     @GetMapping("/count")
     public ApiResponse<MatchingResDto.MatchingCounts> getMatchingsCount(

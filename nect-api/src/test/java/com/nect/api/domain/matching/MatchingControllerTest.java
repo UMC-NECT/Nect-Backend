@@ -961,4 +961,177 @@ public class MatchingControllerTest {
                 )
         ));
     }
+
+    @Test
+    void getSentTotalMatchings() throws Exception {
+        UserDetailsImpl testUser = new UserDetailsImpl(1L, Collections.emptyList());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(testUser, null, Collections.emptyList());
+
+        // 프로젝트 매칭 (프로젝트 우선, 상태 순서: PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED)
+        MatchingResDto.ProjectSummary projectPending = MatchingResDto.ProjectSummary.builder()
+                .matchingId(101L)
+                .projectId(1001L)
+                .title("Project-PENDING")
+                .description("desc")
+                .imageUrl("https://example.com/pending.png")
+                .currentMembersNum(1)
+                .totalMemberNum(3)
+                .build();
+
+        MatchingResDto.ProjectSummary projectAccepted = MatchingResDto.ProjectSummary.builder()
+                .matchingId(102L)
+                .projectId(1002L)
+                .title("Project-ACCEPTED")
+                .description("desc")
+                .imageUrl("https://example.com/accepted.png")
+                .currentMembersNum(2)
+                .totalMemberNum(4)
+                .build();
+
+        MatchingResDto.ProjectSummary projectRejected = MatchingResDto.ProjectSummary.builder()
+                .matchingId(103L)
+                .projectId(1003L)
+                .title("Project-REJECTED")
+                .description("desc")
+                .imageUrl("https://example.com/rejected.png")
+                .currentMembersNum(0)
+                .totalMemberNum(2)
+                .build();
+
+        MatchingResDto.ProjectSummary projectCanceled = MatchingResDto.ProjectSummary.builder()
+                .matchingId(104L)
+                .projectId(1004L)
+                .title("Project-CANCELED")
+                .description("desc")
+                .imageUrl("https://example.com/canceled.png")
+                .currentMembersNum(3)
+                .totalMemberNum(5)
+                .build();
+
+        MatchingResDto.ProjectSummary projectExpired = MatchingResDto.ProjectSummary.builder()
+                .matchingId(105L)
+                .projectId(1005L)
+                .title("Project-EXPIRED")
+                .description("desc")
+                .imageUrl("https://example.com/expired.png")
+                .currentMembersNum(1)
+                .totalMemberNum(1)
+                .build();
+
+        // 유저 매칭 (상태 순서: PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED)
+        MatchingResDto.UserSummary userPending = MatchingResDto.UserSummary.builder()
+                .matchingId(201L)
+                .userId(2001L)
+                .nickname("User-PENDING")
+                .bio("bio")
+                .field(RoleField.BACKEND)
+                .customField(null)
+                .profileUrl("https://example.com/user-pending.png")
+                .build();
+
+        MatchingResDto.UserSummary userAccepted = MatchingResDto.UserSummary.builder()
+                .matchingId(202L)
+                .userId(2002L)
+                .nickname("User-ACCEPTED")
+                .bio("bio")
+                .field(RoleField.BACKEND)
+                .customField(null)
+                .profileUrl("https://example.com/user-accepted.png")
+                .build();
+
+        MatchingResDto.UserSummary userRejected = MatchingResDto.UserSummary.builder()
+                .matchingId(203L)
+                .userId(2003L)
+                .nickname("User-REJECTED")
+                .bio("bio")
+                .field(RoleField.BACKEND)
+                .customField(null)
+                .profileUrl("https://example.com/user-rejected.png")
+                .build();
+
+        MatchingResDto.UserSummary userCanceled = MatchingResDto.UserSummary.builder()
+                .matchingId(204L)
+                .userId(2004L)
+                .nickname("User-CANCELED")
+                .bio("bio")
+                .field(RoleField.BACKEND)
+                .customField(null)
+                .profileUrl("https://example.com/user-canceled.png")
+                .build();
+
+        MatchingResDto.UserSummary userExpired = MatchingResDto.UserSummary.builder()
+                .matchingId(205L)
+                .userId(2005L)
+                .nickname("User-EXPIRED")
+                .bio("bio")
+                .field(RoleField.BACKEND)
+                .customField(null)
+                .profileUrl("https://example.com/user-expired.png")
+                .build();
+
+        MatchingResDto.MatchingListRes dto = MatchingResDto.MatchingListRes.builder()
+                .counterParty(CounterParty.PROJECT)
+                .projectMatchings(java.util.List.of(
+                        projectPending,
+                        projectAccepted,
+                        projectRejected,
+                        projectCanceled,
+                        projectExpired
+                ))
+                .userMatchings(java.util.List.of(
+                        userPending,
+                        userAccepted,
+                        userRejected,
+                        userCanceled,
+                        userExpired
+                ))
+                .build();
+
+        given(matchingService.getSentTotalMatchingsByTarget(anyLong())).willReturn(dto);
+
+        mockMvc.perform(get("/api/v1/matchings/sent/total")
+                        .with(authentication(authentication))
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("matching-get-sent-total",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Matching")
+                                .summary("보낸 매칭 전체 조회")
+                                .description("보낸(발신) 매칭 요청 전체를 조회합니다. 각 그룹 내 매칭 상태 순서는 PENDING, ACCEPTED, REJECTED, CANCELED, EXPIRED 입니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").description("상태 설명").optional(),
+
+                                        fieldWithPath("body").description("응답 데이터"),
+                                        fieldWithPath("body.counterParty").description("대상 타입 (PROJECT | USER)"),
+
+                                        fieldWithPath("body.projectMatchings").description("프로젝트 매칭 요약 목록"),
+                                        fieldWithPath("body.projectMatchings[].matchingId").description("매칭 ID"),
+                                        fieldWithPath("body.projectMatchings[].projectId").description("프로젝트 ID"),
+                                        fieldWithPath("body.projectMatchings[].title").description("프로젝트 제목"),
+                                        fieldWithPath("body.projectMatchings[].description").description("프로젝트 설명"),
+                                        fieldWithPath("body.projectMatchings[].imageUrl").description("프로젝트 대표 이미지"),
+                                        fieldWithPath("body.projectMatchings[].currentMembersNum").description("현재 멤버 수"),
+                                        fieldWithPath("body.projectMatchings[].totalMemberNum").description("프로젝트가 필요로 하는 총 멤버 수"),
+
+                                        fieldWithPath("body.userMatchings").description("유저 매칭 요약 목록"),
+                                        fieldWithPath("body.userMatchings[].matchingId").description("매칭 ID"),
+                                        fieldWithPath("body.userMatchings[].userId").description("유저 ID"),
+                                        fieldWithPath("body.userMatchings[].nickname").description("닉네임"),
+                                        fieldWithPath("body.userMatchings[].bio").description("한줄 소개"),
+                                        fieldWithPath("body.userMatchings[].field").description("분야"),
+                                        fieldWithPath("body.userMatchings[].customField").description("커스텀 분야 (분야가 CUSTOM일 때)"),
+                                        fieldWithPath("body.userMatchings[].profileUrl").description("프로필 URL")
+                                )
+                                .build()
+                        )
+                ));
+    }
 }

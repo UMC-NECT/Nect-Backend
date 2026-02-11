@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -277,5 +278,59 @@ public class MatchingService {
 
         return MatchingResDto.MatchingCounts.builder()
                 .receivedCount(received).sentCount(sent).build();
+    }
+
+    @Transactional(readOnly = true)
+    public MatchingResDto.MatchingListRes getSentTotalMatchingsByTarget(
+            Long userId
+    ) {
+        User user = userService.getUser(userId);
+        List<Matching> projectMatchings = new ArrayList<>();
+        List<Matching> userMatchings = new ArrayList<>();
+
+        List<MatchingStatus> statuses = List.of(
+                MatchingStatus.PENDING,
+                MatchingStatus.ACCEPTED,
+                MatchingStatus.REJECTED,
+                MatchingStatus.CANCELED,
+                MatchingStatus.EXPIRED
+        );
+
+        for (MatchingStatus status: statuses) {
+            projectMatchings.addAll(matchingRepository.findSentMatchingsOrderByExpiresAt(MatchingRequestType.USER_TO_PROJECT, user, status));
+            userMatchings.addAll(matchingRepository.findSentMatchingsOrderByExpiresAt(MatchingRequestType.PROJECT_TO_USER, user, status));
+        }
+
+        List<MatchingResDto.ProjectSummary> projectSummaries = projectMatchings.stream()
+                .map( m -> {
+                    Project project = m.getProject();
+                    return MatchingConverter.toProjectSummary(
+                            m.getId(),
+                            project,
+                            projectService.getUserNumberOfProject(project),
+                            projectTeamCommandService.getTotalUserNumberOfProject(project),
+                            s3Service.getPresignedGetUrl(project.getImageName())
+                    );
+                })
+                .toList();
+
+        List<MatchingResDto.UserSummary> userSummaries = userMatchings.stream()
+                .map(m -> {
+                    User u = m.getTargetUser();
+                    return MatchingConverter.toUserSummary(
+                            m.getId(),
+                            u,
+                            s3Service.getPresignedGetUrl(u.getProfileImageName()),
+                            m.getField(),
+                            m.getCustomField()
+                    );
+                })
+                .toList();
+
+        return MatchingResDto.MatchingListRes.builder()
+                .counterParty(null)
+                .userMatchings(userSummaries)
+                .projectMatchings(projectSummaries)
+                .build();
     }
 }
