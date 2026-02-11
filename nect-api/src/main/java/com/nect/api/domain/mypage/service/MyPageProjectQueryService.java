@@ -134,6 +134,7 @@ public class MyPageProjectQueryService {
                             .filter(rf -> roleFieldCounts.containsKey(rf))
                             .map(rf -> new ProjectMemberStatisticResponse.RoleFieldStatistic(
                                     rf,
+                                    rf.getLabelEn(),
                                     roleFieldCounts.get(rf)
                             ))
                             .toList();
