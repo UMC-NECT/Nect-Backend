@@ -89,6 +89,13 @@ public class MatchingController {
         return ApiResponse.ok(matchingService.getReceivedMatchingsByTarget(user.getUserId(), counterParty, matchingStatus));
     }
 
+    @GetMapping("/received/total")
+    public ApiResponse<MatchingResDto.MatchingListRes> getTotalReceivedMatchings(
+            @AuthenticationPrincipal UserDetailsImpl user
+    ) {
+        return ApiResponse.ok(matchingService.getReceivedTotalMatchingsByTarget(user.getUserId()));
+    }
+
     // 보낸 매칭 요청 조회r
     @GetMapping("/sent")
     public ApiResponse<MatchingResDto.MatchingListRes> getSentMatchings(
@@ -102,6 +109,12 @@ public class MatchingController {
         return ApiResponse.ok(matchingService.getSentMatchingsByTarget(user.getUserId(), counterParty, matchingStatus));
     }
 
+    @GetMapping("/sent/total")
+    public ApiResponse<MatchingResDto.MatchingListRes> getTotalSentMatchings(
+            @AuthenticationPrincipal UserDetailsImpl user
+    ){
+        return ApiResponse.ok(matchingService.getSentTotalMatchingsByTarget(user.getUserId()));
+    }
     // 매칭 요청 개수 조회
     @GetMapping("/count")
     public ApiResponse<MatchingResDto.MatchingCounts> getMatchingsCount(
