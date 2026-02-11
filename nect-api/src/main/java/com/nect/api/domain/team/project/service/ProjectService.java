@@ -94,6 +94,12 @@ public class ProjectService {
                 .findByIdAndUserIdWithDetails(request.analysisId(), userId)
                 .orElseThrow(() -> new ProjectException(ProjectErrorCode.ANALYSIS_NOT_FOUND));
 
+        long projectCount = projectUserRepository
+                .countByUserIdAndMemberType(userId, ProjectMemberType.LEADER);
+        if (projectCount >= 2) {
+            throw new ProjectException(ProjectErrorCode.PROJECT_CREATE_LIMIT_EXCEEDED);
+        }
+
         // 2. 분석서 데이터 검증
         validateAnalysisData(analysis);
 
