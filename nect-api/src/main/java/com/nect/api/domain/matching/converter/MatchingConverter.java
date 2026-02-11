@@ -42,7 +42,7 @@ public class MatchingConverter {
     }
 
     public static MatchingResDto.UserSummary toUserSummary(Long matchingId, User user, String profileImageUrl, RoleField field, String customField){
-        return MatchingResDto.UserSummary.builder()
+      return MatchingResDto.UserSummary.builder()
                 .matchingId(matchingId)
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
