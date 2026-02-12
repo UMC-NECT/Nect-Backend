@@ -1170,7 +1170,9 @@ class ProcessControllerTest {
                 "ROLE:BACKEND",
                 1,
                 LocalDate.of(2026, 2, 1),
-                LocalDate.of(2026, 2, 10)
+                LocalDate.of(2026, 2, 10),
+                List.of(RoleField.BACKEND),
+                List.of()
         );
 
         ProcessOrderUpdateResDto response = new ProcessOrderUpdateResDto(
@@ -1209,11 +1211,14 @@ class ProcessControllerTest {
                                         )
                                         .requestFields(
                                                 fieldWithPath("status").optional().type(STRING).description("대상 프로세스 상태(컬럼)"),
-                                                fieldWithPath("ordered_process_ids").optional().type(ARRAY).description("정렬 순서대로 나열한 프로세스 ID 목록"),
+                                                fieldWithPath("ordered_process_ids").optional().type(ARRAY).description("정렬 순서대로 나열한 프로세스 ID 목록(해당 레인의 전체)"),
                                                 fieldWithPath("lane_key").type(STRING).description("레인 키(TEAM, ROLE:XXX, CUSTOM:이름)"),
+                                                fieldWithPath("mission_number").optional().type(NUMBER).description("미션 번호(위크미션이면 사용, 기본형이면 null 가능)"),
                                                 fieldWithPath("start_date").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
                                                 fieldWithPath("dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)"),
-                                                fieldWithPath("mission_number").optional().type(NUMBER).description("미션 번호(위크미션이면 사용, 기본형이면 null 가능)")
+
+                                                fieldWithPath("role_fields").optional().type(ARRAY).description("담당 파트(ROLE) 목록 (ex: [BACKEND, FRONTEND])"),
+                                                fieldWithPath("custom_fields").optional().type(ARRAY).description("커스텀 파트(CUSTOM) 목록")
                                         )
                                         .responseFields(
                                                 fieldWithPath("status").type(OBJECT).description("응답 상태"),
@@ -1224,8 +1229,7 @@ class ProcessControllerTest {
                                                 fieldWithPath("body").type(OBJECT).description("응답 바디"),
                                                 fieldWithPath("body.process_id").type(NUMBER).description("프로세스 ID"),
                                                 fieldWithPath("body.status").type(STRING).description("프로세스 상태"),
-                                                fieldWithPath("body.status_order").type(NUMBER).description("해당 status 내 정렬 순서"),
-                                                fieldWithPath("body.groups[].processes[].mission_number").optional().type(NUMBER).description("미션 번호(null 가능)"),
+                                                fieldWithPath("body.status_order").type(NUMBER).description("해당 레인+상태 내 정렬 순서"),
                                                 fieldWithPath("body.start_at").optional().type(STRING).description("시작일(yyyy-MM-dd, null 가능)"),
                                                 fieldWithPath("body.dead_line").optional().type(STRING).description("마감일(yyyy-MM-dd, null 가능)")
                                         )
