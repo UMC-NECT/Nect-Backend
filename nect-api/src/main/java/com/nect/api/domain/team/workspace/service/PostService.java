@@ -295,8 +295,8 @@ public class PostService {
         PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
                 freePage.getNumber(),
                 freePage.getSize(),
-                freePage.getTotalElements(),
-                freePage.getTotalPages() + notices.size(),
+                freePage.getTotalElements() +  + notices.size(),
+                freePage.getTotalPages(),
                 freePage.hasNext()
         );
 
