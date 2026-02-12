@@ -253,14 +253,36 @@ class UserTeamRoleControllerTest {
                         RoleField.BACKEND,
                         null,
                         "Backend",
-                        1
+                        1,
+                        List.of(
+                                new UserTeamRolesResDto.PartUserInfo(
+                                        1L,
+                                        "https://example.com/profile/1.png",
+                                        "홍길동",
+                                        "BACKEND"
+                                )
+                        )
                 ),
                 new UserTeamRolesResDto.PartDto(
                         11L,
                         RoleField.CUSTOM,
                         "데이터",
                         "데이터",
-                        2
+                        2,
+                        List.of(
+                                new UserTeamRolesResDto.PartUserInfo(
+                                        2L,
+                                        "https://example.com/profile/2.png",
+                                        "이영희",
+                                        "FRONTEND"
+                                ),
+                                new UserTeamRolesResDto.PartUserInfo(
+                                        3L,
+                                        "https://example.com/profile/3.png",
+                                        "박민수",
+                                        "FRONTEND"
+                                )
+                        )
                 )
         ));
 
@@ -298,7 +320,8 @@ class UserTeamRoleControllerTest {
                                                 fieldWithPath("body.parts[].role_field").type(STRING).description("파트 타입(RoleField)"),
                                                 fieldWithPath("body.parts[].custom_role_field_name").optional().type(STRING).description("CUSTOM 파트명"),
                                                 fieldWithPath("body.parts[].label").type(STRING).description("표시 라벨(label)"),
-                                                fieldWithPath("body.parts[].required_count").type(NUMBER).description("모집 인원")
+                                                fieldWithPath("body.parts[].required_count").type(NUMBER).description("모집 인원"),
+                                                fieldWithPath("body.parts[].members").type(ARRAY).description("파트 멤버 목록")
                                         )
                                         .build()
                         )
