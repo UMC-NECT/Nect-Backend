@@ -321,7 +321,11 @@ class UserTeamRoleControllerTest {
                                                 fieldWithPath("body.parts[].custom_role_field_name").optional().type(STRING).description("CUSTOM 파트명"),
                                                 fieldWithPath("body.parts[].label").type(STRING).description("표시 라벨(label)"),
                                                 fieldWithPath("body.parts[].required_count").type(NUMBER).description("모집 인원"),
-                                                fieldWithPath("body.parts[].members").type(ARRAY).description("파트 멤버 목록")
+                                                fieldWithPath("body.parts[].members").type(ARRAY).description("파트 멤버 목록"),
+                                                fieldWithPath("body.parts[].members[].user_id").type(NUMBER).description("멤버 유저 ID"),
+                                                fieldWithPath("body.parts[].members[].profile_image").type(STRING).description("멤버 프로필 이미지").optional(),
+                                                fieldWithPath("body.parts[].members[].name").type(STRING).description("멤버 이름"),
+                                                fieldWithPath("body.parts[].members[].part").type(STRING).description("멤버 파트 라벨")
                                         )
                                         .build()
                         )
