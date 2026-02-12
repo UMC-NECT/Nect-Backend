@@ -13,7 +13,9 @@ import com.nect.core.repository.user.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -77,7 +79,7 @@ public class MypageService {
                 .map(projectHistory -> new ProjectHistoryDto(
                         projectHistory.getUserProjectHistoryId(),
                         projectHistory.getProjectName(),
-                        projectHistory.getProjectImage(),
+                        toPresignedProjectImage(projectHistory.getProjectImage()),
                         projectHistory.getProjectDescription(),
                         projectHistory.getStartYearMonth(),
                         projectHistory.getEndYearMonth()
@@ -147,7 +149,13 @@ public class MypageService {
     }
 
     @Transactional
-    public void updateProfile(Long userId, ProfileSettingsRequestDto request) {
+    public void updateProfile(Long userId, ProfileSettingsRequestDto request) throws IOException {
+        updateProfile(userId, request, Collections.emptyMap());
+    }
+
+    @Transactional
+    public void updateProfile(Long userId, ProfileSettingsRequestDto request,
+                              Map<Long, MultipartFile> projectHistoryImages) throws IOException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
 
@@ -234,16 +242,18 @@ public class MypageService {
         if (request.projectHistories() != null) {
             userProjectHistoryRepository.deleteByUserUserId(userId);
             if (!request.projectHistories().isEmpty()) {
-                List<UserProjectHistory> newProjectHistories = request.projectHistories().stream()
-                        .map(projectHistoryDto -> UserProjectHistory.builder()
-                                .user(user)
-                                .projectName(projectHistoryDto.projectName())
-                                .projectImage(projectHistoryDto.projectImage())
-                                .projectDescription(projectHistoryDto.projectDescription())
-                                .startYearMonth(projectHistoryDto.startYearMonth())
-                                .endYearMonth(projectHistoryDto.endYearMonth())
-                                .build())
-                        .collect(Collectors.toList());
+                List<UserProjectHistory> newProjectHistories = new ArrayList<>();
+                for (ProjectHistoryDto projectHistoryDto : request.projectHistories()) {
+                    UserProjectHistory history = UserProjectHistory.builder()
+                            .user(user)
+                            .projectName(projectHistoryDto.projectName())
+                            .projectImage(resolveProjectHistoryImage(projectHistoryDto, projectHistoryImages))
+                            .projectDescription(projectHistoryDto.projectDescription())
+                            .startYearMonth(projectHistoryDto.startYearMonth())
+                            .endYearMonth(projectHistoryDto.endYearMonth())
+                            .build();
+                    newProjectHistories.add(history);
+                }
                 userProjectHistoryRepository.saveAll(newProjectHistories);
             }
         }
@@ -283,5 +293,26 @@ public class MypageService {
         }
     }
 
+    private String resolveProjectHistoryImage(ProjectHistoryDto dto,
+                                              Map<Long, MultipartFile> projectHistoryImages) throws IOException {
+        if (projectHistoryImages == null || dto == null || dto.userProjectHistoryId() == null) {
+            return dto == null ? null : dto.projectImage();
+        }
+        MultipartFile file = projectHistoryImages.get(dto.userProjectHistoryId());
+        if (file == null || file.isEmpty()) {
+            return dto.projectImage();
+        }
+        return s3Service.uploadFile(file);
+    }
+
+    private String toPresignedProjectImage(String projectImage) {
+        if (projectImage == null || projectImage.isBlank()) {
+            return null;
+        }
+        if (projectImage.startsWith("http://") || projectImage.startsWith("https://")) {
+            return projectImage;
+        }
+        return s3Service.getPresignedGetUrl(projectImage);
+    }
 
 }
