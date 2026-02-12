@@ -33,6 +33,7 @@ import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.team.SharedDocumentRepository;
 import com.nect.core.repository.team.process.*;
 import com.nect.core.repository.user.UserRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +64,8 @@ public class ProcessService {
     private final ProcessLaneOrderService processLaneOrderService;
     private final NotificationFacade notificationFacade;
     private final ProjectHistoryPublisher historyPublisher;
+
+    private final EntityManager em;
 
     private static final String TEAM_LANE_KEY = "TEAM";
 
@@ -623,9 +626,10 @@ public class ProcessService {
     public ProcessDetailResDto getProcessDetail(Long projectId, Long userId, Long processId, String laneKey) {
         assertActiveProjectMember(projectId, userId);
 
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+        Process process = processRepository
+                .findByIdInProjectExcludingWeekMission(projectId, processId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        ProcessErrorCode.WEEK_MISSION_FORBIDDEN,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
@@ -915,9 +919,10 @@ public class ProcessService {
     public ProcessBasicUpdateResDto updateProcessBasic(Long projectId, Long userId, Long processId, ProcessBasicUpdateReqDto req) {
         assertActiveProjectMember(projectId, userId);
 
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+        Process process = processRepository
+                .findByIdInProjectExcludingWeekMission(projectId, processId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        ProcessErrorCode.WEEK_MISSION_MODIFICATION_FORBIDDEN,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
@@ -1058,6 +1063,13 @@ public class ProcessService {
 
 
         if (periodPatchRequested) {
+            if (mergedStart == null || mergedEnd == null) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "startDate and deadLine must not be null. mergedStart=" + mergedStart + ", mergedEnd=" + mergedEnd
+                );
+            }
+
             process.updatePeriod(mergedStart, mergedEnd);
         }
 
@@ -1384,9 +1396,10 @@ public class ProcessService {
     public void deleteProcess(Long projectId, Long userId, Long processId) {
         assertActiveProjectMember(projectId, userId);
 
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+        Process process = processRepository
+                .findByIdInProjectExcludingWeekMission(projectId, processId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        ProcessErrorCode.WEEK_MISSION_MODIFICATION_FORBIDDEN,
                         "processId=" + processId + ", projectId=" + projectId
                 ));
 
@@ -2011,9 +2024,10 @@ public class ProcessService {
     public ProcessOrderUpdateResDto updateProcessOrder(Long projectId, Long userId, Long processId, ProcessOrderUpdateReqDto req) {
         assertActiveProjectMember(projectId, userId);
 
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+        Process process = processRepository
+                .findByIdInProjectExcludingWeekMission(projectId, processId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        ProcessErrorCode.WEEK_MISSION_MODIFICATION_FORBIDDEN,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 
@@ -2024,6 +2038,86 @@ public class ProcessService {
         // 변경 전 스냅샷
         ProcessStatus beforeStatus = process.getStatus();
 
+        // ✅ CHANGED: 0) 레인(필드) 변경 먼저 처리 (레인 간 이동)
+        boolean fieldsPatchRequested = (req.roleFields() != null || req.customFields() != null);
+
+        List<RoleField> requestedRoleFields = (req.roleFields() == null)
+                ? null
+                : req.roleFields().stream()
+                .filter(Objects::nonNull)
+                .filter(rf -> rf != RoleField.CUSTOM) // CUSTOM은 custom_fields로만 처리
+                .distinct()
+                .toList();
+
+        List<String> requestedCustomFields = (req.customFields() == null)
+                ? null
+                : req.customFields().stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .distinct()
+                .toList();
+
+        if (fieldsPatchRequested) {
+            // 프로젝트에 등록된 파트인지 검증
+            validateProjectTeamRolesForUpdateOrThrow(
+                    projectId,
+                    requestedRoleFields == null ? List.of() : requestedRoleFields,
+                    requestedCustomFields == null ? List.of() : requestedCustomFields
+            );
+
+            List<RoleField> finalRoleFields =
+                    (requestedRoleFields == null) ? List.of() : requestedRoleFields;
+            List<String> finalCustomFields =
+                    (requestedCustomFields == null) ? List.of() : requestedCustomFields;
+
+            // 필드 재생성
+            process.getProcessFields().clear();
+
+            for (RoleField rf : finalRoleFields) {
+                process.getProcessFields().add(ProcessField.builder()
+                        .process(process)
+                        .roleField(rf)
+                        .customFieldName(null)
+                        .build());
+            }
+
+            for (String name : finalCustomFields) {
+                process.getProcessFields().add(ProcessField.builder()
+                        .process(process)
+                        .roleField(RoleField.CUSTOM)
+                        .customFieldName(name)
+                        .build());
+            }
+
+            em.flush();
+        }
+
+
+        List<RoleField> finalRoleFields =
+                (requestedRoleFields != null)
+                        ? requestedRoleFields
+                        : process.getProcessFields().stream()
+                        .filter(pf -> pf.getDeletedAt() == null)
+                        .map(ProcessField::getRoleField)
+                        .filter(Objects::nonNull)
+                        .filter(rf -> rf != RoleField.CUSTOM)
+                        .distinct()
+                        .toList();
+
+        List<String> finalCustomFields =
+                (requestedCustomFields != null)
+                        ? requestedCustomFields
+                        : process.getProcessFields().stream()
+                        .filter(pf -> pf.getDeletedAt() == null)
+                        .filter(pf -> pf.getRoleField() == RoleField.CUSTOM)
+                        .map(ProcessField::getCustomFieldName)
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .distinct()
+                        .toList();
+
         // 기간 변경
         LocalDate newStart = req.startDate();
         LocalDate newEnd = req.deadLine();
@@ -2032,22 +2126,29 @@ public class ProcessService {
             LocalDate mergedStart = (newStart != null) ? newStart : process.getStartAt();
             LocalDate mergedEnd = (newEnd != null) ? newEnd : process.getEndAt();
 
-            if (mergedStart != null && mergedEnd != null && mergedStart.isAfter(mergedEnd)) {
+            if (mergedStart == null || mergedEnd == null) {
+                throw new ProcessException(
+                        ProcessErrorCode.INVALID_REQUEST,
+                        "startDate and deadLine must not be null. mergedStart=" + mergedStart + ", mergedEnd=" + mergedEnd
+                );
+            }
+
+            if (mergedStart.isAfter(mergedEnd)) {
                 throw new ProcessException(
                         ProcessErrorCode.INVALID_PROCESS_PERIOD,
                         "startDate = " + mergedStart + ", endDate = " + mergedEnd
                 );
             }
 
-            if (req.missionNumber() != null && mergedStart != null) {
+            if (req.missionNumber() != null) {
                 validateStartDateInSelectedMission(projectId, req.missionNumber(), mergedStart);
             }
 
-            if (mergedStart != null && mergedEnd != null) {
-                validateNoOverlapForUpdateOrderLane(projectId, processId, dbLaneKey, mergedStart, mergedEnd);
-            }
+            // 레인 기준 기간 겹침 검증 (TEAM이면 skip / ROLE,CUSTOM이면 lane 기준)
+            validateNoOverlapForUpdateOrderLane(projectId, processId, dbLaneKey, mergedStart, mergedEnd);
 
             process.updatePeriod(mergedStart, mergedEnd);
+
         }
 
         // 상태 변경(드롭다운/드래그로 상태가 바뀌는 경우)
@@ -2147,7 +2248,7 @@ public class ProcessService {
     ) {
         // TEAM: status 내 전체 프로세스 수
         if (TEAM_LANE_KEY.equals(dbLaneKey)) {
-            return processRepository.countByProjectIdAndDeletedAtIsNullAndStatus(projectId, laneStatus);
+            return processRepository.countTeamLaneTotalExcludingWeekMission(projectId, laneStatus);
         }
 
         // ROLE
@@ -2380,9 +2481,10 @@ public class ProcessService {
             throw new ProcessException(ProcessErrorCode.INVALID_REQUEST, "status is null");
         }
 
-        Process process = processRepository.findByIdAndProjectIdAndDeletedAtIsNull(processId, projectId)
+        Process process = processRepository
+                .findByIdInProjectExcludingWeekMission(projectId, processId)
                 .orElseThrow(() -> new ProcessException(
-                        ProcessErrorCode.PROCESS_NOT_FOUND,
+                        ProcessErrorCode.WEEK_MISSION_MODIFICATION_FORBIDDEN,
                         "projectId=" + projectId + ", processId=" + processId
                 ));
 

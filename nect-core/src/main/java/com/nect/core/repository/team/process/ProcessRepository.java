@@ -17,6 +17,20 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     // 소속 검증 + 소프트 delete 제외
     Optional<Process> findByIdAndProjectIdAndDeletedAtIsNull(Long id, Long projectId);
 
+    @Query("""
+        select p
+        from Process p
+        where p.id = :processId
+          and p.project.id = :projectId
+          and p.deletedAt is null
+          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
+    """)
+    Optional<Process> findByIdInProjectExcludingWeekMission(
+            @Param("projectId") Long projectId,
+            @Param("processId") Long processId
+    );
+
+
     @EntityGraph(attributePaths = { "processUsers", "processUsers.user" })
     @Query("""
         select p
@@ -543,14 +557,17 @@ public interface ProcessRepository extends JpaRepository<Process, Long> {
     );
 
     @Query("""
-        select case when count(p) > 0 then true else false end
+        select (count(p) > 0)
         from Process p
         join p.processFields pf
         where p.project.id = :projectId
           and p.deletedAt is null
+          and (p.processType is null or p.processType <> com.nect.core.entity.team.process.enums.ProcessType.WEEK_MISSION)
           and p.id <> :excludeProcessId
           and pf.deletedAt is null
           and pf.roleField = :roleField
+          and p.startAt is not null
+          and p.endAt is not null
           and not (p.endAt < :start or p.startAt > :end)
     """)
     boolean existsOverlappingInRoleLaneExcludingProcess(

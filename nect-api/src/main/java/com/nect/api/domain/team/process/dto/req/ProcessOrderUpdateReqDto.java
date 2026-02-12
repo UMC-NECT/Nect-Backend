@@ -2,6 +2,7 @@ package com.nect.api.domain.team.process.dto.req;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nect.core.entity.team.process.enums.ProcessStatus;
+import com.nect.core.entity.user.enums.RoleField;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -23,5 +24,11 @@ public record ProcessOrderUpdateReqDto(
         LocalDate startDate,
 
         @JsonProperty("dead_line")
-        LocalDate deadLine
+        LocalDate deadLine,
+
+        @JsonProperty("role_fields")
+        List<RoleField> roleFields,
+
+        @JsonProperty("custom_fields")
+        List<String> customFields
 ) {}
