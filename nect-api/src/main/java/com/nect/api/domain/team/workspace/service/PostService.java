@@ -275,32 +275,55 @@ public class PostService {
             return new PostListResDto(mapped, pageInfo);
         }
 
-
-        // FREE만 페이지네이션
-        Pageable pageable = PageRequest.of(page, fixedSize, baseSort);
-        Page<Post> freePage = postRepository.findFreePosts(projectId, pageable);
-
-        List<PostListResDto.PostSummaryDto> result = new java.util.ArrayList<>();
-
-        // page==0 일 때만 공지 전부 상단에 붙이기
-        List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
-        if (type == null && page == 0) {
-            result.addAll(notices.stream().map(this::toSummary).toList());
+        // FREE만 조회 요청일 때는 FREE만 페이징 (DB Pageable 사용 금지)
+        if (type == PostType.FREE) {
+            List<Post> freePosts = postRepository.findFreePosts(projectId, baseSort);
+            return paginatePosts(sortPosts(freePosts), page, fixedSize);
         }
 
-        // FREE 페이징 결과 붙이기
-        result.addAll(freePage.getContent().stream().map(this::toSummary).toList());
+        // 공지 + FREE 전체를 합쳐서 페이징 (type == null)
+        List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
+        List<Post> freePosts = postRepository.findFreePosts(projectId, baseSort);
 
-        // pageInfo는 FREE 기준으로만 계산 (공지는 제외)
+        List<Post> combined = new ArrayList<>(notices.size() + freePosts.size());
+        combined.addAll(sortPosts(notices));
+        combined.addAll(sortPosts(freePosts));
+
+        return paginatePosts(combined, page, fixedSize);
+    }
+
+    private PostListResDto paginatePosts(List<Post> posts, int page, int size) {
+        int totalElements = posts.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        int start = page * size;
+        int end = Math.min(start + size, totalElements);
+        boolean hasNext = end < totalElements;
+
+        List<PostListResDto.PostSummaryDto> result = (start >= totalElements)
+                ? List.of()
+                : posts.subList(start, end).stream()
+                        .map(this::toSummary)
+                        .toList();
+
         PostListResDto.PageInfo pageInfo = new PostListResDto.PageInfo(
-                freePage.getNumber(),
-                freePage.getSize(),
-                freePage.getTotalElements() +  + notices.size(),
-                freePage.getTotalPages(),
-                freePage.hasNext()
+                page,
+                size,
+                totalElements,
+                totalPages,
+                hasNext
         );
 
         return new PostListResDto(result, pageInfo);
+    }
+
+    private List<Post> sortPosts(List<Post> posts) {
+        return posts.stream()
+                .sorted((a, b) -> {
+                    int cmp = b.getCreatedAt().compareTo(a.getCreatedAt());
+                    if (cmp != 0) return cmp;
+                    return b.getId().compareTo(a.getId());
+                })
+                .toList();
     }
 
     private PostListResDto.PostSummaryDto toSummary(Post p) {
