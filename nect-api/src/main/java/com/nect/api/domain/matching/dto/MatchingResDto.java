@@ -69,4 +69,12 @@ public class MatchingResDto {
             LocalDateTime expiresAt,
             MatchingStatus status
     ){}
+
+    @Builder
+    public record MatchingNoticeResDto(
+            Long noticeId,
+            String title,
+            String description,
+            Integer sortOrder
+    ){}
 }
