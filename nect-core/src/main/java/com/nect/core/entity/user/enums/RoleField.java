@@ -39,14 +39,15 @@ public enum RoleField {
     AD_VIRAL("광고/바이럴", "Ads/Viral", Role.MARKETER),
     LIVE_COMMERCE("라이브커머스", "Live Commerce", Role.MARKETER),
     DATA_ANALYSIS("데이터 분석", "Data Analysis", Role.MARKETER),
-    MARKETING_OTHER("기타", "Other", Role.MARKETER),
-    OPERATIONS_CS("운영/CS", "Operations/CS", Role.MARKETER),
-    SALES_PARTNERSHIP("영업/제휴", "Sales/Partnership", Role.MARKETER),
-    VIDEO_MUSIC_DIRECTING("영상/음악 감독", "Video/Music Directing", Role.MARKETER),
-    TRANSLATION_INTERPRETATION("번역/통역", "Translation/Interpretation", Role.MARKETER),
-    MANUSCRIPT_CONSULTING("원고 컨설턴트", "Manuscript Consulting", Role.MARKETER),
-    ACCOUNTING_LAW_HR("세무/법무/노무", "Accounting/Law/HR", Role.MARKETER),
-    STARTUP_CONSULTING("창업 컨설팅", "Startup Consulting", Role.MARKETER),
+//    MARKETING_OTHER("기타", "Other", Role.MARKETER),
+
+    OPERATIONS_CS("운영/CS", "Operations/CS", Role.OTHER),
+    SALES_PARTNERSHIP("영업/제휴", "Sales/Partnership", Role.OTHER),
+    VIDEO_MUSIC_DIRECTING("영상/음악 감독", "Video/Music Directing", Role.OTHER),
+    TRANSLATION_INTERPRETATION("번역/통역", "Translation/Interpretation", Role.OTHER),
+    MANUSCRIPT_CONSULTING("원고 컨설턴트", "Manuscript Consulting", Role.OTHER),
+    ACCOUNTING_LAW_HR("세무/법무/노무", "Accounting/Law/HR", Role.OTHER),
+    STARTUP_CONSULTING("창업 컨설팅", "Startup Consulting", Role.OTHER),
 
     // 직접입력 (모든 Role에서 가능)
     CUSTOM("직접입력", "Custom",null);
