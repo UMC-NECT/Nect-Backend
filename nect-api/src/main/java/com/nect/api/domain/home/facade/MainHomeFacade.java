@@ -7,10 +7,14 @@ import com.nect.api.domain.home.service.HomeProjectQueryService;
 import com.nect.api.domain.home.service.HomeStatisticsQueryService;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.service.MyPageProjectQueryService;
+import com.nect.api.domain.mypage.service.UserTeamRoleService;
 import com.nect.api.domain.team.project.service.ProjectMemberQueryService;
+import com.nect.api.domain.team.project.service.ProjectService;
+import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.team.ProjectInterest;
+import com.nect.core.entity.team.enums.MemberMatchable;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
@@ -37,6 +41,7 @@ public class MainHomeFacade {
     private final S3Service s3Service;
     private final MyPageProjectQueryService myPageProjectQueryService;
     private final ProjectMemberQueryService projectMemberQueryService;
+    private final ProjectUserService projectUserService;
 
     // 모집 중인 프로젝트
     public HomeProjectResponse getRecruitingProjects(Long userId, int count, Role role, InterestField interest){
@@ -119,7 +124,10 @@ public class MainHomeFacade {
             users = homeMemberQueryService.getAllUsersWithoutUser(userId, safeCount);
         }
 
-        return buildMemberResponse(users);
+        List<Long> projectIds = projectUserService.getProjectByLeader(userId).stream()
+                .map(Project::getId)
+                .toList();
+        return buildMemberResponse(projectIds, users);
     }
 
     // 홈화면 추천 넥터
@@ -127,7 +135,10 @@ public class MainHomeFacade {
         int safeCount = safeCount(count);
         List<User> users = homeMemberQueryService.getAllUsersWithoutUser(userId, safeCount);
 
-        List<HomeMemberItem> items = new ArrayList<>(responsesFromMembers(users));
+        List<Long> projectIds = projectUserService.getProjectByLeader(userId).stream()
+                .map(Project::getId)
+                .toList();
+        List<HomeMemberItem> items = new ArrayList<>(responsesFromMembersWithMatchable(projectIds, users, false));
         Collections.shuffle(items);
 
         return HomeMembersResponse.of(items);
@@ -183,13 +194,16 @@ public class MainHomeFacade {
     }
 
     // List<User> users -> List<HomeMemberItem>
-    private List<HomeMemberItem> responsesFromMembers(List<User> users) {
+    private List<HomeMemberItem> responsesFromMembersWithMatchable(List<Long> projectIds, List<User> users, boolean filterMatchableOnly) {
         Map<Long, List<String>> partsByUserId = homeMemberQueryService.partsByUsers(users);
 
         return users.stream()
                 .map(user -> {
                     List<String> parts = partsByUserId.getOrDefault(user.getUserId(), List.of());
-
+                    MemberMatchable matchable = homeMemberQueryService.getMemberMatchable(projectIds, user.getUserId());
+                    if (filterMatchableOnly && matchable != MemberMatchable.MATCHABLE) {
+                        return null;
+                    }
                     return HomeMemberItem.of(
                             user.getUserId(),
                             s3Service.getPresignedGetUrl(user.getProfileImageName()),
@@ -197,13 +211,15 @@ public class MainHomeFacade {
                             user.getRole() != null ?  user.getRole().name() : null,
                             user.getBio(),
                             user.getCoreCompetencies(),
-                            user.getUserStatus() != null ? user.getUserStatus().name() : null,
+                            matchable.getDescription(),
                             false,
                             parts
                     );
                 })
+                .filter(item -> item != null)
                 .toList();
     }
+
 
     private HomeProjectResponse buildProjectResponse(List<Project> projects) {
         if (projects.isEmpty()) {
@@ -213,8 +229,8 @@ public class MainHomeFacade {
         return HomeProjectResponse.of(responsesFromProjects(projects));
     }
 
-    private HomeMembersResponse buildMemberResponse(List<User> users) {
-        return HomeMembersResponse.of(responsesFromMembers(users));
+    private HomeMembersResponse buildMemberResponse(List<Long> projectIds, List<User> users) {
+        return HomeMembersResponse.of(responsesFromMembersWithMatchable(projectIds, users, true));
     }
 
     private int safeCount(int count) {

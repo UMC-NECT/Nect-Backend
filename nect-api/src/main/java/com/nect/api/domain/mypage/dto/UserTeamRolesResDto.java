@@ -23,6 +23,22 @@ public record UserTeamRolesResDto(
             String label,
 
             @JsonProperty("required_count")
-            Integer requiredCount
+            Integer requiredCount,
+
+            @JsonProperty("members")
+            List<PartUserInfo> members
+
     ) {}
+
+    public record PartUserInfo(
+            @JsonProperty("user_id")
+            Long userId,
+            @JsonProperty("profile_image")
+            String profileImage,
+            @JsonProperty("name")
+            String name,
+            @JsonProperty("part")
+            String part
+    ) {}
+
 }

@@ -32,6 +32,14 @@ public class ProjectUserService {
     private final ProjectUserRepository projectUserRepository;
     private final ProjectService projectService;
 
+    // 내가 리더로 속한 프로젝트 조회
+    public List<Project> getProjectByLeader(Long userId){
+        List<ProjectUser> projectUser = projectUserRepository.findByUserIdAndMemberType(userId, ProjectMemberType.LEADER);
+        return projectUser.stream()
+                .map(ProjectUser::getProject)
+                .toList();
+    }
+
     public ProjectUser addProjectUser(Long userId, Project project, RoleField field){
         ProjectUser projectUser = ProjectUser.builder()
                 .project(project)

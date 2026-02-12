@@ -3,8 +3,11 @@ package com.nect.api.domain.team.project.service;
 import com.nect.api.domain.home.dto.HomeProjectMembersResponse;
 import com.nect.api.domain.team.project.dto.ProjectUsersResDto;
 import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
+import com.nect.api.domain.team.project.enums.code.ProjectUserErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
+import com.nect.api.domain.team.project.exception.ProjectUserException;
 import com.nect.api.global.infra.S3Service;
+import com.nect.core.entity.team.ProjectUser;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
@@ -129,6 +132,13 @@ public class ProjectMemberQueryService {
         );
 
         return new HomeProjectMembersResponse(users);
+    }
+
+    // 특정 사람이 특정 프로젝트에서 어떤 역할인지 ( RoleField )
+    public RoleField roleFieldInProject(Long projectId, Long userId) {
+        ProjectUser projectUser = projectUserRepository.findByUserIdAndProjectId(userId, projectId)
+                .orElseThrow(() -> new ProjectUserException(ProjectUserErrorCode.PROJECT_USER_NOT_FOUND));
+        return projectUser.getRoleField();
     }
 
     private void assertActiveProjectMember(Long projectId, Long userId) {

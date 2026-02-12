@@ -100,6 +100,8 @@ public class DmService {
                 .map(DirectMessageDto::fromDm)
                 .toList();
 
+        list.forEach( dto -> dto.setImageUrl( s3Service.getPresignedGetUrl(dto.getSenderProfileImage()) ) );
+
         // 응답값 생성 후 반환
         return DmMessageListResponse.builder()
                 .messages(list)
