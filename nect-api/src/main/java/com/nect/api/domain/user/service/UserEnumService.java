@@ -37,7 +37,7 @@ public class UserEnumService {
     public RoleFieldsResponseDto getRoleFields(Role role) {
         List<EnumValueDto> fields = Arrays.stream(RoleField.values())
                 .filter(field -> field.getRole() == null || field.getRole().equals(role))
-                .map(field -> new EnumValueDto(field.name(), field.getLabelEn(), field.getLabelEn()))
+                .map(field -> new EnumValueDto(field.name(), field.getDescription(), field.getLabelEn()))
                 .collect(Collectors.toList());
 
         return new RoleFieldsResponseDto(

@@ -61,6 +61,7 @@ public class ChatFileService {
     private final ProjectUserRepository projectUserRepository;
     private final ProjectRepository projectRepository;
     private final SharedDocumentRepository sharedDocumentRepository;
+    private final FileConverter fileConverter;
 
 
     private String uploadDir;
@@ -81,10 +82,10 @@ public class ChatFileService {
             String storedFileName = s3Service.uploadFile(file);
             String fileUrl = getSafePresignedUrl(storedFileName);
 
-            ChatMessage message = FileConverter.toFileMessage(chatRoom, user);
+            ChatMessage message = fileConverter.toFileMessage(chatRoom, user);
             chatMessageRepository.save(message);
 
-            ChatFile chatFile = FileConverter.toFileEntity(
+            ChatFile chatFile = fileConverter.toFileEntity(
                     file.getOriginalFilename(),
                     storedFileName,
                     fileUrl,
@@ -99,7 +100,7 @@ public class ChatFileService {
             chatRoomUser.setLastReadAt(LocalDateTime.now());
 
             // 7. DTO 변환
-            ChatMessageDto messageDto = FileConverter.toFileMessageDto(message, chatFile);
+            ChatMessageDto messageDto = fileConverter.toFileMessageDto(message, chatFile);
 
             int totalMembers = chatRoomUserRepository.countByChatRoomId(roomId);
             messageDto.setReadCount(totalMembers - 1);
@@ -152,7 +153,7 @@ public class ChatFileService {
 
                     List<ChatFile> filesWithRefreshedUrls = refreshPresignedUrls(chatFiles);
 
-                    return FileConverter.toChatRoomAlbumDto(
+                    return fileConverter.toChatRoomAlbumDto(
                             room,
                             filesWithRefreshedUrls,
                             totalFileCount);
@@ -187,7 +188,7 @@ validateRoomMember(roomId, userId);
         int totalPages = (int) Math.ceil((double) totalCount / size);
         boolean hasNext = page < totalPages - 1;
 
-        return FileConverter.toChatRoomAlbumDetailDto(
+        return fileConverter.toChatRoomAlbumDetailDto(
                 chatRoom,
                 filesWithRefreshedUrls,
                 totalCount,

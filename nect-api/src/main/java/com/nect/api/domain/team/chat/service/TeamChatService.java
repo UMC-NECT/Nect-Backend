@@ -43,10 +43,11 @@ public class TeamChatService {
     private final ProjectRepository projectRepository;
     private final ChatService chatService;
     private final S3Service s3Service;
+    private final ChatConverter chatConverter;
 
     public List<ProjectMemberResponseDto> getProjectMembers(Long projectId) {
         List<User> members = projectUserRepository.findAllUsersByProjectId(projectId);
-        return ChatConverter.toProjectMemberResponseDTOList(members);
+        return chatConverter.toProjectMemberResponseDTOList(members);
     }
 
     // 팀 채팅방 생성
@@ -95,7 +96,7 @@ public class TeamChatService {
         }
 
 
-        ChatRoom chatRoom = ChatConverter.toChatRoomEntity(
+        ChatRoom chatRoom = chatConverter.toChatRoomEntity(
                 project,
                 request.getRoomName(),
                 ChatRoomType.GROUP
@@ -103,10 +104,10 @@ public class TeamChatService {
         chatRoomRepository.save(chatRoom);
 
         List<ChatRoomUser> members = new ArrayList<>();
-        members.add(ChatConverter.toChatRoomMemberEntity(chatRoom, me, LocalDateTime.now()));
+        members.add(chatConverter.toChatRoomMemberEntity(chatRoom, me, LocalDateTime.now()));
 
         for (User user : targetUsers) {
-            members.add(ChatConverter.toChatRoomMemberEntity(chatRoom, user, null));
+            members.add(chatConverter.toChatRoomMemberEntity(chatRoom, user, null));
         }
 
         chatRoomUserRepository.saveAll(members);
@@ -119,7 +120,7 @@ public class TeamChatService {
                 .limit(4)
                 .collect(Collectors.toList());
 
-        return ChatConverter.toResponseDTO(chatRoom, profileImages);
+        return chatConverter.toResponseDTO(chatRoom, profileImages);
 
 
     }
@@ -171,7 +172,7 @@ public class TeamChatService {
         List<User> newMembers = userRepository.findAllByUserIdIn(newMemberIds);
 
         List<ChatRoomUser> chatRoomUsers = newMembers.stream()
-                .map(user -> ChatConverter.toChatRoomMemberEntity(chatRoom, user, null))
+                .map(user -> chatConverter.toChatRoomMemberEntity(chatRoom, user, null))
                 .collect(Collectors.toList());
 
         chatRoomUserRepository.saveAll(chatRoomUsers);

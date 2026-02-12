@@ -47,6 +47,8 @@ public class ChatService {
     private final RedisPublisher redisPublisher;
     private final UserRepository userRepository;
     private final ChatFileRepository chatFileRepository;
+    private final ChatConverter chatConverter;
+    private final FileConverter fileConverter;
 
     @Transactional
     public ChatMessageDto sendMessage(Long roomId, Long userId, String content) {
@@ -58,7 +60,7 @@ public class ChatService {
                 .orElseThrow(() -> new ChatException(ChatErrorCode.CHAT_MEMBER_NOT_FOUND));
 
         // 메시지 생성 및 저장
-        ChatMessage message = ChatConverter.toTextMessage(chatRoom, user, content);
+        ChatMessage message = chatConverter.toTextMessage(chatRoom, user, content);
         chatMessageRepository.save(message);
 
         // 발신자의 lastReadMessageId 업데이트 (본인은 이미 읽음)
@@ -70,7 +72,7 @@ public class ChatService {
         senderRoomUser.setLastReadAt(LocalDateTime.now());
 
         // DTO 변환
-        ChatMessageDto messageDto = ChatConverter.toMessageDto(message);
+        ChatMessageDto messageDto = chatConverter.toMessageDto(message);
 
         //Redis 발행
         String channel = "chatroom:" + roomId;
@@ -140,12 +142,12 @@ public class ChatService {
                         Optional<ChatFile> fileOpt = chatFileRepository
                                 .findByChatMessageId(message.getId());
                         if (fileOpt.isPresent()) {
-                            dto = FileConverter.toFileMessageDto(message, fileOpt.get());
+                            dto = fileConverter.toFileMessageDto(message, fileOpt.get());
                         } else {
-                            dto = ChatConverter.toMessageDto(message);
+                            dto = chatConverter.toMessageDto(message);
                         }
                     } else {
-                        dto = ChatConverter.toMessageDto(message);
+                        dto = chatConverter.toMessageDto(message);
                     }
 
                     // readCount = 안 읽은 사람 수
@@ -190,7 +192,7 @@ public class ChatService {
 
         message.setIsPinned(isPinned);
 
-        return ChatConverter.toNoticeResponseDTO(message);
+        return chatConverter.toNoticeResponseDTO(message);
     }
 
 
@@ -217,7 +219,7 @@ public class ChatService {
 
 
         List<ChatMessageDto> messageDtos = messagesPage.getContent().stream()
-                .map(ChatConverter::toMessageDto)
+                .map(chatConverter::toMessageDto)
                 .collect(Collectors.toList());
 
 

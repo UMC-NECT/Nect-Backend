@@ -220,6 +220,8 @@ class MyPageControllerRestDocsTest {
                                         fieldWithPath("body.projects[].leader.user_id").description("리더 사용자 ID"),
                                         fieldWithPath("body.projects[].leader.name").description("리더 이름"),
                                         fieldWithPath("body.projects[].leader.profile_image_url").description("리더 프로필 이미지 URL"),
+                                        fieldWithPath("body.projects[].leader.part").optional().description("리더 파트"),
+                                        fieldWithPath("body.projects[].leader.introduction").optional().description("리더 소개"),
 
                                         // team_member_projects 배열
                                         fieldWithPath("body.projects[].team_member_projects[]").description("팀원들의 다른 프로젝트 목록"),

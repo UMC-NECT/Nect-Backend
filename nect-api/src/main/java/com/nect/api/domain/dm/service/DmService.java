@@ -100,6 +100,8 @@ public class DmService {
                 .map(DirectMessageDto::fromDm)
                 .toList();
 
+        list.forEach( dto -> dto.setImageUrl( s3Service.getPresignedGetUrl(dto.getSenderProfileImage()) ) );
+
         // 응답값 생성 후 반환
         return DmMessageListResponse.builder()
                 .messages(list)
@@ -124,7 +126,10 @@ public class DmService {
         List<DmRoomSummaryDto> messages = latest.stream()
                 .map(message -> {
                     DmRoomSummaryDto dto = DmRoomSummaryDto.fromOtherUser(userId, message);
-                    dto.setImageUrl(s3Service.getPresignedGetUrl(message.getSender().getProfileImageName()));
+                    User otherUser = userId.equals(message.getSender().getUserId())
+                            ? message.getReceiver()
+                            : message.getSender();
+                    dto.otherUserImageUrl(s3Service.getPresignedGetUrl(otherUser.getProfileImageName()));
                     return dto;
                 })
                 .toList();

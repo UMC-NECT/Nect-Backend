@@ -3,11 +3,17 @@ package com.nect.api.domain.home.service;
 import com.nect.api.domain.home.dto.HomeHeaderResponse;
 import com.nect.api.domain.user.exception.UserNotFoundException;
 import com.nect.api.global.infra.S3Service;
+import com.nect.core.entity.team.enums.MemberMatchable;
+import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.UserRole;
+import com.nect.core.entity.user.UserTeamRole;
 import com.nect.core.entity.user.enums.InterestField;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
+import com.nect.core.repository.user.ProjectUserRepositoryComplete;
+import com.nect.core.repository.user.UserTeamRoleRepository;
+import com.nect.core.repository.team.ProjectUserRepository;
 import com.nect.core.repository.user.UserInterestRepository;
 import com.nect.core.repository.user.UserRepository;
 import com.nect.core.repository.user.UserRoleRepository;
@@ -29,6 +35,9 @@ public class HomeMemberQueryService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final UserInterestRepository userInterestRepository;
+    private final ProjectUserRepository projectUserRepository;
+    private final ProjectUserRepositoryComplete projectUserRepositoryComplete;
+    private final UserTeamRoleRepository userTeamRoleRepository;
     private final S3Service s3Service;
 
     public List<User> getFilteredMembers(Long userId, int count, Role role, InterestField interest) {
@@ -87,6 +96,100 @@ public class HomeMemberQueryService {
                 user.getEmail(),
                 role
         );
+    }
+
+
+    // 매칭 가능 판단 후 MemberMatchable 반환
+    public MemberMatchable getMemberMatchable(List<Long> projectIds, Long targetUserId) {
+        if (projectIds == null || projectIds.isEmpty()) {
+            return MemberMatchable.MATCH_COMPLETE;
+        }
+
+        int activeProjectCount = projectUserRepository.findActiveProjectsByUserId(targetUserId).size();
+        if (activeProjectCount < 2) {
+//            User targetUser = userRepository.findById(targetUserId)
+//                    .orElseThrow(() -> new UserNotFoundException("유저를 찾을 수 없습니다."));
+//
+//            List<UserRole> userRoles = userRoleRepository.findByUser(targetUser);
+//            if (userRoles.isEmpty()) {
+//                return MemberMatchable.MATCH_COMPLETE;
+//            }
+//
+//            List<UserTeamRole> projectRoles = userTeamRoleRepository.findByProjectIdIn(projectIds);
+//            Map<Long, List<UserTeamRole>> rolesByProjectId = new HashMap<>();
+//            for (UserTeamRole role : projectRoles) {
+//                if (role.isDeleted()) {
+//                    continue;
+//                }
+//                Long projectId = role.getProject().getId();
+//                rolesByProjectId.computeIfAbsent(projectId, k -> new java.util.ArrayList<>()).add(role);
+//            }
+//
+//            var activeMembers = projectUserRepositoryComplete.findByProjectIdInAndMemberStatus(projectIds, ProjectMemberStatus.ACTIVE);
+//            Map<Long, Map<String, Integer>> activeCountsByProjectId = new HashMap<>();
+//            for (var member : activeMembers) {
+//                Long projectId = member.getProject().getId();
+//                Map<String, Integer> activeCounts = activeCountsByProjectId.computeIfAbsent(projectId, k -> new HashMap<>());
+//                String key = roleKey(member.getRoleField(), member.getCustomRoleFieldName());
+//                activeCounts.put(key, activeCounts.getOrDefault(key, 0) + 1);
+//            }
+//
+//            for (Long projectId : projectIds) {
+//                List<UserTeamRole> roles = rolesByProjectId.get(projectId);
+//                if (roles == null || roles.isEmpty()) {
+//                    continue;
+//                }
+//
+//                Map<String, Integer> activeCounts = activeCountsByProjectId.getOrDefault(projectId, Map.of());
+//                for (UserTeamRole projectRole : roles) {
+//                    if (projectRole.getRequiredCount() == null || projectRole.getRequiredCount() < 1) {
+//                        continue;
+//                    }
+//
+//                    if (!userHasRole(userRoles, projectRole.getRoleField(), projectRole.getCustomRoleFieldName())) {
+//                        continue;
+//                    }
+//
+//                    String key = roleKey(projectRole.getRoleField(), projectRole.getCustomRoleFieldName());
+//                    int currentCount = activeCounts.getOrDefault(key, 0);
+//                    if (currentCount < projectRole.getRequiredCount()) {
+//                        return MemberMatchable.MATCHABLE;
+//                    }
+//                }
+//            }
+            return MemberMatchable.MATCHABLE;
+        }
+
+        return MemberMatchable.MATCH_COMPLETE;
+
+    }
+
+    private static String roleKey(RoleField roleField, String customRoleFieldName) {
+        String custom = (customRoleFieldName == null) ? "" : customRoleFieldName.trim().toLowerCase();
+        return roleField.name() + ":" + custom;
+    }
+
+    private static boolean userHasRole(List<UserRole> userRoles, RoleField roleField, String customRoleFieldName) {
+        if (roleField == RoleField.CUSTOM) {
+            String custom = (customRoleFieldName == null) ? "" : customRoleFieldName.trim().toLowerCase();
+            for (UserRole userRole : userRoles) {
+                if (userRole.getRoleField() != RoleField.CUSTOM) {
+                    continue;
+                }
+                String userCustom = (userRole.getCustomField() == null) ? "" : userRole.getCustomField().trim().toLowerCase();
+                if (custom.equals(userCustom)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        for (UserRole userRole : userRoles) {
+            if (userRole.getRoleField() == roleField) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

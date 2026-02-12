@@ -1157,6 +1157,8 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("body.projects[].leader.user_id").description("리더 유저 ID"),
                                         fieldWithPath("body.projects[].leader.name").description("리더 이름"),
                                         fieldWithPath("body.projects[].leader.profile_image_url").description("리더 프로필 이미지 URL").optional(),
+                                        fieldWithPath("body.projects[].leader.part").description("리더 파트").optional(),
+                                        fieldWithPath("body.projects[].leader.introduction").description("리더 소개").optional(),
 
                                         fieldWithPath("body.projects[].team_member_projects[]").description("팀원들이 참여한 다른 프로젝트 목록").optional(),
                                         fieldWithPath("body.projects[].team_member_projects[].project_id").description("다른 프로젝트 ID").optional(),

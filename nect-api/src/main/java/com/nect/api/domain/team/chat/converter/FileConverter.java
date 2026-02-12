@@ -11,16 +11,21 @@ import com.nect.core.entity.team.chat.ChatRoom;
 import com.nect.core.entity.team.chat.enums.MessageType;
 import com.nect.core.entity.user.User;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.nect.api.domain.team.chat.converter.ChatConverter.toMessageDto;
-
+@Component
+@RequiredArgsConstructor
 public class FileConverter {
+
+    private final ChatConverter chatConverter;
 
 
     // ChatFile Entity -> ChatFileUploadResponseDTO
-    public static ChatFileUploadResponseDto toFileUploadResponseDTO(ChatFile chatFile) {
+    public ChatFileUploadResponseDto toFileUploadResponseDTO(ChatFile chatFile) {
         return new ChatFileUploadResponseDto(
                 chatFile.getId(),
                 chatFile.getOriginalFileName(),
@@ -31,16 +36,16 @@ public class FileConverter {
     }
 
 
-    public static ChatMessageDto toFileMessageDto(ChatMessage message, ChatFile chatFile) {
+    public ChatMessageDto toFileMessageDto(ChatMessage message, ChatFile chatFile) {
         // 기본 메시지 정보 변환
-        ChatMessageDto dto = toMessageDto(message);
+        ChatMessageDto dto = chatConverter.toMessageDto(message);
         //  파일 정보 추가
-        dto.setFileInfo(FileConverter.toFileUploadResponseDTO(chatFile));
+        dto.setFileInfo(toFileUploadResponseDTO(chatFile));
         return dto;
     }
 
     //파일 메시지 엔티티 생성
-    public static ChatMessage toFileMessage(ChatRoom chatRoom, User user) {
+    public ChatMessage toFileMessage(ChatRoom chatRoom, User user) {
         return ChatMessage.builder()
                 .chatRoom(chatRoom)
                 .user(user)
@@ -51,7 +56,7 @@ public class FileConverter {
     }
 
     // ChatFile 엔티티 생성
-    public static ChatFile toFileEntity(
+    public ChatFile toFileEntity(
             String originalFileName,
             String storedFileName,
             String fileUrl,
@@ -70,7 +75,7 @@ public class FileConverter {
     }
 
     // 사진첩 조회를 위한 단건 DTO 변환
-    public static ChatFileResponseDto toFileResponseDto(ChatFile chatFile) {
+    public ChatFileResponseDto toFileResponseDto(ChatFile chatFile) {
         return new ChatFileResponseDto(
                 chatFile.getId(),
                 chatFile.getOriginalFileName(),
@@ -80,13 +85,13 @@ public class FileConverter {
     }
 
     // 파일 조회를 위한 리스트 DTO 변환 (스트림 로직 이동)
-    public static List<ChatFileResponseDto> toFileResponseDtoList(List<ChatFile> chatFiles) {
+    public List<ChatFileResponseDto> toFileResponseDtoList(List<ChatFile> chatFiles) {
         return chatFiles.stream()
-                .map(FileConverter::toFileResponseDto)
+                .map(this::toFileResponseDto)
                 .collect(Collectors.toList());
     }
 
-    public static ChatRoomAlbumResponseDto toChatRoomAlbumDto(
+    public ChatRoomAlbumResponseDto toChatRoomAlbumDto(
             ChatRoom room,
             List<ChatFile> files,
             int totalFileCount) {
@@ -99,7 +104,7 @@ public class FileConverter {
                 toFileResponseDtoList(files)
         );
     }
-    public static ChatRoomAlbumDetailDto toChatRoomAlbumDetailDto(
+    public ChatRoomAlbumDetailDto toChatRoomAlbumDetailDto(
             ChatRoom room,
             List<ChatFile> files,
             int totalCount,

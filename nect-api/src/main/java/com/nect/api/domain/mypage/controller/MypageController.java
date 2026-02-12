@@ -24,10 +24,15 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/mypage")
@@ -61,8 +66,19 @@ public class MypageController {
     public ApiResponse<Void> updateProfile(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody ProfileSettingsRequestDto request
-    ) {
+    ) throws IOException {
         mypageService.updateProfile(userDetails.getUserId(), request);
+        return ApiResponse.ok();
+    }
+
+    @PatchMapping(value = "/profile/save", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> updateProfileMultipart(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestPart("request") ProfileSettingsRequestDto request,
+            @RequestParam(required = false) MultiValueMap<String, MultipartFile> files
+    ) throws IOException {
+        Map<Long, MultipartFile> projectHistoryImages = extractProjectHistoryImages(files);
+        mypageService.updateProfile(userDetails.getUserId(), request, projectHistoryImages);
         return ApiResponse.ok();
     }
 
@@ -112,6 +128,48 @@ public class MypageController {
     public ApiResponse<Void> editField(@PathVariable Long projectId, @RequestParam("field") InterestField interestField) {
         projectCommandService.changeProjectInterest(projectId, interestField);
         return ApiResponse.ok();
+    }
+
+    private Map<Long, MultipartFile> extractProjectHistoryImages(MultiValueMap<String, MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, MultipartFile> result = new HashMap<>();
+        for (Map.Entry<String, List<MultipartFile>> entry : files.entrySet()) {
+            Long projectHistoryId = parseProjectHistoryImageKey(entry.getKey());
+            if (projectHistoryId == null) {
+                continue;
+            }
+
+            List<MultipartFile> fileList = entry.getValue();
+            if (fileList == null || fileList.isEmpty()) {
+                continue;
+            }
+
+            MultipartFile file = fileList.get(0);
+            if (file != null && !file.isEmpty()) {
+                result.put(projectHistoryId, file);
+            }
+        }
+
+        return result;
+    }
+
+    private Long parseProjectHistoryImageKey(String key) {
+        if (key == null) {
+            return null;
+        }
+        String prefix = "projectHistoryImages[";
+        if (!key.startsWith(prefix) || !key.endsWith("]")) {
+            return null;
+        }
+        String idPart = key.substring(prefix.length(), key.length() - 1);
+        try {
+            return Long.parseLong(idPart);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
 

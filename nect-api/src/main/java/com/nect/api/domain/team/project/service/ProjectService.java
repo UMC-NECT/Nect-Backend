@@ -368,6 +368,7 @@ public class ProjectService {
         try {
             String imageName = s3Service.uploadFile(image);
             project.setImageName(imageName);
+            projectRepository.save(project);
             return s3Service.getPresignedGetUrl(imageName);
         } catch (IOException e) {
             throw new ProjectException(

@@ -253,6 +253,8 @@ public class MyPageProjectQueryService {
                                     .userId(leader.getUserId())
                                     .name(leader.getName())
                                     .profileImageUrl(leader.getProfileImageName())
+                                    .part(pu.getRoleField().getLabelEn())
+                                    .introduction(s3Service.getPresignedGetUrl(leader.getProfileImageName()))
                                     .build();
                         }
                 ));
