@@ -47,6 +47,8 @@ public class MyProjectsResponseDto {
         private Long userId;
         private String name;
         private String profileImageUrl;
+        private String part;
+        private String introduction;
     }
 
     @Getter
