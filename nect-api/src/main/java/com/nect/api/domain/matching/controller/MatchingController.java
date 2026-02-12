@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/matchings")
@@ -135,5 +137,10 @@ public class MatchingController {
             @PathVariable @Positive Long projectId
     ){
         return ApiResponse.ok(mainHomeFacade.getRecruitingProjectsDetails(projectId));
+    }
+
+    @GetMapping("/notices")
+    public ApiResponse<List<MatchingResDto.MatchingNoticeResDto>> getMatchingNotices(){
+        return ApiResponse.ok(matchingService.getMatchingNotice());
     }
 }

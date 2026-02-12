@@ -10,12 +10,14 @@ import com.nect.api.domain.team.project.service.ProjectTeamCommandService;
 import com.nect.api.domain.user.service.UserService;
 import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.matching.Matching;
+import com.nect.core.entity.matching.MatchingNotice;
 import com.nect.core.entity.matching.enums.MatchingRejectReason;
 import com.nect.core.entity.matching.enums.MatchingRequestType;
 import com.nect.core.entity.matching.enums.MatchingStatus;
 import com.nect.core.entity.team.Project;
 import com.nect.core.entity.user.User;
 import com.nect.core.entity.user.enums.RoleField;
+import com.nect.core.repository.matching.MatchingNoticeRepository;
 import com.nect.core.repository.matching.MatchingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class MatchingService {
     private final ProjectService projectService;
     private final S3Service s3Service;
     private final ProjectTeamCommandService projectTeamCommandService;
+    private final MatchingNoticeRepository matchingNoticeRepository;
 
     public Matching createUserToProjectMatching(
             User requestUser,
@@ -376,5 +379,19 @@ public class MatchingService {
                 .userMatchings(userSummaries)
                 .projectMatchings(projectSummaries)
                 .build();
+    }
+
+    public List<MatchingResDto.MatchingNoticeResDto> getMatchingNotice() {
+        List<MatchingNotice> notices = matchingNoticeRepository.findAllOrderBySortOrder();
+
+        return notices.stream()
+                .map(matchingNotice -> MatchingResDto.MatchingNoticeResDto.builder()
+                            .noticeId(matchingNotice.getId())
+                            .title(matchingNotice.getTitle())
+                            .description(matchingNotice.getDescription())
+                            .sortOrder(matchingNotice.getSortOrder())
+                            .build()
+                )
+                .toList();
     }
 }

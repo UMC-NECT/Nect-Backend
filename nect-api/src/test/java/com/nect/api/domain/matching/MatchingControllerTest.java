@@ -1372,4 +1372,62 @@ public class MatchingControllerTest {
                         )
                 ));
     }
+
+    @Test
+    void getMatchingNotices() throws Exception {
+        MatchingResDto.MatchingNoticeResDto notice1 = MatchingResDto.MatchingNoticeResDto.builder()
+                .noticeId(1L)
+                .title("대기 만료 시, 매칭이 자동 거절 처리")
+                .description(null)
+                .sortOrder(1)
+                .build();
+
+        MatchingResDto.MatchingNoticeResDto notice2 = MatchingResDto.MatchingNoticeResDto.builder()
+                .noticeId(2L)
+                .title("24시간 동안의 매칭 취소 / 거절 / 수락은 번복 불가")
+                .description(null)
+                .sortOrder(2)
+                .build();
+
+        MatchingResDto.MatchingNoticeResDto notice3 = MatchingResDto.MatchingNoticeResDto.builder()
+                .noticeId(3L)
+                .title("리더가 직접 보내는 요청은 파트당 최대 3명까지 가능 (24시간 동안)")
+                .description("리더는 24시간 동안 한 프로젝트의 파트당 최대 3명에게 매칭 요청을 직접 보낼 수 있습니다.\n" +
+                        "이때, 유저가 보내오는 프로젝트 매칭 요청은 포함되지 않습니다.\n")
+                .sortOrder(3)
+                .build();
+
+        List<MatchingResDto.MatchingNoticeResDto> notices = List.of(notice1, notice2, notice3);
+
+        given(matchingService.getMatchingNotice()).willReturn(notices);
+
+        mockMvc.perform(get("/api/v1/matchings/notices")
+                        .header("Authorization", "Bearer AccessToken")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andDo(document("matching-get-notices",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Matching")
+                                .summary("매칭 유의 사항 조회")
+                                .description("매칭 관련 유의 사항을 조회합니다.")
+                                .requestHeaders(
+                                        headerWithName("Authorization").description("액세스 토큰 (Bearer 스키마)")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").description("상태 코드"),
+                                        fieldWithPath("status.message").description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().description("상태 설명"),
+
+                                        fieldWithPath("body[]").description("공지 목록"),
+                                        fieldWithPath("body[].noticeId").description("공지 ID"),
+                                        fieldWithPath("body[].title").description("공지 제목"),
+                                        fieldWithPath("body[].description").optional().description("공지 내용"),
+                                        fieldWithPath("body[].sortOrder").description("정렬 순서")
+                                )
+                                .build()
+                        )
+                ));
+    }
 }
