@@ -6,6 +6,7 @@ import com.nect.api.domain.team.project.enums.code.ProjectErrorCode;
 import com.nect.api.domain.team.project.exception.ProjectException;
 import com.nect.api.domain.user.enums.UserErrorCode;
 import com.nect.api.domain.user.service.UserService;
+import com.nect.api.global.infra.S3Service;
 import com.nect.core.entity.analysis.ProjectIdeaAnalysis;
 import com.nect.core.entity.analysis.ProjectImprovementPoint;
 import com.nect.core.entity.analysis.ProjectWeeklyPlan;
@@ -38,7 +39,9 @@ import com.nect.core.repository.user.UserTeamRoleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -61,6 +64,7 @@ public class ProjectService {
     private final UserService userService;
     private final ProjectInterestFieldRepository projectInterestFieldRepository;
     private final UserTeamRoleRepository userTeamRoleRepository;
+    private final S3Service s3Service;
 
     public Project getProject(Long projectId){
         return projectRepository.findById(projectId)
@@ -350,4 +354,25 @@ public class ProjectService {
     }
 
 
+    public String uploadImage(Long userId, Long projectId, MultipartFile image) {
+        Project project = getProject(projectId);
+
+        if(!(userId.equals(projectUserRepository.findLeaderByProject(project)))){
+            throw new ProjectException(ProjectErrorCode.LEADER_ONLY_ACTION);
+        }
+
+        if (image == null || image.isEmpty()) {
+            throw new ProjectException(ProjectErrorCode.INVALID_IMAGE);
+        }
+
+        try {
+            String imageName = s3Service.uploadFile(image);
+            project.setImageName(imageName);
+            return s3Service.getPresignedGetUrl(imageName);
+        } catch (IOException e) {
+            throw new ProjectException(
+                    ProjectErrorCode.IMAGE_UPLOAD_FAILED, e.getMessage()
+            );
+        }
+    }
 }

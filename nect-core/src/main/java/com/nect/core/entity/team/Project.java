@@ -105,4 +105,8 @@ public class Project extends BaseEntity {
         this.plannedStartedOn = startDate;
         this.plannedEndedOn = endDate;
     }
+
+    public void setImageName(String imageName){
+        this.imageName = imageName;
+    }
 }
