@@ -49,7 +49,7 @@ public class DmRoomSummaryDto{
                 .build();
     }
 
-    public void setImageUrl(String url) {
+    public void otherUserImageUrl(String url) {
         this.otherUserImageUrl = url;
     }
 
