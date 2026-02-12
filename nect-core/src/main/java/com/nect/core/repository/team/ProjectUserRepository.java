@@ -287,6 +287,8 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
 
     Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
 
+    List<ProjectUser> findByUserIdAndMemberType(Long userId, ProjectMemberType memberType);
+
     boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
 
 
