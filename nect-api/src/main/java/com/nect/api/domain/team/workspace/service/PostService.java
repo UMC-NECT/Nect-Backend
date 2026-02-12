@@ -283,8 +283,8 @@ public class PostService {
         List<PostListResDto.PostSummaryDto> result = new java.util.ArrayList<>();
 
         // page==0 일 때만 공지 전부 상단에 붙이기
+        List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
         if (type == null && page == 0) {
-            List<Post> notices = postRepository.findAllNotices(projectId, baseSort);
             result.addAll(notices.stream().map(this::toSummary).toList());
         }
 
@@ -296,7 +296,7 @@ public class PostService {
                 freePage.getNumber(),
                 freePage.getSize(),
                 freePage.getTotalElements(),
-                freePage.getTotalPages(),
+                freePage.getTotalPages() + notices.size(),
                 freePage.hasNext()
         );
 
