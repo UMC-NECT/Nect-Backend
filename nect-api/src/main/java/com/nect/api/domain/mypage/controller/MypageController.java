@@ -1,22 +1,18 @@
 package com.nect.api.domain.mypage.controller;
 
-import com.nect.api.domain.mypage.dto.*;
-import com.nect.api.domain.matching.service.RecruitmentService;
-import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.matching.dto.RecruitmentReqDto;
 import com.nect.api.domain.matching.dto.RecruitmentResDto;
+import com.nect.api.domain.matching.service.RecruitmentService;
+import com.nect.api.domain.mypage.dto.MyProjectStringListRequest;
 import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
-import com.nect.api.domain.mypage.dto.ProfileSettingsDto.*;
-import com.nect.api.domain.mypage.service.*;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsRequestDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto.ProfileSettingsResponseDto;
-import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
-import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
-import com.nect.api.domain.team.project.dto.ProjectUserResDto;
-import com.nect.api.domain.team.project.dto.ProjectUserTypeReqDto;
-import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
+import com.nect.api.domain.mypage.dto.TeamRoleAddRequestDto;
+import com.nect.api.domain.mypage.service.*;
+import com.nect.api.domain.team.project.dto.*;
 import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
+import com.nect.api.domain.team.project.service.ProjectService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -46,6 +42,7 @@ public class MypageController {
     private final UserTeamRoleQueryService userTeamRoleQueryService;
     private final ProjectMemberStatisticService projectMemberStatisticService;
     private final ProjectDeleteService  projectDeleteService;
+    private final ProjectService projectService;
 
     /**
      * 프로필 조회
@@ -336,5 +333,12 @@ public class MypageController {
         return ApiResponse.ok();
     }
 
-
+    @PostMapping("{projectId}/image")
+    public ApiResponse<String> uploadImage(
+            @AuthenticationPrincipal UserDetailsImpl user,
+            @PathVariable Long projectId,
+            @RequestParam("image") MultipartFile image
+    ) {
+        return ApiResponse.ok(projectService.uploadImage(user.getUserId(), projectId, image));
+    }
 }

@@ -9,17 +9,18 @@ import com.nect.api.domain.mypage.dto.MyProjectsResponseDto;
 import com.nect.api.domain.mypage.dto.ProfileSettingsDto;
 import com.nect.api.domain.mypage.dto.TeamRoleAddRequestDto;
 import com.nect.api.domain.mypage.service.*;
+import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldReqDto;
 import com.nect.api.domain.team.project.dto.ProjectUserFieldResDto;
 import com.nect.api.domain.team.project.dto.ProjectUserResDto;
 import com.nect.api.domain.team.project.service.ProjectMemberStatisticService;
+import com.nect.api.domain.team.project.service.ProjectService;
 import com.nect.api.domain.team.project.service.ProjectUserService;
 import com.nect.core.entity.team.enums.PlanFileType;
 import com.nect.core.entity.team.enums.ProjectMemberStatus;
 import com.nect.core.entity.team.enums.ProjectMemberType;
 import com.nect.core.entity.team.enums.RecruitmentStatus;
 import com.nect.core.entity.user.enums.InterestField;
-import com.nect.api.domain.team.project.dto.ProjectMemberStatisticResponse;
 import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
+import static org.springframework.restdocs.headers.HeaderDocumentation.requestHeaders;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.*;
 import static org.springframework.restdocs.operation.preprocess.Preprocessors.*;
@@ -70,6 +72,9 @@ class MypageControllerTest extends NectDocumentApiTester {
 
     @MockitoBean
     private ProjectDeleteService projectDeleteService;
+
+    @MockitoBean
+    private ProjectService projectService;
 
     @Test
     void getProfile() throws Exception {
@@ -433,6 +438,56 @@ class MypageControllerTest extends NectDocumentApiTester {
                                         fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
                                         fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
                                         fieldWithPath("body").type(JsonFieldType.NULL).optional().description("응답 바디 (없음)")
+                                )
+                                .build()
+                        )
+                ));
+    }
+
+    @Test
+    void uploadImage() throws Exception {
+        long projectId = 1L;
+        long userId = 1L;
+
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "project-image.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "dummy image bytes".getBytes()
+        );
+
+        String uploadedUrl = "https://cdn.example.com/projects/1/project-image.png";
+
+        given(projectService.uploadImage(anyLong(), eq(projectId), any())).willReturn(uploadedUrl);
+
+        mockMvc.perform(multipart("/api/v1/mypage/{projectId}/image", projectId)
+                        .file(image)
+                        .header(AUTH_HEADER, TEST_ACCESS_TOKEN)
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .accept(MediaType.APPLICATION_JSON)
+                )
+                .andExpect(status().isOk())
+                .andDo(document("mypage-upload-project-image",
+                        preprocessRequest(prettyPrint()),
+                        preprocessResponse(prettyPrint()),
+                        requestHeaders(
+                                headerWithName(AUTH_HEADER).description("Bearer Access Token")
+                        ),
+                        requestParts(
+                                partWithName("image").description("업로드할 이미지(MultipartFile)")
+                        ),
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Mypage")
+                                .summary("프로젝트 이미지 업로드")
+                                .description("프로젝트 대표 이미지를 업로드합니다. 업로드 성공 시 이미지 URL을 반환합니다.")
+                                .pathParameters(
+                                        parameterWithName("projectId").description("프로젝트 ID")
+                                )
+                                .responseFields(
+                                        fieldWithPath("status.statusCode").type(JsonFieldType.STRING).description("상태 코드"),
+                                        fieldWithPath("status.message").type(JsonFieldType.STRING).description("상태 메시지"),
+                                        fieldWithPath("status.description").optional().type(JsonFieldType.STRING).description("상태 설명"),
+                                        fieldWithPath("body").type(JsonFieldType.STRING).description("업로드된 이미지 URL")
                                 )
                                 .build()
                         )
