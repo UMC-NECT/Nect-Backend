@@ -747,6 +747,8 @@ class HomeControllerTest {
                 fieldWithPath("body.defaultInfo.leader.user_id").description("리더 유저 ID"),
                 fieldWithPath("body.defaultInfo.leader.name").description("리더 이름"),
                 fieldWithPath("body.defaultInfo.leader.profile_image_url").type(JsonFieldType.STRING).optional().description("리더 프로필 이미지 URL"),
+                fieldWithPath("body.defaultInfo.leader.part").type(JsonFieldType.STRING).optional().description("리더 파트"),
+                fieldWithPath("body.defaultInfo.leader.introduction").type(JsonFieldType.STRING).optional().description("리더 소개"),
                 fieldWithPath("body.defaultInfo.team_member_projects").description("팀원들의 다른 프로젝트 목록"),
                 fieldWithPath("body.defaultInfo.team_member_projects[].project_id").description("프로젝트 ID"),
                 fieldWithPath("body.defaultInfo.team_member_projects[].title").description("프로젝트 제목"),
