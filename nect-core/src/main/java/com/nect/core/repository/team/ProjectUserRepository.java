@@ -19,6 +19,7 @@ import java.util.Optional;
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> {
 
     Optional<ProjectUser> findByUserIdAndProject(Long userId, Project project);
+    Optional<ProjectUser> findByUserIdAndProjectId(Long userId, Long projectId);
 
     @Query("""
     SELECT pu.userId 
@@ -288,6 +289,8 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Long> 
     Optional<ProjectUser> findByProjectIdAndUserId(Long projectId, Long userId);
 
     List<ProjectUser> findByUserIdAndMemberType(Long userId, ProjectMemberType memberType);
+
+    List<ProjectUser> findByProjectIdAndRoleField(Long projectId, RoleField roleField);
 
     boolean existsByProjectIdAndUserIdAndMemberType(Long projectId, Long userId, ProjectMemberType memberType);
 
