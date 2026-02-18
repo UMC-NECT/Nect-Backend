@@ -1,7 +1,6 @@
 package com.nect.api.domain.analysis.util;
 
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -28,6 +27,7 @@ public class PromptLoader {
                 String value = entry.getValue() != null ? entry.getValue() : "";
                 result = result.replace(placeholder, value);
             }
+
             return result;
 
         } catch (IOException e) {
