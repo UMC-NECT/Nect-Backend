@@ -205,10 +205,7 @@ public class IdeaAnalysisService {
                 projectIdeaAnalysisRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
         if (analysisPage.isEmpty()) {
-            throw new IdeaAnalysisException(
-                    IdeaAnalysisErrorCode.ANALYSIS_FAILED,
-                    "분석서를 찾을 수 없습니다."
-            );
+            return IdeaAnalysisEntityConverter.toEmptyPageResponseDto(analysisPage);
         }
 
         ProjectIdeaAnalysis analysis = analysisPage.getContent().get(0);
