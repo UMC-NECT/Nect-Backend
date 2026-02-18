@@ -1,3 +1,19 @@
+다음 프로젝트 정보를 분석하여 아래 형식에 맞게 응답하세요.
+
+## 프로젝트 정보
+- 프로젝트명: {{projectName}}
+- 프로젝트 요약: {{projectSummary}}
+- 타겟 사용자: {{targetUsers}}
+- 해결할 문제: {{problemStatement}}
+- 핵심 기능 1: {{coreFeature1}}
+- 핵심 기능 2: {{coreFeature2}}
+- 핵심 기능 3: {{coreFeature3}}
+- 플랫폼: {{platform}}
+- 레퍼런스 서비스: {{referenceServices}}
+- 기술적 도전: {{technicalChallenges}}
+- 목표 완료일: {{targetCompletionDate}}
+
+---
 5. **주차별 로드맵**:
    - **⚠️ 중요: total_weeks 값만큼 정확히 모든 주차의 로드맵을 생성해야 합니다.**
    - **예: total_weeks가 12라면 week_number 1부터 12까지 총 12개의 로드맵 객체를 생성하세요.**

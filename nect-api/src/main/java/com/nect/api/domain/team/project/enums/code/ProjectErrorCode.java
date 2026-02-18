@@ -23,7 +23,8 @@ public enum ProjectErrorCode implements ResponseCode {
     PROJECT_PART_NOT_FOUND("P400_9", "해당 프로젝트 파트(팀 역할)를 찾을 수 없습니다."),
     DUPLICATE_PART("P400_10", "이미 존재하는 파트입니다."),
     INVALID_CUSTOM_PART_NAME("P400_11", "CUSTOM 파트 이름이 올바르지 않습니다."),
-
+    TITLE_TOO_LONG("P400_12", "프로젝트 제목이 너무 깁니다."),
+    DESCRIPTION_TOO_LONG("P400_13", "프로젝트 설명이 너무 깁니다."),
 
     PROJECT_MEMBER_FORBIDDEN("P403_0", "프로젝트 멤버만 접근할 수 있습니다."),
     LEADER_ONLY_ACTION("P403_1", "리더만 할 수 있는 요청입니다."),

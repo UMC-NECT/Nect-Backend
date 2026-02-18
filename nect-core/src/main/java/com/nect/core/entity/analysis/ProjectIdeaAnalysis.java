@@ -29,7 +29,6 @@ public class ProjectIdeaAnalysis extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    //TODO : 정규화 위반이긴하지만 추천명 3개를 담겠다고 별도의 엔티티를 만드는게 성능적으로 더 별로라 생각해서 별도 필드로 구현했습니다.
     @Column(name = "recommended_project_name_1", length = 100, nullable = false)
     private String recommendedProjectName1;
 

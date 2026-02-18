@@ -114,7 +114,7 @@ public class ProjectService {
         addProjectLeader(project, userId, leaderRole);
         // 4. 팀 구성 복사
         saveTeamRoles(project.getId(), analysis);
-        //TODO : 리팩토링
+
         saveUserTeamRoles(project, analysis);
 
         // 5. 주차별 로드맵 복사
@@ -147,18 +147,29 @@ public class ProjectService {
      */
     private Project createProject(ProjectIdeaAnalysis analysis) {
         try {
+            String title = analysis.getRecommendedProjectName1();
+            String description = analysis.getDescription();
+
+            if (title != null && title.length() > 255) {
+                throw new ProjectException(ProjectErrorCode.TITLE_TOO_LONG);
+            }
+            if (description != null && description.length() > 255) {
+                throw new ProjectException(ProjectErrorCode.DESCRIPTION_TOO_LONG);
+            }
+
             Project project = Project.builder()
-                    .title(analysis.getRecommendedProjectName1())
-                    .description(analysis.getDescription())
+                    .title(title)
+                    .description(description)
                     .status(ProjectStatus.ACTIVE)
                     .build();
 
             project.setProjectPeriod(analysis.getProjectStartDate(), analysis.getProjectEndDate());
-
             setRecruitmentStatus(project, RecruitmentStatus.OPEN);
             Project savedProject = projectRepository.save(project);
             saveDefaultInterestFields(savedProject);
             return savedProject;
+        } catch (ProjectException e) {
+            throw e;
         } catch (Exception e) {
             throw new ProjectException(ProjectErrorCode.INVALID_ANALYSIS_DATA);
         }
