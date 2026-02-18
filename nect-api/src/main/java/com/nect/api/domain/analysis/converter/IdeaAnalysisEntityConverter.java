@@ -98,4 +98,18 @@ public class IdeaAnalysisEntityConverter {
                 .pageInfo(pageInfo)
                 .build();
     }
+    public static IdeaAnalysisPageResponseDto toEmptyPageResponseDto(Page<ProjectIdeaAnalysis> analysisPage) {
+        IdeaAnalysisPageResponseDto.PageInfo pageInfo = IdeaAnalysisPageResponseDto.PageInfo.builder()
+                .currentPage(analysisPage.getNumber())
+                .totalPages(0)
+                .totalElements(0L)
+                .hasNext(false)
+                .hasPrevious(false)
+                .build();
+
+        return IdeaAnalysisPageResponseDto.builder()
+                .analysis(null)
+                .pageInfo(pageInfo)
+                .build();
+    }
 }
