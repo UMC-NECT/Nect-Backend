@@ -15,3 +15,6 @@
           dialect: ${JPA_DIALECT:org.hibernate.dialect.H2Dialect}
           jdbc:
             time_zone: Asia/Seoul
+            batch_size: ${JPA_BATCH_SIZE:50}
+          order_inserts: ${JPA_ORDER_INSERTS:true}
+          order_updates: ${JPA_ORDER_UPDATES:true}

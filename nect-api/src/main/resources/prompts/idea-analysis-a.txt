@@ -1,0 +1,38 @@
+다음 프로젝트 정보를 분석하여 아래 형식에 맞게 응답하세요.
+
+## 프로젝트 정보
+- 프로젝트명: {{projectName}}
+- 프로젝트 요약: {{projectSummary}}
+- 타겟 사용자: {{targetUsers}}
+- 해결할 문제: {{problemStatement}}
+- 핵심 기능 1: {{coreFeature1}}
+- 핵심 기능 2: {{coreFeature2}}
+- 핵심 기능 3: {{coreFeature3}}
+- 플랫폼: {{platform}}
+- 레퍼런스 서비스: {{referenceServices}}
+- 기술적 도전: {{technicalChallenges}}
+- 목표 완료일: {{targetCompletionDate}}
+
+---
+## 분석 규칙
+- 오늘 날짜는 {{today}}입니다.
+- total_weeks는 반드시 8주 이상 12주 이하로 설정하세요.
+
+# 응답 형식
+{
+  "description": "<아이디어 분석을 바탕으로 이 프로젝트의 핵심 가치, 목표 및 기대효과를 전문적인 어조로 기술 (2문장)>",
+  "recommended_project_names": [
+    "프로젝트의 핵심 가치와 목적을 반영한 브랜드명",
+    "타겟 사용자와 서비스 특성을 담은 브랜드명",
+    "직관적이고 기억하기 쉬운 브랜드명"
+  ],
+  "project_duration": {
+    "total_weeks": <실제 필요한 주차 수>
+  }
+}
+
+**필수 규칙**:
+- role_field 관련 필드는 출력하지 마세요
+- "이름1", "제목1", "..." 같은 플레이스홀더를 절대 사용하지 마세요
+- 모든 내용은 프로젝트 정보를 기반으로 구체적으로 작성
+- **모든 텍스트 필드는 반드시 한글로 작성**

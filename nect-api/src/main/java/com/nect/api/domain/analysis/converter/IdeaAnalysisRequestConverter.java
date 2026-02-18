@@ -2,6 +2,7 @@ package com.nect.api.domain.analysis.converter;
 
 import com.nect.api.domain.analysis.dto.req.IdeaAnalysisRequestDto;
 import com.nect.api.domain.analysis.util.PromptLoader;
+import com.nect.client.openai.config.OpenAiProperties;
 import com.nect.client.openai.dto.OpenAiResponseFormat;
 import com.nect.client.openai.dto.OpenAiResponseRequest;
 import com.nect.client.openai.dto.OpenAiResponseText;
@@ -18,6 +19,7 @@ public class IdeaAnalysisRequestConverter {
 
     private final PromptLoader promptLoader;
     private final IdeaAnalysisSchemaBuilder ideaAnalysisSchemaBuilder;
+    private final OpenAiProperties openAiProperties;
 
     private static final String PROMPT_PATH = "prompts/idea-analysis.txt";
 
@@ -27,20 +29,16 @@ public class IdeaAnalysisRequestConverter {
 
         Map<String, Object> schema = ideaAnalysisSchemaBuilder.buildIdeaAnalysisSchema();
 
-        OpenAiResponseFormat format = OpenAiResponseFormat.jsonSchema(
-                "IdeaAnalysisResponse",
-                schema,
-                true
-        );
+        OpenAiResponseFormat format = OpenAiResponseFormat.jsonSchema("IdeaAnalysisResponse", schema, true);
 
         OpenAiResponseText text = OpenAiResponseText.withFormat(format);
 
         return OpenAiResponseRequest.builder()
-                .model("gpt-4o")
+                .model(openAiProperties.getModel())
                 .input(prompt)
                 .text(text)
                 .temperature(0.7)
-                .maxOutputTokens(20000)
+                .maxOutputTokens(openAiProperties.getMaxOutputToken())
                 .metadata(Map.of(
                         "promptVersion", "v1.0",
                         "feature", "idea-analysis"

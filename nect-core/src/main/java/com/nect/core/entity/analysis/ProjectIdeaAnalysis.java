@@ -107,6 +107,22 @@ public class ProjectIdeaAnalysis extends BaseEntity {
         weeklyRoadmap.setAnalysis(this);
     }
 
+    public void updateDetails(String description,
+                              String recommendedProjectName1,
+                              String recommendedProjectName2,
+                              String recommendedProjectName3,
+                              LocalDate projectStartDate,
+                              LocalDate projectEndDate,
+                              Integer totalWeeks) {
+        this.description = description;
+        this.recommendedProjectName1 = recommendedProjectName1;
+        this.recommendedProjectName2 = recommendedProjectName2;
+        this.recommendedProjectName3 = recommendedProjectName3;
+        this.projectStartDate = projectStartDate;
+        this.projectEndDate = projectEndDate;
+        this.totalWeeks = totalWeeks;
+    }
+
     public Set<RoleField> getRequiredRoleFields() {
         return teamCompositions.stream()
                 .map(AnalysisTeamComposition::getRoleField)

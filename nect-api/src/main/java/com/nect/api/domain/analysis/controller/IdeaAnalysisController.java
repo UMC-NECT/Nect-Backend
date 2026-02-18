@@ -6,6 +6,7 @@ import com.nect.api.domain.analysis.dto.req.IdeaAnalysisRequestDto;
 import com.nect.api.domain.analysis.dto.res.IdeaAnalysisResponseDto;
 import com.nect.api.domain.analysis.dto.res.ProjectCreateResponseDto;
 import com.nect.api.domain.analysis.service.IdeaAnalysisService;
+import com.nect.api.domain.analysis.service.IdeaAnalysisSplitService;
 import com.nect.api.domain.team.project.service.ProjectService;
 import com.nect.api.global.response.ApiResponse;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class IdeaAnalysisController {
 
     private final IdeaAnalysisService ideaAnalysisService;
+    private final IdeaAnalysisSplitService ideaAnalysisSplitService;
     private final ProjectService projectService;
 
     @GetMapping
@@ -40,6 +42,17 @@ public class IdeaAnalysisController {
 
         Long userId = userDetails.getUserId();
         IdeaAnalysisResponseDto response = ideaAnalysisService.analyzeProjectIdea(userId, requestDto);
+
+        return ApiResponse.ok(response);
+    }
+
+    @PostMapping("/new")
+    public ApiResponse<IdeaAnalysisResponseDto> newAnalyzeIdea(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody IdeaAnalysisRequestDto requestDto) {
+
+        Long userId = userDetails.getUserId();
+        IdeaAnalysisResponseDto response = ideaAnalysisSplitService.analyzeProjectIdeaSplit(userId, requestDto);
 
         return ApiResponse.ok(response);
     }
@@ -68,5 +81,3 @@ public class IdeaAnalysisController {
     }
 
 }
-
-

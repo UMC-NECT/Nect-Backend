@@ -1,0 +1,61 @@
+다음 프로젝트 정보를 분석하여 아래 형식에 맞게 응답하세요.
+
+## 프로젝트 정보
+- 프로젝트명: {{projectName}}
+- 프로젝트 요약: {{projectSummary}}
+- 타겟 사용자: {{targetUsers}}
+- 해결할 문제: {{problemStatement}}
+- 핵심 기능 1: {{coreFeature1}}
+- 핵심 기능 2: {{coreFeature2}}
+- 핵심 기능 3: {{coreFeature3}}
+- 플랫폼: {{platform}}
+- 레퍼런스 서비스: {{referenceServices}}
+- 기술적 도전: {{technicalChallenges}}
+- 목표 완료일: {{targetCompletionDate}}
+
+---
+## 분석 규칙
+- total_weeks는 {{totalWeeks}} 입니다.
+- 이번 요청은 week_number {{startWeek}}부터 {{endWeek}}까지만 생성하세요.
+- team_composition은 다음과 같습니다. role_tasks는 반드시 이 팀 구성과 동일한 role_field/role_field_display_name을 사용하세요.
+{{teamComposition}}
+
+---
+5. **주차별 로드맵**:
+   - **⚠️ 중요: 이번 요청 범위(week_number {{startWeek}}~{{endWeek}})만 생성하세요.**
+   - **예: total_weeks가 12이고 요청 범위가 5~8이라면 week_number 5부터 8까지 총 4개의 로드맵 객체를 생성하세요.**
+   - 각 주차마다 구체적이고 실행 가능한 작업 내용을 작성하세요.
+   - 각 역할별 태스크는 명사형 작업 목록으로 작성하세요 (최대 3개, 쉼표로 구분).
+   - **필수**: 각 주차의 role_tasks는 team_composition에 정의된 모든 role_field를 포함해야 합니다.
+   - **절대 예시로 3-4개만 생성하고 "..." 으로 생략하지 마세요. 반드시 전체 주차를 모두 생성하세요.**
+
+# 응답 형식
+{
+  "weekly_roadmap": [
+    {
+      "week_number": 1,
+      "week_title": "<1주차의 핵심 목표 (20자 이내)>",
+      "role_tasks": [
+        {
+          "role_field": "<team_composition의 role_field와 동일>",
+          "role_field_display_name": "<역할의 한글명>",
+          "tasks": "<명사형 작업 항목 1~3개를 쉼표로 연결한 문자열. 예: 서비스 기획안 확정, 요구사항 정리, 기능 명세서 초안>"
+        }
+      ]
+    }
+  ]
+}
+
+**필수 규칙**:
+- role_field는 team_composition에 있는 값만 사용
+- "이름1", "제목1", "..." 같은 플레이스홀더를 절대 사용하지 마세요
+- 모든 내용은 프로젝트 정보를 기반으로 구체적으로 작성
+- tasks는 반드시 명사형 작업 항목 1~3개를 쉼표로 연결하여 작성 (문장형 금지, '~합니다' 금지)
+- 각 주차의 role_tasks는 team_composition의 모든 역할을 포함
+- **모든 텍스트 필드는 반드시 한글로 작성**
+- **텍스트 길이 제한: week_title 20자 이내, tasks는 항목 1~3개**
+
+**⚠️ weekly_roadmap 생성 필수 규칙 (매우 중요!):**
+1. **weekly_roadmap 배열의 길이 = (endWeek - startWeek + 1)** (정확히 일치해야 함!)
+2. **week_number는 {{startWeek}}부터 {{endWeek}}까지 빠짐없이 순차적으로 생성**
+3. **절대로 1개만 예시로 생성하고 나머지는 생략하지 마세요**
