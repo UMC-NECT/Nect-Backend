@@ -39,8 +39,8 @@ public enum RoleField {
     AD_VIRAL("광고/바이럴", "Ads/Viral", Role.MARKETER),
     LIVE_COMMERCE("라이브커머스", "Live Commerce", Role.MARKETER),
     DATA_ANALYSIS("데이터 분석", "Data Analysis", Role.MARKETER),
-//    MARKETING_OTHER("기타", "Other", Role.MARKETER),
 
+//    MARKETING_OTHER("기타", "Other", Role.MARKETER),
     OPERATIONS_CS("운영/CS", "Operations/CS", Role.OTHER),
     SALES_PARTNERSHIP("영업/제휴", "Sales/Partnership", Role.OTHER),
     VIDEO_MUSIC_DIRECTING("영상/음악 감독", "Video/Music Directing", Role.OTHER),

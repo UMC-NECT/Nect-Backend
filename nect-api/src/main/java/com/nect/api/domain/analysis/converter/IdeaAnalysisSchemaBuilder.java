@@ -1,5 +1,6 @@
 package com.nect.api.domain.analysis.converter;
 
+import com.nect.core.entity.user.enums.Role;
 import com.nect.core.entity.user.enums.RoleField;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ public class IdeaAnalysisSchemaBuilder {
 
         List<String> allRoleFields = Arrays.stream(RoleField.values())
                 .filter(rf -> rf != RoleField.CUSTOM)
+                .filter(rf -> rf.getRole() != Role.OTHER)
                 .map(Enum::name)
                 .collect(Collectors.toList());
 
