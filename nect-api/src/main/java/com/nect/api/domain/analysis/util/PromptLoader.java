@@ -1,7 +1,6 @@
 package com.nect.api.domain.analysis.util;
 
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
@@ -11,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
 
-@Slf4j
+
 @Component
 public class PromptLoader {
 
@@ -28,7 +27,7 @@ public class PromptLoader {
                 String value = entry.getValue() != null ? entry.getValue() : "";
                 result = result.replace(placeholder, value);
             }
-            log.info("빌드된 프롬프트 앞부분: {}", result.substring(0, Math.min(500, result.length())));
+
             return result;
 
         } catch (IOException e) {

@@ -8,6 +8,7 @@ import com.nect.client.openai.dto.OpenAiResponseText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,6 +63,7 @@ public class IdeaAnalysisRequestConverter {
         variables.put("technicalChallenges", dto.getTechnicalChallenges());
         variables.put("targetCompletionDate",
                 dto.getTargetCompletionDate() != null ? dto.getTargetCompletionDate().toString() : "미정");
+        variables.put("today", LocalDate.now().toString());
 
         return promptLoader.loadPrompt(PROMPT_PATH, variables);
     }

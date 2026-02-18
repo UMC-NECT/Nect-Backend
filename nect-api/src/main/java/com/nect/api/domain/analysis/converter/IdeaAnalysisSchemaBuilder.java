@@ -19,7 +19,6 @@ public class IdeaAnalysisSchemaBuilder {
                 .filter(rf -> rf.getRole() != Role.OTHER)
                 .map(Enum::name)
                 .collect(Collectors.toList());
-
         return Map.of(
                 "type", "object",
                 "properties", Map.of(
