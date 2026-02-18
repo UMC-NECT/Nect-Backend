@@ -57,11 +57,6 @@ spring:
       org.hibernate.orm.jdbc.bind: TRACE
       org.hibernate.tool.schema: DEBUG # DDL 생성 로그 확인용
 
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
-
 jwt:
   secret: ${JWT_SECRET:test-jwt-secret-key-for-testing-minimum-256-bits-required-for-hs256-algorithm-security}
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}

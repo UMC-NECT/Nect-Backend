@@ -39,7 +39,7 @@ public class IdeaAnalysisRequestConverter {
                 .input(prompt)
                 .text(text)
                 .temperature(0.7)
-                .maxOutputTokens(4000)
+                .maxOutputTokens(20000)
                 .metadata(Map.of(
                         "promptVersion", "v1.0",
                         "feature", "idea-analysis"
