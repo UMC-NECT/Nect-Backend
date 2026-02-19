@@ -5,6 +5,7 @@ import com.nect.api.domain.analysis.dto.res.IdeaAnalysisPageResponseDto;
 import com.nect.api.domain.analysis.dto.req.IdeaAnalysisRequestDto;
 import com.nect.api.domain.analysis.dto.res.IdeaAnalysisResponseDto;
 import com.nect.api.domain.analysis.service.IdeaAnalysisService;
+import com.nect.api.domain.analysis.service.IdeaAnalysisSplitService;
 import com.nect.api.global.jwt.JwtUtil;
 import com.nect.api.global.jwt.service.TokenBlacklistService;
 import com.nect.api.global.security.UserDetailsImpl;
@@ -54,6 +55,9 @@ class IdeaAnalysisControllerTest {
     private IdeaAnalysisService ideaAnalysisService;
 
     @MockitoBean
+    private IdeaAnalysisSplitService ideaAnalysisSplitService;
+
+    @MockitoBean
     private JwtUtil jwtUtil;
 
     @MockitoBean
@@ -96,7 +100,7 @@ class IdeaAnalysisControllerTest {
                 .targetCompletionDate(LocalDate.of(2026, 4, 30))
                 .build();
 
-        given(ideaAnalysisService.analyzeProjectIdea(anyLong(), any(IdeaAnalysisRequestDto.class)))
+        given(ideaAnalysisSplitService.analyzeProjectIdeaSplit(anyLong(), any(IdeaAnalysisRequestDto.class)))
                 .willReturn(mockAnalysisResponse());
 
         // when & then
