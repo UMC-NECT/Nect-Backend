@@ -35,7 +35,7 @@ public class IdeaAnalysisController {
     }
 
 
-    @PostMapping
+    @PostMapping("/old")
     public ApiResponse<IdeaAnalysisResponseDto> analyzeIdea(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody IdeaAnalysisRequestDto requestDto) {
@@ -46,7 +46,7 @@ public class IdeaAnalysisController {
         return ApiResponse.ok(response);
     }
 
-    @PostMapping("/new")
+    @PostMapping
     public ApiResponse<IdeaAnalysisResponseDto> newAnalyzeIdea(
             @AuthenticationPrincipal UserDetailsImpl userDetails,
             @RequestBody IdeaAnalysisRequestDto requestDto) {
