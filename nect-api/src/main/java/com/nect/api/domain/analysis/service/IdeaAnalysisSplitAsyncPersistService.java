@@ -20,6 +20,7 @@ public class IdeaAnalysisSplitAsyncPersistService {
 
     private final AnalysisRedisCacheService analysisRedisCacheService;
     private final IdeaAnalysisBulkPersistService ideaAnalysisBulkPersistService;
+    private final IdeaAnalysisService analysisService;
 
     /**
      * Redis 캐시에서 분석 결과를 읽어와 비동기로 저장합니다.
@@ -34,6 +35,7 @@ public class IdeaAnalysisSplitAsyncPersistService {
         try {
             ideaAnalysisBulkPersistService.updateAnalysisWithDetails(analysisId, cached);
         } catch (Exception e) {
+            analysisService.deleteAnalysis(analysisId); // 저장 실패 시 해당 분석결과는 삭제해버림
             log.warn("analysis async persist failed id={}", analysisId, e);
         }
     }

@@ -285,4 +285,16 @@ public class IdeaAnalysisService {
         projectIdeaAnalysisRepository.delete(analysis);
     }
 
+    @Transactional
+    public void deleteAnalysis(Long analysisId) {
+        ProjectIdeaAnalysis analysis = projectIdeaAnalysisRepository
+                .findById(analysisId)
+                .orElseThrow(() -> new IdeaAnalysisException(
+                        IdeaAnalysisErrorCode.ANALYSIS_FAILED,
+                        "분석서를 찾을 수 없습니다."
+                ));
+
+        projectIdeaAnalysisRepository.delete(analysis);
+    }
+
 }
