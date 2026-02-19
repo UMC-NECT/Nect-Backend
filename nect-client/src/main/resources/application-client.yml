@@ -4,7 +4,7 @@ openai:
   model: ${OPENAI_MODEL:gpt-4.1-mini}
   fallback-model: ${OPENAI_FALLBACK_MODEL:gpt-4.1}
   connect-timeout-seconds: ${OPENAI_CONNECT_TIMEOUT_SECONDS:2}
-  read-timeout-seconds: ${OPENAI_READ_TIMEOUT_SECONDS:20}
+  read-timeout-seconds: ${OPENAI_READ_TIMEOUT_SECONDS:120}
   max-retries: ${OPENAI_MAX_RETRIES:2}
   initial-backoff-millis: ${OPENAI_INITIAL_BACKOFF_MILLIS:200}
   max-output-token: ${OPENAI_MAX_OUTPUT_TOKEN:4000}
