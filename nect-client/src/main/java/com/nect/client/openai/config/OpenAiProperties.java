@@ -11,11 +11,12 @@ public class OpenAiProperties {
 
 	private String apiKey;
 	private String baseUrl = "https://api.openai.com";
-	private String model = "gpt-4o-mini";
+	private String model = "gpt-4.1-mini";
 	private String fallbackModel = "gpt-4.1";
 	private int connectTimeoutSeconds = 10;
-	private int readTimeoutSeconds = 90;
+	private int readTimeoutSeconds = 120;
 	private int maxRetries = 2;
 	private long initialBackoffMillis = 200;
+	private int maxOutputToken = 8000;
 
 }

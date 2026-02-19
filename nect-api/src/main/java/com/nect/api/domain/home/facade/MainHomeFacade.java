@@ -201,9 +201,9 @@ public class MainHomeFacade {
                 .map(user -> {
                     List<String> parts = partsByUserId.getOrDefault(user.getUserId(), List.of());
                     MemberMatchable matchable = homeMemberQueryService.getMemberMatchable(projectIds, user.getUserId());
-                    if (filterMatchableOnly && matchable != MemberMatchable.MATCHABLE) {
-                        return null;
-                    }
+//                    if (filterMatchableOnly && matchable != MemberMatchable.MATCHABLE) {
+//                        return null;
+//                    }
                     return HomeMemberItem.of(
                             user.getUserId(),
                             s3Service.getPresignedGetUrl(user.getProfileImageName()),

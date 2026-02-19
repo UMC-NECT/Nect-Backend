@@ -13,6 +13,7 @@ import com.nect.client.openai.OpenAiClient;
 import com.nect.client.openai.dto.OpenAiResponse;
 import com.nect.client.openai.dto.OpenAiResponseRequest;
 import com.nect.core.entity.analysis.*;
+import com.nect.core.entity.analysis.enums.AnalysisSaveStatus;
 import com.nect.core.entity.user.enums.RoleField;
 import com.nect.core.repository.analysis.ProjectIdeaAnalysisRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+/**
+ * 아이디어 분석 결과 생성 및 조회를 담당하는 서비스입니다.
+ *
+ * - 분석 결과 생성 및 DB 저장
+ * - 분석 페이지 조회 (pending 상태는 Redis 캐시 우선)
+ */
 @Service
 @RequiredArgsConstructor
 public class IdeaAnalysisService {
@@ -37,18 +43,20 @@ public class IdeaAnalysisService {
     private final IdeaAnalysisRequestConverter requestConverter;
     private final IdeaAnalysisResponseConverter responseConverter;
     private final ProjectIdeaAnalysisRepository projectIdeaAnalysisRepository;
+    private final AnalysisRedisCacheService analysisRedisCacheService;
     private final ObjectMapper objectMapper;
 
 
+    /**
+     * 아이디어 분석을 수행하고 결과를 DB에 저장합니다.
+     */
     public IdeaAnalysisResponseDto analyzeProjectIdea(Long userId, IdeaAnalysisRequestDto requestDto) {
-
         long analysisCount = projectIdeaAnalysisRepository.countByUserId(userId);
         if (analysisCount >= 2) {
             throw new IdeaAnalysisException(IdeaAnalysisErrorCode.TOO_MANY_ANALYSIS, "아이디어 분석은 인당 최대 2개까지만 가능합니다.");
         }
 
         try {
-
             OpenAiResponseRequest openAiRequest = requestConverter.toOpenAiRequest(requestDto);
             OpenAiResponse openAiResponse = openAiClient.createResponse(openAiRequest);
             IdeaAnalysisResponseDto response = responseConverter.toIdeaAnalysisResponse(openAiResponse);
@@ -196,6 +204,12 @@ public class IdeaAnalysisService {
         return analysis;
     }
 
+    /**
+     * 최신 분석 결과 페이지를 조회합니다.
+     *
+     * - PENDING 상태라면 Redis 캐시에서 우선 조회
+     * - 캐시가 없을 경우 최소 정보만 반환
+     */
     @Transactional(readOnly = true)
     public IdeaAnalysisPageResponseDto getAnalysisPage(Long userId, int page) {
 
@@ -210,6 +224,20 @@ public class IdeaAnalysisService {
 
         ProjectIdeaAnalysis analysis = analysisPage.getContent().get(0);
 
+        // 아직 DB에 저장되지 않았다면 캐시에서 꺼내서 반환
+        if (isPending(analysis)) {
+            IdeaAnalysisResponseDto cached = analysisRedisCacheService.getCachedResponse(analysis.getId());
+            if (cached != null) {
+                return IdeaAnalysisEntityConverter.toPageResponseDto(analysisPage, cached);
+            }
+            IdeaAnalysisResponseDto pendingResponse = IdeaAnalysisResponseDto.builder()
+                    .analysisId(analysis.getId())
+                    .description(analysis.getDescription())
+                    .recommendedProjectNames(analysis.getRecommendedProjectNames())
+                    .build();
+            return IdeaAnalysisEntityConverter.toPageResponseDto(analysisPage, pendingResponse);
+        }
+
         ProjectIdeaAnalysis detailAnalysis = projectIdeaAnalysisRepository
                 .findByIdAndUserIdWithDetails(analysis.getId(), userId)
                 .orElseThrow(() -> new IdeaAnalysisException(
@@ -222,6 +250,14 @@ public class IdeaAnalysisService {
 
         return IdeaAnalysisEntityConverter.toPageResponseDto(analysisPage, analysisDto);
 
+    }
+
+    /**
+     * 분석 결과가 비동기 저장 대기 상태인지 확인합니다.
+     */
+    private boolean isPending(ProjectIdeaAnalysis analysis) {
+        return AnalysisSaveStatus.PENDING.getStatus().equals(analysis.getDescription())
+                && AnalysisSaveStatus.PENDING.getStatus().equals(analysis.getRecommendedProjectName1());
     }
 
 
